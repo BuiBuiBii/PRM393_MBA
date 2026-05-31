@@ -1,0 +1,20 @@
+const successResponse = (res, message = 'Request successful', data = null, statusCode = 200) => {
+  return res.status(statusCode).json({
+    success: true,
+    message,
+    data,
+  });
+};
+
+const errorResponse = (res, message = 'Request failed', statusCode = 500, errors = []) => {
+  return res.status(statusCode).json({
+    success: false,
+    message,
+    errors,
+  });
+};
+
+module.exports = {
+  successResponse,
+  errorResponse,
+};

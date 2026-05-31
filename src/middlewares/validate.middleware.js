@@ -1,0 +1,17 @@
+const { errorResponse } = require('../utils/response');
+
+const validate = (validatorFn) => (req, res, next) => {
+  if (typeof validatorFn !== 'function') {
+    return next();
+  }
+
+  const validationResult = validatorFn(req);
+
+  if (!validationResult || validationResult.isValid) {
+    return next();
+  }
+
+  return errorResponse(res, 'Validation failed', 400, validationResult.errors || []);
+};
+
+module.exports = validate;
