@@ -21,6 +21,8 @@ const studentProfileSchema = new mongoose.Schema(
     year: {
       type: Number,
       default: null,
+      min: 1,
+      max: 6,
     },
     targetCareer: {
       type: String,

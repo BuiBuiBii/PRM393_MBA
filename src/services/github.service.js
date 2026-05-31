@@ -1,14 +1,13 @@
-const { apiMessages } = require('../utils/constants');
-
-const buildReadyPayload = () => ({
-  message: apiMessages.ready,
-  data: null,
-});
-
-const listRepositories = async () => buildReadyPayload();
-const connectGithub = async () => buildReadyPayload();
+const oauthService = require('./github/github.oauth.service');
+const accountService = require('./github/github.account.service');
+const repositoryService = require('./github/github.repository.service');
+const packageService = require('./github/github.package.service');
+const commitService = require('./github/github.commit.service');
 
 module.exports = {
-  listRepositories,
-  connectGithub,
+  ...oauthService,
+  ...accountService,
+  ...repositoryService,
+  ...packageService,
+  ...commitService,
 };

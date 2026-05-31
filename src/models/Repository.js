@@ -12,10 +12,9 @@ const repositorySchema = new mongoose.Schema(
       ref: 'GithubAccount',
       default: null,
     },
-    repoId: {
-      type: String,
+    githubRepoId: {
+      type: Number,
       required: true,
-      trim: true,
     },
     name: {
       type: String,
@@ -27,46 +26,75 @@ const repositorySchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
-    url: {
-      type: String,
-      default: '',
-      trim: true,
-    },
     description: {
       type: String,
       default: '',
       trim: true,
+    },
+    htmlUrl: {
+      type: String,
+      default: '',
+    },
+    private: {
+      type: Boolean,
+      default: false,
+    },
+    fork: {
+      type: Boolean,
+      default: false,
     },
     language: {
       type: String,
       default: '',
       trim: true,
     },
+    topics: {
+      type: [String],
+      default: [],
+    },
     defaultBranch: {
       type: String,
-      default: '',
+      default: 'main',
       trim: true,
     },
-    stars: {
+    size: {
       type: Number,
       default: 0,
     },
-    forks: {
+    stargazersCount: {
       type: Number,
       default: 0,
     },
-    isPrivate: {
-      type: Boolean,
+    forksCount: {
+      type: Number,
       default: false,
+    },
+    openIssuesCount: {
+      type: Number,
+      default: 0,
+    },
+    pushedAt: {
+      type: Date,
+      default: null,
+    },
+    updatedAtGithub: {
+      type: Date,
+      default: null,
+    },
+    rawData: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
     },
     lastSyncedAt: {
       type: Date,
-      default: null,
+      default: Date.now,
     },
   },
   {
     timestamps: true,
   }
 );
+
+repositorySchema.index({ userId: 1, githubRepoId: 1 }, { unique: true });
 
 module.exports = mongoose.model('Repository', repositorySchema);

@@ -20,9 +20,8 @@ app.use(cors());
 app.use(express.json());
 
 app.get('/api/health', (req, res) => {
-  return successResponse(res, 'Service is healthy', {
-    status: 'ok',
-    uptime: process.uptime(),
+  return successResponse(res, 'Backend is running', {
+    service: 'career-roadmap-be',
   });
 });
 

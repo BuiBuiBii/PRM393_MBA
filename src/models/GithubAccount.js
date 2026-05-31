@@ -8,18 +8,44 @@ const githubAccountSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    githubUsername: {
+    githubId: {
+      type: Number,
+      required: true,
+    },
+    username: {
       type: String,
+      required: true,
       trim: true,
+    },
+    displayName: {
+      type: String,
       default: '',
     },
-    tokenEncrypted: {
+    avatarUrl: {
+      type: String,
+      default: '',
+    },
+    profileUrl: {
+      type: String,
+      default: '',
+    },
+    accessToken: {
+      type: String,
+      required: true,
+      select: false,
+      // TODO: encrypt accessToken before production.
+    },
+    tokenType: {
+      type: String,
+      default: 'bearer',
+    },
+    scope: {
       type: String,
       default: '',
     },
     connectedAt: {
       type: Date,
-      default: null,
+      default: Date.now,
     },
   },
   {

@@ -1,17 +1,23 @@
 const validateRegisterBody = (req) => {
   const errors = [];
   const body = req.body || {};
+  const email = String(body.email || '').trim();
+  const password = String(body.password || '');
 
   if (!body.fullName || !String(body.fullName).trim()) {
     errors.push('fullName is required');
   }
 
-  if (!body.email || !String(body.email).trim()) {
+  if (!email) {
     errors.push('email is required');
+  } else if (!/^\S+@\S+\.\S+$/.test(email)) {
+    errors.push('email is invalid');
   }
 
-  if (!body.password || !String(body.password).trim()) {
+  if (!password.trim()) {
     errors.push('password is required');
+  } else if (password.length < 6) {
+    errors.push('password must be at least 6 characters');
   }
 
   return {
@@ -23,12 +29,16 @@ const validateRegisterBody = (req) => {
 const validateLoginBody = (req) => {
   const errors = [];
   const body = req.body || {};
+  const email = String(body.email || '').trim();
+  const password = String(body.password || '');
 
-  if (!body.email || !String(body.email).trim()) {
+  if (!email) {
     errors.push('email is required');
+  } else if (!/^\S+@\S+\.\S+$/.test(email)) {
+    errors.push('email is invalid');
   }
 
-  if (!body.password || !String(body.password).trim()) {
+  if (!password.trim()) {
     errors.push('password is required');
   }
 

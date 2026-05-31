@@ -7,5 +7,6 @@ const router = express.Router();
 
 router.post('/repositories/:repoId', authMiddleware, analysisController.analyzeRepository);
 router.get('/results/:repoId', authMiddleware, analysisController.getAnalysisResults);
+router.get('/me', authMiddleware, analysisController.getMyAnalysisResults);
 
 module.exports = router;

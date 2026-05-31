@@ -4,7 +4,7 @@ const { successResponse } = require('../utils/response');
 const register = async (req, res, next) => {
   try {
     const result = await authService.registerUser(req.body);
-    return successResponse(res, result.message, result.data);
+    return successResponse(res, result.message, result.data, result.statusCode);
   } catch (error) {
     return next(error);
   }
@@ -13,7 +13,7 @@ const register = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const result = await authService.loginUser(req.body);
-    return successResponse(res, result.message, result.data);
+    return successResponse(res, result.message, result.data, result.statusCode);
   } catch (error) {
     return next(error);
   }
@@ -22,7 +22,7 @@ const login = async (req, res, next) => {
 const getMe = async (req, res, next) => {
   try {
     const result = await authService.getCurrentUser(req.user);
-    return successResponse(res, result.message, result.data);
+    return successResponse(res, result.message, result.data, result.statusCode);
   } catch (error) {
     return next(error);
   }

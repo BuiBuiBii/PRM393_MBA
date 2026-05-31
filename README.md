@@ -59,6 +59,26 @@ npm start
 
 Create a local `.env` file from `.env.example` and update the values for your machine.
 
+MongoDB URI:
+
+```txt
+mongodb://127.0.0.1:27017/WDP
+```
+
+MongoDB local setup steps:
+
+1. Open MongoDB Compass.
+2. Connect to `mongodb://127.0.0.1:27017/WDP`.
+3. Run backend.
+4. Call register API.
+5. MongoDB will auto-create `WDP` database and `users` collection when the first user is inserted.
+
+Notes:
+
+- You do not need to create collections manually.
+- Collections are auto-created by Mongoose when the first document is written.
+- If register has not been called yet, `users` may be empty or not visible.
+
 ## API Base URL
 
 ```txt

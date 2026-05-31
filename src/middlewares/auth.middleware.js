@@ -1,21 +1,33 @@
 const jwt = require('jsonwebtoken');
-const { errorResponse } = require('../utils/response');
 
 const authMiddleware = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return errorResponse(res, 'Authorization token is required', 401, []);
-  }
-
-  const token = authHeader.split(' ')[1];
-
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'development_jwt_secret');
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      const error = new Error('Authorization token is required');
+      error.statusCode = 401;
+      throw error;
+    }
+
+    if (!process.env.JWT_SECRET) {
+      const error = new Error('JWT_SECRET is not configured');
+      error.statusCode = 500;
+      throw error;
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
     req.user = decoded;
     return next();
   } catch (error) {
-    return errorResponse(res, 'Invalid or expired token', 401, []);
+    if (!error.statusCode) {
+      error.statusCode = 401;
+      error.message = 'Invalid or expired token';
+    }
+
+    return next(error);
   }
 };
 
