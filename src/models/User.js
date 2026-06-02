@@ -8,6 +8,11 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    avatarUrl: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     email: {
       type: String,
       required: true,
@@ -24,6 +29,31 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: roles,
       default: 'student',
+    },
+    settings: {
+      language: {
+        type: String,
+        enum: ['en', 'vi'],
+        default: 'vi',
+      },
+      theme: {
+        type: String,
+        enum: ['light', 'dark', 'system'],
+        default: 'system',
+      },
+      emailNotifications: {
+        type: Boolean,
+        default: true,
+      },
+      aiFeedbackNotifications: {
+        type: Boolean,
+        default: true,
+      },
+      profileVisibility: {
+        type: String,
+        enum: ['private', 'public'],
+        default: 'private',
+      },
     },
   },
   {

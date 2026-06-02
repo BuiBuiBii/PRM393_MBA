@@ -4,6 +4,7 @@ const authController = require('../controllers/auth.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const validate = require('../middlewares/validate.middleware');
 const {
+  validateChangePasswordBody,
   validateRegisterBody,
   validateLoginBody,
 } = require('../validators/auth.validator');
@@ -86,6 +87,62 @@ router.post('/register', validate(validateRegisterBody), authController.register
  *         description: Invalid email or password
  */
 router.post('/login', validate(validateLoginBody), authController.login);
+
+/**
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Logout current authenticated user
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logout successful
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/logout', authMiddleware, authController.logout);
+
+/**
+ * @swagger
+ * /api/auth/change-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Change current authenticated user's password
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - currentPassword
+ *               - newPassword
+ *               - confirmPassword
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *                 example: 123456
+ *               newPassword:
+ *                 type: string
+ *                 example: 1234567
+ *               confirmPassword:
+ *                 type: string
+ *                 example: 1234567
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *       400:
+ *         description: Invalid request body or current password is incorrect
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ */
+router.post('/change-password', authMiddleware, validate(validateChangePasswordBody), authController.changePassword);
 
 /**
  * @swagger

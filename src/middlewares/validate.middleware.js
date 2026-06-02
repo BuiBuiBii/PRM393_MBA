@@ -15,7 +15,8 @@ const validate = (validatorFn) => (req, res, next) => {
     res,
     validationResult.message || 'Validation failed',
     validationResult.statusCode || 400,
-    validationResult.errors || []
+    validationResult.errors || [],
+    validationResult.errorCode || 'VALIDATION_ERROR'
   );
 };
 
