@@ -11,7 +11,12 @@ const validate = (validatorFn) => (req, res, next) => {
     return next();
   }
 
-  return errorResponse(res, 'Validation failed', 400, validationResult.errors || []);
+  return errorResponse(
+    res,
+    validationResult.message || 'Validation failed',
+    validationResult.statusCode || 400,
+    validationResult.errors || []
+  );
 };
 
 module.exports = validate;

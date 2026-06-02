@@ -55,6 +55,29 @@ Production mode:
 npm start
 ```
 
+## Docker Usage
+
+Start Docker Desktop first, then run:
+
+```bash
+npm run docker:up
+```
+
+Then open:
+
+```txt
+http://localhost:5000/api/swagger
+```
+
+Useful commands:
+
+```bash
+npm run docker:logs
+npm run docker:down
+npm run docker:restart
+npm run docker:help
+```
+
 ## Environment
 
 Create a local `.env` file from `.env.example` and update the values for your machine.
@@ -85,26 +108,250 @@ Notes:
 http://localhost:5000/api
 ```
 
-## Current Available Endpoints
+## Swagger
+
+Open Swagger UI here:
+
+```txt
+http://localhost:5000/api/swagger
+```
+
+## Authentication
+
+Most APIs are protected.
+
+After login, send JWT token in header:
+
+```txt
+Authorization: Bearer <JWT_TOKEN>
+```
+
+##### GET
+
+/api/github/oauth: sẽ trả về 1 link connect, bấm vào connect với github
+
+## Important Dependency Notes
+
+### To use analysis correctly (truoc khi phan tich thi goi 2 api GET o duoi)
+
+Before calling:
+
+```http
+POST /api/analysis/repositories/:repoId
+```
+
+you should call these first for the same repository:
+
+```http
+GET /api/github/repositories/:repoId/packages
+GET /api/github/repositories/:repoId/commits
+```
+
+Reason:
+
+- Analysis reads cached package/config data from `RepositoryPackage`
+- Analysis reads cached commit data from `RepositoryCommit`
+- If you skip those APIs, analysis still runs, but result quality will be weaker because package/config signals or commit signals may be missing
+
+### To use AI feedback
+
+Before calling:
+
+```http
+POST /api/ai-feedback/repositories/:repoId
+```
+
+you must already have at least one analysis snapshot:
+
+```http
+POST /api/analysis/repositories/:repoId
+```
+
+If not, API returns:
+
+```txt
+Please analyze repository before generating AI feedback.
+```
+
+### To use chat
+
+Chat works best after:
+
+```http
+GET /api/github/repositories/:repoId/packages
+GET /api/github/repositories/:repoId/commits
+POST /api/analysis/repositories/:repoId
+POST /api/ai-feedback/repositories/:repoId
+```
+
+Reason:
+
+- Chat builds context from `StudentProfile`
+- Chat uses synced repositories from database
+- Chat uses analysis snapshots and skill signals
+- Chat can still reply if Gemini is unavailable because backend has fallback response, but the answer quality depends on available GitHub analysis data
+
+## Repository ID Recommendation
+
+Many GitHub APIs accept:
+
+- MongoDB repository `_id`
+- GitHub numeric `githubRepoId`
+- `owner/repo` full name for GitHub routes
+
+Recommended approach:
+
+- First call `GET /api/github/repositories`
+- Then use the returned repository `_id` for later APIs
+
+This is the safest and most consistent format across routes.
+
+## API Groups and How to Use Them
+
+### 1. Health
 
 - `GET /api/health`
+  Use to check whether backend is alive.
+
+### 2. Auth
+
 - `POST /api/auth/register`
 - `POST /api/auth/login`
 - `GET /api/auth/me`
+
+Use these first to obtain JWT token and inspect current user.
+
+### 3. Profile
+
 - `GET /api/profiles/me`
 - `PATCH /api/profiles/me`
+
+Profile is used later by AI feedback and chat context.
+
+### 4. GitHub
+
+- `GET /api/github/oauth`
+- `GET /api/github/oauth/callback`
+- `GET /api/github/me`
+- `DELETE /api/github/disconnect`
 - `GET /api/github/repositories`
-- `POST /api/github/connect`
-- `GET /api/repositories/:repoId`
+- `GET /api/github/repositories/cached`
+- `GET /api/github/repositories/:repoId`
+- `GET /api/github/repositories/:repoId/packages`
+- `GET /api/github/repositories/:repoId/packages/cached`
+- `GET /api/github/repositories/:repoId/commits`
+- `GET /api/github/repositories/:repoId/commits/cached`
+
+Usage notes:
+
+- `GET /api/github/repositories` syncs from GitHub to MongoDB
+- `GET /api/github/repositories/cached` only reads local database
+- `GET /api/github/repositories/:repoId/packages` fetches package/config files from GitHub and stores cache
+- `GET /api/github/repositories/:repoId/packages/cached` reads local package cache only
+- `GET /api/github/repositories/:repoId/commits` fetches commits from GitHub and stores cache
+- `GET /api/github/repositories/:repoId/commits/cached` reads local commit cache only
+
+Useful query params:
+
+- `GET /api/github/repositories?includeForks=true`
+- `GET /api/github/repositories?sync=false`
+- `GET /api/github/repositories/:repoId/commits?perPage=50`
+- `GET /api/github/repositories/:repoId/commits?includeStats=true`
+
+Note:
+
+- `includeStats=true` fetches extra commit stats and is heavier than normal commit fetch
+
+### 5. Analysis
+
 - `POST /api/analysis/repositories/:repoId`
 - `GET /api/analysis/results/:repoId`
-- `POST /api/ai/analyze`
+- `GET /api/analysis/me`
+
+Recommended flow:
+
+1. Sync repositories
+2. Fetch package/config cache
+3. Fetch commit cache
+4. Run analysis
+5. Read latest analysis result
+
+### 6. AI Feedback
+
+- `POST /api/ai-feedback/repositories/:repoId`
+- `GET /api/ai-feedback/results/:repoId`
+- `GET /api/ai-feedback/me`
+
+Recommended flow:
+
+1. Finish analysis first
+2. Generate AI feedback
+3. Read latest AI feedback result
+
+### 7. Chat
+
 - `POST /api/chat/sessions`
-- `POST /api/chat/messages`
-- `GET /api/roadmaps/me`
+- `GET /api/chat/sessions`
+- `GET /api/chat/sessions/:sessionId`
+- `POST /api/chat/sessions/:sessionId/messages`
+
+Create session body example:
+
+```json
+{
+  "title": "Tu van GitHub cua toi"
+}
+```
+
+Send message body example:
+
+```json
+{
+  "message": "Dua tren GitHub cua toi, toi nen hoc gi tiep theo?"
+}
+```
+
+Recommended flow:
+
+1. Create chat session
+2. Send message into that session
+3. Load session detail to show message history
+
+### 8. Placeholder or Scaffold Endpoints
+
+These routes exist, but current service implementation is still scaffold-only or returns ready payload:
+
+- `GET /api/repositories/:repoId`
+- `POST /api/ai/analyze`
 - `GET /api/progress/me`
+- `GET /api/roadmaps/me`
+
+Use Swagger to verify their current response before integrating them on frontend/mobile.
+
+## Common Testing Sequence for Postman
+
+If you want one realistic end-to-end test sequence, use this order:
+
+1. `POST /api/auth/register`
+2. `POST /api/auth/login`
+3. Copy JWT token
+4. `PATCH /api/profiles/me`
+5. `GET /api/github/oauth`
+6. Open `authorizeUrl` and complete GitHub OAuth
+7. `GET /api/github/repositories`
+8. Copy one repository `_id`
+9. `GET /api/github/repositories/:repoId/packages`
+10. `GET /api/github/repositories/:repoId/commits`
+11. `POST /api/analysis/repositories/:repoId`
+12. `GET /api/analysis/results/:repoId`
+13. `POST /api/ai-feedback/repositories/:repoId`
+14. `GET /api/ai-feedback/results/:repoId`
+15. `POST /api/chat/sessions`
+16. `POST /api/chat/sessions/:sessionId/messages`
 
 ## Notes
 
-- The project is scaffold-only for now.
-- Business logic, GitHub integration, and AI integration can be implemented module by module later.
+- Swagger UI is the best place to inspect request/response schema quickly.
+- For analysis quality, always fetch package/config cache and commit cache before running analysis.
+- For chat quality, always analyze repository first.
+- Some endpoints are already functional, while some are still scaffold-only as noted above.

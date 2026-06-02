@@ -6,8 +6,15 @@ const chatMessageSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'ChatSession',
       required: true,
+      index: true,
     },
-    sender: {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true,
+    },
+    role: {
       type: String,
       enum: ['user', 'assistant', 'system'],
       required: true,
@@ -16,6 +23,10 @@ const chatMessageSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+    },
+    metadata: {
+      type: Object,
+      default: {},
     },
   },
   {

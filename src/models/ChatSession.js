@@ -6,15 +6,16 @@ const chatSessionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+      index: true,
     },
     title: {
       type: String,
-      default: 'New chat session',
+      default: 'New GitHub Mentor Chat',
       trim: true,
     },
-    contextSummary: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {},
+    lastMessage: {
+      type: String,
+      default: '',
     },
   },
   {
