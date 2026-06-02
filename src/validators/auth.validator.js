@@ -48,7 +48,47 @@ const validateLoginBody = (req) => {
   };
 };
 
+const validateChangePasswordBody = (req) => {
+  const errors = [];
+  const body = req.body || {};
+  const allowedFields = ['currentPassword', 'newPassword', 'confirmPassword'];
+  const unknownFields = Object.keys(body).filter((key) => !allowedFields.includes(key));
+  const currentPassword = String(body.currentPassword || '');
+  const newPassword = String(body.newPassword || '');
+  const confirmPassword = String(body.confirmPassword || '');
+
+  if (unknownFields.length) {
+    errors.push(`Unknown fields are not allowed: ${unknownFields.join(', ')}`);
+  }
+
+  if (!currentPassword.trim()) {
+    errors.push('currentPassword is required');
+  }
+
+  if (!newPassword.trim()) {
+    errors.push('newPassword is required');
+  } else if (newPassword.length < 6) {
+    errors.push('newPassword must be at least 6 characters');
+  }
+
+  if (!confirmPassword.trim()) {
+    errors.push('confirmPassword is required');
+  } else if (newPassword && confirmPassword !== newPassword) {
+    errors.push('confirmPassword must match newPassword');
+  }
+
+  if (currentPassword && newPassword && currentPassword === newPassword) {
+    errors.push('newPassword must be different from currentPassword');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+};
+
 module.exports = {
+  validateChangePasswordBody,
   validateRegisterBody,
   validateLoginBody,
 };

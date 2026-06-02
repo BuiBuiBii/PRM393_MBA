@@ -347,7 +347,7 @@ Nên dùng helper `asyncHandler` để bắt lỗi async.
 Ví dụ:
 
 ```js
-const asyncHandler = require('../../common/helpers/asyncHandler.helper');
+const asyncHandler = require("../../common/helpers/asyncHandler.helper");
 
 const getMe = asyncHandler(async (req, res) => {
   res.json({ success: true, data: req.user });
@@ -559,13 +559,13 @@ User.model.js
 Dùng tên rõ nghĩa:
 
 ```js
-registerUser()
-loginUser()
-getCurrentUser()
-connectGithubToken()
-fetchUserRepositories()
-analyzeRepository()
-generateLearningGuideline()
+registerUser();
+loginUser();
+getCurrentUser();
+connectGithubToken();
+fetchUserRepositories();
+analyzeRepository();
+generateLearningGuideline();
 ```
 
 ### Response Messages

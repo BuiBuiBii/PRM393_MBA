@@ -28,8 +28,28 @@ const getMe = async (req, res, next) => {
   }
 };
 
+const logout = async (req, res, next) => {
+  try {
+    const result = await authService.logoutUser({ authUser: req.user, token: req.token });
+    return successResponse(res, result.message, result.data, result.statusCode);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const changePassword = async (req, res, next) => {
+  try {
+    const result = await authService.changePassword({ authUser: req.user, body: req.body });
+    return successResponse(res, result.message, result.data, result.statusCode);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
+  changePassword,
   register,
   login,
   getMe,
+  logout,
 };

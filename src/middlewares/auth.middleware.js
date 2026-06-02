@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 
-const authMiddleware = (req, res, next) => {
+const RevokedToken = require('../models/RevokedToken');
+
+const authMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -18,8 +20,16 @@ const authMiddleware = (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const revokedToken = await RevokedToken.findOne({ token }).lean();
+
+    if (revokedToken) {
+      const error = new Error('Token has been logged out');
+      error.statusCode = 401;
+      throw error;
+    }
 
     req.user = decoded;
+    req.token = token;
     return next();
   } catch (error) {
     if (!error.statusCode) {

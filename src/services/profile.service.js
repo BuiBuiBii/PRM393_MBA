@@ -1,31 +1,51 @@
 const StudentProfile = require('../models/StudentProfile');
+const User = require('../models/User');
 
-const getMyProfile = async (authUser) => {
+const ensureAuthUser = (authUser) => {
   if (!authUser || !authUser.userId) {
     const error = new Error('Unauthorized');
     error.statusCode = 401;
     throw error;
   }
+};
 
-  const profile = await StudentProfile.findOne({ userId: authUser.userId }).lean();
+const sanitizeUser = (user) => {
+  if (!user) {
+    return null;
+  }
 
   return {
-    message: 'Profile fetched successfully',
-    data: { profile: profile || null },
-    statusCode: 200,
+    id: user._id,
+    fullName: user.fullName,
+    email: user.email,
+    avatarUrl: user.avatarUrl || null,
+    role: user.role,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
   };
 };
 
-const updateMyProfile = async ({ user, body }) => {
-  if (!user || !user.userId) {
-    const error = new Error('Unauthorized');
-    error.statusCode = 401;
-    throw error;
+const sanitizeProfile = (profile) => {
+  if (!profile) {
+    return null;
   }
 
-  const userId = user.userId;
+  return {
+    id: profile._id,
+    userId: profile.userId,
+    university: profile.university,
+    major: profile.major,
+    year: profile.year,
+    targetCareer: profile.targetCareer,
+    currentSkills: profile.currentSkills || [],
+    githubUsername: profile.githubUsername,
+    githubConnected: Boolean(profile.githubConnected),
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
+  };
+};
 
-  // sanitize input: only allow specific fields
+const pickProfileUpdate = (body) => {
   const allowed = ['university', 'major', 'year', 'targetCareer', 'currentSkills', 'githubUsername'];
   const updateData = {};
 
@@ -35,35 +55,117 @@ const updateMyProfile = async ({ user, body }) => {
     }
   }
 
-  // Ensure userId is not overwritten
-  delete updateData.userId;
+  return updateData;
+};
 
-  // If currentSkills provided, ensure it's array of strings
-  if (updateData.currentSkills && !Array.isArray(updateData.currentSkills)) {
-    const error = new Error('currentSkills must be an array of strings');
-    error.statusCode = 400;
+const getMyProfile = async (authUser) => {
+  ensureAuthUser(authUser);
+
+  const [user, profile] = await Promise.all([
+    User.findById(authUser.userId),
+    StudentProfile.findOne({ userId: authUser.userId }).lean(),
+  ]);
+
+  if (!user) {
+    const error = new Error('User not found');
+    error.statusCode = 404;
     throw error;
   }
 
-  // Upsert: create if not exists, otherwise update
-  let profile = await StudentProfile.findOne({ userId });
+  return {
+    message: 'Profile fetched successfully',
+    data: {
+      user: sanitizeUser(user),
+      profile: sanitizeProfile(profile),
+    },
+    statusCode: 200,
+  };
+};
 
-  if (!profile) {
-    profile = await StudentProfile.create({ userId, ...updateData });
-  } else {
-    profile = await StudentProfile.findOneAndUpdate({ userId }, { $set: updateData }, { new: true, runValidators: true });
+const createMyProfile = async ({ user, body }) => {
+  ensureAuthUser(user);
+
+  const existingProfile = await StudentProfile.findOne({ userId: user.userId });
+  if (existingProfile) {
+    const error = new Error('Profile already exists');
+    error.statusCode = 409;
+    throw error;
   }
 
+  const userId = user.userId;
+  const userUpdate = {};
+
+  if (Object.prototype.hasOwnProperty.call(body, 'fullName')) {
+    userUpdate.fullName = String(body.fullName).trim();
+  }
+
+  const profileData = pickProfileUpdate(body);
+  const updatedUser = Object.keys(userUpdate).length
+    ? await User.findByIdAndUpdate(userId, { $set: userUpdate }, { new: true, runValidators: true })
+    : await User.findById(userId);
+
+  if (!updatedUser) {
+    const error = new Error('User not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const profile = await StudentProfile.create({ userId, ...profileData });
   const plainProfile = typeof profile.toObject === 'function' ? profile.toObject() : profile;
 
   return {
+    message: 'Profile created successfully',
+    data: {
+      user: sanitizeUser(updatedUser),
+      profile: sanitizeProfile(plainProfile),
+    },
+    statusCode: 201,
+  };
+};
+
+const updateMyProfile = async ({ user, body }) => {
+  ensureAuthUser(user);
+
+  const userId = user.userId;
+  const userUpdate = {};
+
+  if (Object.prototype.hasOwnProperty.call(body, 'fullName')) {
+    userUpdate.fullName = String(body.fullName).trim();
+  }
+
+  const profileUpdate = pickProfileUpdate(body);
+
+  const [updatedUser, profile] = await Promise.all([
+    Object.keys(userUpdate).length
+      ? User.findByIdAndUpdate(userId, { $set: userUpdate }, { new: true, runValidators: true })
+      : User.findById(userId),
+    Object.keys(profileUpdate).length
+      ? StudentProfile.findOneAndUpdate(
+          { userId },
+          { $set: profileUpdate },
+          { new: true, runValidators: true, upsert: true, setDefaultsOnInsert: true }
+        )
+      : StudentProfile.findOne({ userId }),
+  ]);
+
+  if (!updatedUser) {
+    const error = new Error('User not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return {
     message: 'Profile updated successfully',
-    data: { profile: plainProfile },
+    data: {
+      user: sanitizeUser(updatedUser),
+      profile: sanitizeProfile(profile),
+    },
     statusCode: 200,
   };
 };
 
 module.exports = {
+  createMyProfile,
   getMyProfile,
   updateMyProfile,
 };
