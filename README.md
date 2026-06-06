@@ -317,14 +317,42 @@ Recommended flow:
 2. Send message into that session
 3. Load session detail to show message history
 
-### 8. Placeholder or Scaffold Endpoints
+### 8. Roadmaps
+
+- `POST /api/roadmaps/generate`
+- `GET /api/roadmaps/me`
+- `GET /api/roadmaps/:roadmapId`
+- `PATCH /api/roadmaps/:roadmapId/archive`
+
+Generate roadmap body example:
+
+```json
+{
+  "targetRole": "Backend Developer",
+  "forceRegenerate": false
+}
+```
+
+Supported target roles:
+
+- `Frontend Developer`
+- `Backend Developer`
+- `Fullstack Developer`
+- `Mobile Developer`
+- `Tester / QA Engineer`
+- `DevOps Beginner`
+- `Data Analyst`
+- `AI / Machine Learning Beginner`
+
+Roadmap generation uses GitHub context from profile, repositories, analysis snapshots, skill signals and AI feedback. If `LLM_API_KEY` is missing or Gemini fails, the API still creates a fallback roadmap for MVP demo.
+
+### 9. Placeholder or Scaffold Endpoints
 
 These routes exist, but current service implementation is still scaffold-only or returns ready payload:
 
 - `GET /api/repositories/:repoId`
 - `POST /api/ai/analyze`
 - `GET /api/progress/me`
-- `GET /api/roadmaps/me`
 
 Use Swagger to verify their current response before integrating them on frontend/mobile.
 
@@ -348,6 +376,8 @@ If you want one realistic end-to-end test sequence, use this order:
 14. `GET /api/ai-feedback/results/:repoId`
 15. `POST /api/chat/sessions`
 16. `POST /api/chat/sessions/:sessionId/messages`
+17. `POST /api/roadmaps/generate`
+18. `GET /api/roadmaps/me`
 
 ## Notes
 
