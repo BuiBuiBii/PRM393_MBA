@@ -17,7 +17,7 @@ const roadmapRoutes = require("./routes/roadmap.routes");
 const progressRoutes = require("./routes/progress.routes");
 
 const errorMiddleware = require("./middlewares/error.middleware");
-const { successResponse, errorResponse } = require("./utils/response");
+const { errorResponse } = require("./utils/response");
 
 const app = express();
 
@@ -43,11 +43,25 @@ app.use(
 );
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Career Roadmap API is running",
+    data: {
+      swagger: "/api/swagger",
+      health: "/health",
+    },
+  });
+});
+
 const healthHandler = (req, res) =>
-  successResponse(res, "Server is running", {
-    status: "ok",
-    environment: process.env.NODE_ENV || "development",
-    service: "career-roadmap-be",
+  res.json({
+    success: true,
+    message: "Server is running",
+    data: {
+      status: "ok",
+      environment: process.env.NODE_ENV || "development",
+    },
   });
 
 app.get("/health", healthHandler);
