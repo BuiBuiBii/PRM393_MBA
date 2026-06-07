@@ -12,7 +12,7 @@ const options = {
     servers: [
       {
         url: process.env.API_BASE_URL || 'http://localhost:5000',
-        description: 'API Server',
+        description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Local server',
       },
     ],
     components: {
