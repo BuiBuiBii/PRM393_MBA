@@ -133,9 +133,9 @@ class _RepositoriesScreenState extends ConsumerState<RepositoriesScreen> {
                       ),
                     const SizedBox(height: 8),
                     PrimaryButton(
-                      label: state.isAnalyzing ? 'Đang phân tích...' : (hasAnalysis ? 'Phân tích lại' : 'Phân tích'),
+                      label: state.isAnalyzingRepo(repo.id) ? 'Đang phân tích...' : (hasAnalysis ? 'Phân tích lại' : 'Phân tích'),
                       icon: hasAnalysis ? Icons.refresh : Icons.play_arrow,
-                      loading: state.isAnalyzing,
+                      loading: state.isAnalyzingRepo(repo.id),
                       expand: true,
                       onPressed: state.isAnalyzing
                           ? null

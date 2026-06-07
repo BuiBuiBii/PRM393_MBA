@@ -141,6 +141,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               PrimaryButton(label: 'Đồng bộ / phân tích repository', icon: Icons.folder_copy, outlined: true, expand: true, onPressed: () => context.go('/repositories')),
               const SizedBox(height: 8),
               PrimaryButton(label: 'Hỏi AI Mentor', icon: Icons.chat, outlined: true, expand: true, onPressed: () => context.go('/chat')),
+              const SizedBox(height: 8),
+              PrimaryButton(label: 'Cài đặt tài khoản', icon: Icons.settings_outlined, outlined: true, expand: true, onPressed: () => context.push('/settings')),
             ],
           ),
         ),

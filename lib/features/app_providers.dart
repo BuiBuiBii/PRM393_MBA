@@ -15,7 +15,7 @@ class RepositoryState {
     this.analyses = const [],
     this.selected,
     this.isLoading = false,
-    this.isAnalyzing = false,
+    this.analyzingRepoId,
     this.error,
   });
 
@@ -23,15 +23,20 @@ class RepositoryState {
   final List<AnalysisModel> analyses;
   final RepositoryModel? selected;
   final bool isLoading;
-  final bool isAnalyzing;
+  final String? analyzingRepoId;
   final String? error;
+
+  bool isAnalyzingRepo(String id) => analyzingRepoId == id;
+
+  bool get isAnalyzing => analyzingRepoId != null;
 
   RepositoryState copyWith({
     List<RepositoryModel>? repositories,
     List<AnalysisModel>? analyses,
     RepositoryModel? selected,
     bool? isLoading,
-    bool? isAnalyzing,
+    String? analyzingRepoId,
+    bool clearAnalyzingRepoId = false,
     String? error,
     bool clearError = false,
   }) {
@@ -40,7 +45,7 @@ class RepositoryState {
       analyses: analyses ?? this.analyses,
       selected: selected ?? this.selected,
       isLoading: isLoading ?? this.isLoading,
-      isAnalyzing: isAnalyzing ?? this.isAnalyzing,
+      analyzingRepoId: clearAnalyzingRepoId ? null : (analyzingRepoId ?? this.analyzingRepoId),
       error: clearError ? null : (error ?? this.error),
     );
   }
@@ -93,13 +98,13 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
   }
 
   Future<AnalysisModel> analyzeRepository(String id) async {
-    state = state.copyWith(isAnalyzing: true, clearError: true);
+    state = state.copyWith(analyzingRepoId: id, clearError: true);
     try {
       final result = AppConfig.demoMode
           ? await DemoService.instance.analyzeRepository(id)
           : await safeRequest(() => _api.analyzeRepository(id));
       state = state.copyWith(
-        isAnalyzing: false,
+        clearAnalyzingRepoId: true,
         analyses: [result, ...state.analyses.where((a) => a.repositoryId != id)],
         repositories: state.repositories
             .map((r) => r.id == id ? RepositoryModel(
@@ -121,7 +126,7 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
       );
       return result;
     } catch (e) {
-      state = state.copyWith(isAnalyzing: false, error: getApiErrorMessage(e));
+      state = state.copyWith(clearAnalyzingRepoId: true, error: getApiErrorMessage(e));
       rethrow;
     }
   }

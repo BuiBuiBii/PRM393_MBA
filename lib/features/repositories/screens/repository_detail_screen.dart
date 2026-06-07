@@ -74,7 +74,7 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
           label: 'Phân tích repository',
           icon: Icons.analytics,
           expand: true,
-          loading: state.isAnalyzing,
+          loading: state.isAnalyzingRepo(repo.id),
           onPressed: state.isAnalyzing
               ? null
               : () async {

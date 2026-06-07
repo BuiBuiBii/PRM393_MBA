@@ -13,7 +13,19 @@ class GitAnalyzerApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider);
     final router = ref.watch(routerProvider);
+
+    if (auth.status == AuthStatus.unknown) {
+      return MaterialApp(
+        title: AppConfig.appName,
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        home: const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
 
     return MaterialApp.router(
       title: AppConfig.appName,
