@@ -40,19 +40,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return ListView(
       padding: appScreenPadding(context),
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            UserAvatar(imageUrl: user?.avatar, name: user?.name, size: 52),
-            const SizedBox(width: 14),
-            Expanded(
-              child: PageHeader(
-                title: 'Chào mừng, ${user?.name ?? 'bạn'}!',
-                subtitle: 'Tổng quan GitHub, kết quả phân tích và các bước tiếp theo.',
+            InkWell(
+              onTap: () => context.go('/profile'),
+              borderRadius: BorderRadius.circular(12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  UserAvatar(imageUrl: user?.avatar, name: user?.name, size: 52),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: PageHeader(
+                      title: 'Chào mừng, ${user?.name ?? 'bạn'}!',
+                      subtitle: 'Chạm để xem hồ sơ • Tổng quan GitHub và phân tích.',
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: AppColors.slate500),
+                ],
               ),
             ),
-          ],
-        ),
         if (dashboard.error != null) ...[
           const SizedBox(height: 12),
           BannerMessage(message: 'Dashboard API: ${dashboard.error}', isWarning: true),
@@ -135,14 +140,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 outlined: true,
                 expand: true,
                 leading: const AppSvgIcon(asset: AppAssets.githubIcon, size: 18),
-                onPressed: () => context.push('/github/connect'),
+                onPressed: () => context.go('/github/connect'),
               ),
               const SizedBox(height: 8),
               PrimaryButton(label: 'Đồng bộ / phân tích repository', icon: Icons.folder_copy, outlined: true, expand: true, onPressed: () => context.go('/repositories')),
               const SizedBox(height: 8),
               PrimaryButton(label: 'Hỏi AI Mentor', icon: Icons.chat, outlined: true, expand: true, onPressed: () => context.go('/chat')),
               const SizedBox(height: 8),
-              PrimaryButton(label: 'Cài đặt tài khoản', icon: Icons.settings_outlined, outlined: true, expand: true, onPressed: () => context.push('/settings')),
+              PrimaryButton(label: 'Cài đặt tài khoản', icon: Icons.settings_outlined, outlined: true, expand: true, onPressed: () => context.go('/settings')),
             ],
           ),
         ),
