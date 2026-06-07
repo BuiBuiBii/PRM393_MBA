@@ -1,0 +1,297 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../app_providers.dart';
+import '../../../shared/models/app_models.dart';
+import '../data/roadmap_mock_data.dart';
+import '../../../shared/widgets/app_widgets.dart';
+
+List<RoadmapModel> _filterRoadmaps(RoadmapState state) {
+  return state.roadmaps.where((r) {
+    final f = state.filters;
+    if (f.search.isNotEmpty) {
+      final q = f.search.toLowerCase();
+      if (![r.title, r.subtitle, ...r.tags].any((v) => v.toLowerCase().contains(q))) return false;
+    }
+    if (f.category != 'All' && r.category != f.category) return false;
+    if (f.difficulty != 'All' && r.difficulty != f.difficulty) return false;
+    if (f.duration == 'Short' && r.estimatedWeeks > 6) return false;
+    if (f.duration == 'Medium' && (r.estimatedWeeks <= 6 || r.estimatedWeeks > 10)) return false;
+    if (f.duration == 'Long' && r.estimatedWeeks <= 10) return false;
+    return true;
+  }).toList();
+}
+
+class RoadmapsScreen extends ConsumerWidget {
+  const RoadmapsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(roadmapProvider);
+    final filtered = _filterRoadmaps(state);
+    final featured = filtered.where((r) => r.isFeatured).toList();
+    final ai = filtered.where((r) => r.isAIRecommended).toList();
+
+    return ListView(
+      padding: appScreenPadding(context),
+      children: [
+        const AppBadge(label: 'Lộ trình học bằng AI', variant: AppBadgeVariant.info),
+        const SizedBox(height: 8),
+        PageHeader(
+          title: 'Lộ trình học',
+          subtitle: 'Chọn lộ trình thủ công hoặc tạo từ kết quả phân tích GitHub.',
+          trailing: PrimaryButton(
+            label: 'Tạo roadmap AI',
+            icon: Icons.psychology,
+            expand: isCompactPhone(context),
+            onPressed: () => context.push('/roadmaps/ai'),
+          ),
+        ),
+        const SizedBox(height: 16),
+        AppCard(
+          child: Column(
+            children: [
+              TextField(
+                decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Tìm roadmap, kỹ năng...'),
+                onChanged: (v) => ref.read(roadmapProvider.notifier).setFilters(state.filters.copyWith(search: v)),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: state.filters.category,
+                decoration: const InputDecoration(labelText: 'Danh mục'),
+                items: roadmapCategories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                onChanged: (v) => ref.read(roadmapProvider.notifier).setFilters(state.filters.copyWith(category: v ?? 'All')),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        _section(context, 'Roadmap nổi bật', featured),
+        const SizedBox(height: 16),
+        _section(context, 'Đề xuất bởi AI', ai),
+        const SizedBox(height: 16),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Xu hướng kỹ năng', style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: ['GitHub Actions', 'PostgreSQL', 'Playwright', 'Docker', 'System Design']
+                    .map((s) => AppBadge(label: s, variant: AppBadgeVariant.info))
+                    .toList(),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _section(BuildContext context, String title, List<RoadmapModel> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)), AppBadge(label: '${items.length} lộ trình')],
+        ),
+        const SizedBox(height: 12),
+        if (items.isEmpty)
+          const EmptyState(title: 'Không có roadmap phù hợp')
+        else
+          ...items.map((r) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AppCard(
+                  onTap: () => context.push('/roadmaps/${r.id}'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: Text(r.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16))),
+                          if (r.isAIRecommended) const AppBadge(label: 'AI', variant: AppBadgeVariant.info),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(r.subtitle, style: const TextStyle(color: AppColors.slate500, fontSize: 13)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          AppBadge(label: r.category),
+                          AppBadge(label: r.difficulty),
+                          AppBadge(label: '${r.estimatedWeeks} tuần'),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      LinearProgressIndicator(value: r.progress / 100, backgroundColor: Colors.grey.shade200, color: AppColors.primary),
+                      const SizedBox(height: 4),
+                      Text('${r.progress}% hoàn thành'),
+                    ],
+                  ),
+                ),
+              )),
+      ],
+    );
+  }
+}
+
+class AIRoadmapScreen extends ConsumerWidget {
+  const AIRoadmapScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(roadmapProvider);
+    final rec = state.aiRecommendation;
+
+    return ListView(
+      padding: appScreenPadding(context),
+      children: [
+        TextButton.icon(onPressed: () => context.pop(), icon: const Icon(Icons.arrow_back), label: const Text('Lộ trình')),
+        PageHeader(
+          title: 'Roadmap bằng AI',
+          subtitle: 'Được tạo từ phân tích repository GitHub của bạn.',
+          trailing: PrimaryButton(
+            label: 'Tạo lại',
+            loading: state.isGenerating,
+            onPressed: () => ref.read(roadmapProvider.notifier).generateAI(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text('Độ tin cậy', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Spacer(),
+                  AppBadge(label: '${rec.confidence}%', variant: AppBadgeVariant.success),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(rec.summary),
+              const SizedBox(height: 12),
+              Text('Hướng đề xuất: ${rec.careerSuggestion}', style: const TextStyle(fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _bulletCard('Điểm mạnh', rec.strengths, AppColors.emerald),
+        const SizedBox(height: 12),
+        _bulletCard('Điểm yếu', rec.weaknesses, AppColors.amber),
+        const SizedBox(height: 12),
+        _bulletCard('Kỹ năng thiếu', rec.missingSkills, AppColors.primary),
+        const SizedBox(height: 16),
+        PrimaryButton(label: 'Xem roadmap đề xuất', expand: true, onPressed: () => context.push('/roadmaps/${rec.roadmap.id}')),
+      ],
+    );
+  }
+
+  Widget _bulletCard(String title, List<String> items, Color color) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: TextStyle(fontWeight: FontWeight.w600, color: color)),
+          const SizedBox(height: 8),
+          ...items.map((e) => Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $e'))),
+        ],
+      ),
+    );
+  }
+}
+
+class RoadmapDetailScreen extends ConsumerWidget {
+  const RoadmapDetailScreen({super.key, required this.roadmapId});
+
+  final String roadmapId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final roadmap = ref.read(roadmapProvider.notifier).getById(roadmapId);
+    if (roadmap == null) {
+      return const Center(child: Text('Không tìm thấy roadmap'));
+    }
+
+    return ListView(
+      padding: appScreenPadding(context),
+      children: [
+        TextButton.icon(onPressed: () => context.pop(), icon: const Icon(Icons.arrow_back), label: const Text('Lộ trình')),
+        PageHeader(title: roadmap.title, subtitle: roadmap.subtitle),
+        const SizedBox(height: 8),
+        Text(roadmap.description),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          children: [
+            AppBadge(label: roadmap.category),
+            AppBadge(label: roadmap.difficulty),
+            AppBadge(label: '${roadmap.estimatedHours} giờ'),
+            AppBadge(label: roadmap.careerOutcome, variant: AppBadgeVariant.info),
+          ],
+        ),
+        const SizedBox(height: 16),
+        LinearProgressIndicator(value: roadmap.progress / 100, minHeight: 8, borderRadius: BorderRadius.circular(8), color: AppColors.primary),
+        const SizedBox(height: 4),
+        Text('${roadmap.progress}% hoàn thành'),
+        const SizedBox(height: 16),
+        ...roadmap.modules.map((module) => Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(module.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    Text(module.description, style: const TextStyle(color: AppColors.slate500, fontSize: 13)),
+                    const SizedBox(height: 12),
+                    ...module.nodes.map((node) => Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade200),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(child: Text(node.title, style: const TextStyle(fontWeight: FontWeight.w600))),
+                                  AppBadge(label: node.status),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(node.description, style: const TextStyle(fontSize: 13, color: AppColors.slate500)),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                children: [
+                                  AppBadge(label: '${node.estimatedHours}h'),
+                                  AppBadge(label: '${node.xp} XP'),
+                                  ...node.skills.map((s) => AppBadge(label: s, variant: AppBadgeVariant.info)),
+                                ],
+                              ),
+                              if (node.status != 'completed')
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: PrimaryButton(
+                                    label: 'Đánh dấu hoàn thành',
+                                    outlined: true,
+                                    onPressed: () => ref.read(roadmapProvider.notifier).updateNodeStatus(roadmap.id, node.id, 'completed'),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        )),
+                  ],
+                ),
+              ),
+            )),
+      ],
+    );
+  }
+}
