@@ -440,6 +440,15 @@ Set these variables on Render/Railway:
 
 `MONGODB_URI` is also supported for backward compatibility, but `MONGO_URI` is preferred.
 
+For the current Render/Vercel deployment, set:
+
+```txt
+API_BASE_URL=https://career-roadmap-api-zs7y.onrender.com
+FRONTEND_URL=https://web-project-seven-rust.vercel.app
+CLIENT_URL=https://web-project-seven-rust.vercel.app
+GITHUB_CALLBACK_URL=https://career-roadmap-api-zs7y.onrender.com/api/github/oauth/callback
+```
+
 ### Test After Deploy
 
 - `GET /health`
@@ -452,8 +461,8 @@ Set these variables on Render/Railway:
 
 Send the frontend team:
 
-- Base URL: `https://your-backend-url.onrender.com/api`
-- Swagger URL: `https://your-backend-url.onrender.com/api/swagger`
+- Base URL: `https://career-roadmap-api-zs7y.onrender.com/api`
+- Swagger URL: `https://career-roadmap-api-zs7y.onrender.com/api/swagger`
 - Authorization header format:
 
 ```txt

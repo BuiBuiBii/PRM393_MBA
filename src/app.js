@@ -22,8 +22,8 @@ const { errorResponse } = require("./utils/response");
 const app = express();
 
 const allowedOrigins = [
-  process.env.CLIENT_URL,
   process.env.FRONTEND_URL,
+  process.env.CLIENT_URL,
   "http://localhost:3000",
   "http://localhost:5173",
   "http://localhost:8081",
@@ -33,10 +33,10 @@ app.use(
   cors({
     origin(origin, callback) {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== "production") {
+      if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(null, true);
+      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
   })
