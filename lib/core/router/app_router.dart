@@ -16,6 +16,7 @@ import '../../features/progress/screens/progress_screen.dart';
 import '../../features/repositories/screens/repositories_screen.dart';
 import '../../features/repositories/screens/repository_detail_screen.dart';
 import '../../features/roadmaps/screens/roadmaps_screen.dart';
+import '../../features/profile/screens/profile_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/shell/screens/main_shell.dart';
 
@@ -25,6 +26,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/dashboard',
     refreshListenable: _AuthRefreshListenable(ref),
+    errorBuilder: (_, __) => const NotFoundScreen(),
     redirect: (context, state) {
       final isBootstrapping = auth.status == AuthStatus.unknown;
       final isAuthenticated = auth.isAuthenticated;
@@ -63,11 +65,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/roadmaps/:id',
             builder: (_, state) => RoadmapDetailScreen(roadmapId: state.pathParameters['id']!),
           ),
+          GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
           GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
           GoRoute(path: '/progress', builder: (_, __) => const ProgressScreen()),
           GoRoute(path: '/github/connect', builder: (_, __) => const GitHubConnectScreen()),
-          GoRoute(path: '/*', builder: (_, __) => const NotFoundScreen()),
         ],
       ),
     ],

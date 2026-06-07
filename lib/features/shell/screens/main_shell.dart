@@ -17,8 +17,6 @@ class MainShell extends ConsumerStatefulWidget {
 }
 
 class _MainShellState extends ConsumerState<MainShell> {
-  var _menuOpen = false;
-
   static const _primaryTabs = [
     _ShellTab(path: '/dashboard', label: 'Trang chủ', icon: Icons.home_outlined, selectedIcon: Icons.home),
     _ShellTab(path: '/repositories', label: 'Repos', icon: Icons.folder_outlined, selectedIcon: Icons.folder),
@@ -27,6 +25,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   ];
 
   static const _secondaryItems = [
+    _MenuItem(path: '/profile', label: 'Hồ sơ của tôi', icon: Icons.person_outline),
     _MenuItem(path: '/settings', label: 'Cài đặt', icon: Icons.settings_outlined),
     _MenuItem(path: '/dashboard', label: 'Tổng quan', icon: Icons.dashboard_outlined),
     _MenuItem(path: '/home', label: 'Giới thiệu', icon: Icons.info_outline),
@@ -35,22 +34,118 @@ class _MainShellState extends ConsumerState<MainShell> {
     _MenuItem(path: '/notifications', label: 'Thông báo', icon: Icons.notifications_outlined),
   ];
 
-  int? _selectedIndex(String location) {
+  String get _location => GoRouterState.of(context).matchedLocation;
+
+  bool _routeActive(String path) {
+    final loc = _location;
+    if (path == '/dashboard') return loc == '/dashboard';
+    return loc == path || loc.startsWith('$path/');
+  }
+
+  int? _selectedIndex() {
     for (var i = 0; i < _primaryTabs.length; i++) {
-      if (location.startsWith(_primaryTabs[i].path)) return i;
+      if (_routeActive(_primaryTabs[i].path)) return i;
     }
     return null;
   }
 
-  Future<void> _logout() async {
-    await ref.read(authProvider.notifier).logout();
-    if (mounted) context.go('/login');
+  bool _isSecondaryActive() => _secondaryItems.any((item) => _routeActive(item.path));
+
+  void _navigateTo(String path) {
+    GoRouter.of(context).go(path);
+  }
+
+  void _navigateFromSheet(BuildContext sheetContext, String path) {
+    Navigator.pop(sheetContext);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _navigateTo(path);
+    });
+  }
+
+  String? _pageTitle() {
+    return switch (_location) {
+      '/profile' => 'Hồ sơ của tôi',
+      '/settings' => 'Cài đặt',
+      '/notifications' => 'Thông báo',
+      '/progress' => 'Tiến độ học tập',
+      '/github/connect' => 'Kết nối GitHub',
+      '/home' => 'Giới thiệu',
+      _ => null,
+    };
+  }
+
+  void _openMenu() {
+    final location = _location;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(sheetContext).bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Menu', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                ),
+              ),
+              const Divider(height: 1),
+              for (final item in _secondaryItems)
+                ListTile(
+                  leading: Icon(
+                    item.icon,
+                    color: (location == item.path || location.startsWith('${item.path}/'))
+                        ? AppColors.primary
+                        : AppColors.slate600,
+                  ),
+                  title: Text(
+                    item.label,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: (location == item.path || location.startsWith('${item.path}/'))
+                          ? AppColors.primary
+                          : AppColors.slate900,
+                    ),
+                  ),
+                  tileColor: (location == item.path || location.startsWith('${item.path}/'))
+                      ? const Color(0xFFEEF2FF)
+                      : null,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  onTap: () => _navigateFromSheet(sheetContext, item.path),
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final location = GoRouterState.of(context).uri.toString();
-    final selected = _selectedIndex(location);
+    final auth = ref.watch(authProvider);
+    final user = auth.user;
+    final selected = _selectedIndex();
+    final onSecondary = _isSecondaryActive();
 
     return AppGradientBackground(
       child: Scaffold(
@@ -61,7 +156,7 @@ class _MainShellState extends ConsumerState<MainShell> {
           scrolledUnderElevation: 0,
           titleSpacing: 16,
           title: GestureDetector(
-            onTap: () => context.go('/dashboard'),
+            onTap: () => _navigateTo('/dashboard'),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -81,16 +176,42 @@ class _MainShellState extends ConsumerState<MainShell> {
           ),
           actions: [
             IconButton(
+              tooltip: 'Hồ sơ',
+              padding: const EdgeInsets.all(8),
+              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+              onPressed: () => _navigateTo('/profile'),
+              icon: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: _routeActive('/profile') ? AppColors.primary : const Color(0xFFE2E8F0),
+                    width: _routeActive('/profile') ? 2 : 1,
+                  ),
+                ),
+                child: UserAvatar(imageUrl: user?.avatar, name: user?.name, size: 28),
+              ),
+            ),
+            IconButton(
               tooltip: 'Cài đặt',
-              icon: const Icon(Icons.settings_outlined),
-              onPressed: () => context.push('/settings'),
+              iconSize: 22,
+              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+              icon: Icon(
+                Icons.settings_outlined,
+                color: _routeActive('/settings') ? AppColors.primary : AppColors.slate600,
+              ),
+              onPressed: () => _navigateTo('/settings'),
             ),
             IconButton(
               tooltip: 'Thông báo',
+              iconSize: 22,
+              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
               icon: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  const Icon(Icons.notifications_outlined),
+                  Icon(
+                    Icons.notifications_outlined,
+                    color: _routeActive('/notifications') ? AppColors.primary : AppColors.slate600,
+                  ),
                   Positioned(
                     right: 2,
                     top: 2,
@@ -102,41 +223,38 @@ class _MainShellState extends ConsumerState<MainShell> {
                   ),
                 ],
               ),
-              onPressed: () => context.push('/notifications'),
-            ),
-            IconButton(
-              tooltip: 'Đăng xuất',
-              icon: const Icon(Icons.logout),
-              onPressed: _logout,
+              onPressed: () => _navigateTo('/notifications'),
             ),
             const SizedBox(width: 4),
           ],
         ),
-        body: Stack(
+        body: Column(
           children: [
-            Column(
-              children: [
-                if (AppConfig.demoMode)
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    child: BannerMessage(
-                      message: 'Đang chạy chế độ demo — dữ liệu mẫu, không cần backend.',
-                      isWarning: true,
-                    ),
-                  ),
-                Expanded(child: widget.child),
-              ],
-            ),
-            if (_menuOpen)
-              _MobileMenuSheet(
-                items: _secondaryItems,
-                currentPath: location,
-                onClose: () => setState(() => _menuOpen = false),
-                onNavigate: (path) {
-                  setState(() => _menuOpen = false);
-                  context.push(path);
-                },
+            if (AppConfig.demoMode)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: BannerMessage(
+                  message: 'Đang chạy chế độ demo — dữ liệu mẫu, không cần backend.',
+                  isWarning: true,
+                ),
               ),
+            if (_pageTitle() != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _pageTitle()!,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+                  ),
+                ),
+              ),
+            Expanded(
+              child: KeyedSubtree(
+                key: ValueKey(_location),
+                child: widget.child,
+              ),
+            ),
           ],
         ),
         bottomNavigationBar: Container(
@@ -156,18 +274,15 @@ class _MainShellState extends ConsumerState<MainShell> {
                         icon: selected == i ? _primaryTabs[i].selectedIcon : _primaryTabs[i].icon,
                         label: _primaryTabs[i].label.split(' ').first,
                         active: selected == i,
-                        onTap: () {
-                          setState(() => _menuOpen = false);
-                          context.go(_primaryTabs[i].path);
-                        },
+                        onTap: () => _navigateTo(_primaryTabs[i].path),
                       ),
                     ),
                   Expanded(
                     child: _BottomNavItem(
                       icon: Icons.menu,
                       label: 'Thêm',
-                      active: false,
-                      onTap: () => setState(() => _menuOpen = true),
+                      active: onSecondary,
+                      onTap: _openMenu,
                     ),
                   ),
                 ],
@@ -196,105 +311,26 @@ class _BottomNavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = active ? AppColors.primary : AppColors.slate500;
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: color),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MobileMenuSheet extends StatelessWidget {
-  const _MobileMenuSheet({
-    required this.items,
-    required this.currentPath,
-    required this.onClose,
-    required this.onNavigate,
-  });
-
-  final List<_MenuItem> items;
-  final String currentPath;
-  final VoidCallback onClose;
-  final ValueChanged<String> onNavigate;
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: Stack(
-        children: [
-          GestureDetector(
-            onTap: onClose,
-            child: Container(color: Colors.black.withValues(alpha: 0.5)),
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.7),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: 52,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 20, color: color),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: color),
               ),
-              child: Column(
-                children: [
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFCBD5E1),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('Menu', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.all(8),
-                      children: [
-                        for (final item in items)
-                          ListTile(
-                            leading: Icon(
-                              item.icon,
-                              color: currentPath.startsWith(item.path) ? AppColors.primary : AppColors.slate600,
-                            ),
-                            title: Text(
-                              item.label,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: currentPath.startsWith(item.path) ? AppColors.primary : AppColors.slate900,
-                              ),
-                            ),
-                            tileColor: currentPath.startsWith(item.path) ? const Color(0xFFEEF2FF) : null,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            onTap: () => onNavigate(item.path),
-                          ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: MediaQuery.paddingOf(context).bottom + 8),
-                ],
-              ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
