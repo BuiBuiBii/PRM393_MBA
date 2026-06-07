@@ -8,7 +8,7 @@ const RepositoryPackage = require('../models/RepositoryPackage');
 const AnalysisSnapshot = require('../models/AnalysisSnapshot');
 const SkillSignal = require('../models/SkillSignal');
 
-const { generateChatResponse } = require('./ai.service');
+const { generateChatResult } = require('./ai.service');
 const { buildChatContextPrompt } = require('./ai/chatContext.prompt');
 const { createStatusError } = require('./github/github.utils');
 
@@ -362,15 +362,17 @@ const sendMessage = async ({ user, params, body }) => {
     userQuestion: content,
   });
 
-  const assistantContent = await generateChatResponse(prompt);
+  const assistantResult = await generateChatResult(prompt);
+  const assistantContent = assistantResult.text;
   const assistantMessage = await ChatMessage.create({
     sessionId: session._id,
     userId,
     role: 'assistant',
     content: assistantContent,
     metadata: {
-      provider: process.env.LLM_PROVIDER || 'gemini',
-      model: process.env.LLM_MODEL || 'gemini-1.5-flash',
+      provider: assistantResult.provider,
+      model: assistantResult.model,
+      usedFallback: assistantResult.usedFallback,
     },
   });
 

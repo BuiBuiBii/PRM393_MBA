@@ -5,12 +5,11 @@ const AiFeedback = require('../models/AiFeedback');
 const Repository = require('../models/Repository');
 
 const { buildAiFeedbackPrompt } = require('./ai-feedback/aiFeedback.prompt');
-const { callGemini } = require('./ai-feedback/aiFeedback.llmClient');
+const { generateTextWithGemini } = require('./ai.service');
 const { buildFallbackFeedback, parseAiFeedbackResponse } = require('./ai-feedback/aiFeedback.parser');
 const { createStatusError, ensureAuthorizedUser } = require('./github/github.utils');
 
 const PROMPT_VERSION = 'v1';
-const NON_FALLBACK_LLM_ERRORS = new Set(['LLM_API_KEY is not configured', 'Unsupported LLM provider']);
 const GEMINI_FALLBACK_RISK_NOTE = 'Gemini API failed, fallback feedback was used.';
 
 const buildRepositoryQuery = (userId, repoId) => {
@@ -96,18 +95,14 @@ const generateRepositoryFeedback = async (user, repoId) => {
   const prompt = buildAiFeedbackPrompt(snapshot);
   let aiContent = '';
   let parsed = null;
-  let resolvedModel = process.env.LLM_MODEL || 'gemini-1.5-flash';
+  let resolvedModel = String(process.env.LLM_MODEL || 'gemini-2.0-flash').replace(/^models\//, '');
   let llmErrorMeta = null;
 
   try {
-    const geminiResult = await callGemini(prompt);
+    const geminiResult = await generateTextWithGemini(prompt);
     aiContent = geminiResult.content;
     resolvedModel = geminiResult.model || resolvedModel;
   } catch (error) {
-    if (NON_FALLBACK_LLM_ERRORS.has(error.message)) {
-      throw error;
-    }
-
     llmErrorMeta = error.llmError || null;
     parsed = buildFallbackFeedback(snapshot, [GEMINI_FALLBACK_RISK_NOTE]);
   }
