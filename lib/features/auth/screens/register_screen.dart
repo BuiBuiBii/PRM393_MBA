@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -31,6 +32,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  void _showLegalNotice(BuildContext context, String title) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(
+          '$title sẽ được cập nhật trên website chính thức. '
+          'Hiện tại bạn chỉ cần tick đồng ý để tiếp tục đăng ký.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Đã hiểu')),
+        ],
+      ),
+    );
   }
 
   Future<void> _submit() async {
@@ -163,11 +180,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 TextSpan(
                                   text: 'Điều khoản sử dụng',
                                   style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () => _showLegalNotice(context, 'Điều khoản sử dụng'),
                                 ),
                                 const TextSpan(text: ' và '),
                                 TextSpan(
                                   text: 'Chính sách bảo mật',
                                   style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () => _showLegalNotice(context, 'Chính sách bảo mật'),
                                 ),
                               ],
                             ),

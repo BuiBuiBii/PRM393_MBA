@@ -118,20 +118,23 @@ class HomeScreen extends ConsumerWidget {
         const SizedBox(height: 16),
         const Text('Tính năng chính', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
         const SizedBox(height: 12),
-        const _FeatureTile(
+        _FeatureTile(
           icon: Icons.bar_chart,
           title: 'Chấm điểm repository',
           subtitle: 'Đánh giá kiến trúc, tài liệu, quy ước và chất lượng commit.',
+          onTap: () => context.go('/repositories'),
         ),
-        const _FeatureTile(
+        _FeatureTile(
           icon: Icons.route,
           title: 'Lộ trình nghề nghiệp',
           subtitle: 'Biến khoảng trống kỹ năng thành kế hoạch thực tế.',
+          onTap: () => context.go('/roadmaps'),
         ),
-        const _FeatureTile(
+        _FeatureTile(
           icon: Icons.chat_bubble_outline,
           title: 'Chat AI Mentor',
           subtitle: 'Hỏi tiếp về dự án và nhận bước cải thiện cụ thể.',
+          onTap: () => context.go('/chat'),
         ),
       ],
     );
@@ -139,17 +142,19 @@ class HomeScreen extends ConsumerWidget {
 }
 
 class _FeatureTile extends StatelessWidget {
-  const _FeatureTile({required this.icon, required this.title, required this.subtitle});
+  const _FeatureTile({required this.icon, required this.title, required this.subtitle, this.onTap});
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: AppCard(
+        onTap: onTap,
         child: Row(
           children: [
             Container(

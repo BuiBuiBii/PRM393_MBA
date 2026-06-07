@@ -112,11 +112,11 @@ class AuthNotifier extends Notifier<AuthState> {
         final storage = ref.read(tokenStorageProvider);
         await storage.saveToken(DemoData.demoToken);
         await storage.saveUser(user.toJson());
-        state = AuthState(status: AuthStatus.authenticated, user: user, profile: DemoService.instance.profile);
+        state = AuthState(status: AuthStatus.authenticated, user: user, profile: DemoService.instance.profile, isLoading: false);
         return;
       }
       final user = await safeRequest(() => _repository.login(email, password));
-      state = AuthState(status: AuthStatus.authenticated, user: user);
+      state = AuthState(status: AuthStatus.authenticated, user: user, isLoading: false);
     } catch (error) {
       state = state.copyWith(
         isLoading: false,
@@ -134,13 +134,13 @@ class AuthNotifier extends Notifier<AuthState> {
         final storage = ref.read(tokenStorageProvider);
         await storage.saveToken(DemoData.demoToken);
         await storage.saveUser(user.toJson());
-        state = AuthState(status: AuthStatus.authenticated, user: user, profile: DemoService.instance.profile);
+        state = AuthState(status: AuthStatus.authenticated, user: user, profile: DemoService.instance.profile, isLoading: false);
         return;
       }
       final user = await safeRequest(
         () => _repository.register(email, password, fullName),
       );
-      state = AuthState(status: AuthStatus.authenticated, user: user);
+      state = AuthState(status: AuthStatus.authenticated, user: user, isLoading: false);
     } catch (error) {
       state = state.copyWith(
         isLoading: false,

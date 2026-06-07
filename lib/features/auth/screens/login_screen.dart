@@ -142,7 +142,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           child: Text('Ghi nhớ đăng nhập', style: TextStyle(fontSize: 14, color: AppColors.slate600)),
                         ),
                         TextButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Tính năng quên mật khẩu đang được phát triển. Vui lòng liên hệ quản trị viên.'),
+                              ),
+                            );
+                          },
                           style: TextButton.styleFrom(
                             foregroundColor: AppColors.primary,
                             padding: EdgeInsets.zero,

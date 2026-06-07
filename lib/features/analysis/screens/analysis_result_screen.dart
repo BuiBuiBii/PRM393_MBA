@@ -51,12 +51,14 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
                 const SizedBox(height: 12),
                 PrimaryButton(
                   label: 'Chạy phân tích',
-                  loading: state.isAnalyzing,
+                  loading: state.isAnalyzingRepo(widget.repoId),
                   expand: true,
                   onPressed: state.isAnalyzing
                       ? null
                       : () async {
-                          await ref.read(repositoryProvider.notifier).analyzeRepository(widget.repoId);
+                          try {
+                            await ref.read(repositoryProvider.notifier).analyzeRepository(widget.repoId);
+                          } catch (_) {}
                         },
                 ),
               ],

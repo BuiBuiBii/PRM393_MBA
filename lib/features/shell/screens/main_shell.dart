@@ -27,11 +27,12 @@ class _MainShellState extends ConsumerState<MainShell> {
   ];
 
   static const _secondaryItems = [
+    _MenuItem(path: '/settings', label: 'Cài đặt', icon: Icons.settings_outlined),
     _MenuItem(path: '/dashboard', label: 'Tổng quan', icon: Icons.dashboard_outlined),
+    _MenuItem(path: '/home', label: 'Giới thiệu', icon: Icons.info_outline),
     _MenuItem(path: '/progress', label: 'Tiến độ', icon: Icons.trending_up),
     _MenuItem(path: '/github/connect', label: 'GitHub', icon: Icons.code),
     _MenuItem(path: '/notifications', label: 'Thông báo', icon: Icons.notifications_outlined),
-    _MenuItem(path: '/settings', label: 'Cài đặt', icon: Icons.settings_outlined),
   ];
 
   int? _selectedIndex(String location) {
@@ -79,6 +80,11 @@ class _MainShellState extends ConsumerState<MainShell> {
             ),
           ),
           actions: [
+            IconButton(
+              tooltip: 'Cài đặt',
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () => context.push('/settings'),
+            ),
             IconButton(
               tooltip: 'Thông báo',
               icon: Stack(
@@ -241,7 +247,6 @@ class _MobileMenuSheet extends StatelessWidget {
                 border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
               ),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox(height: 12),
                   Container(
@@ -260,9 +265,8 @@ class _MobileMenuSheet extends StatelessWidget {
                     ),
                   ),
                   const Divider(height: 1),
-                  Flexible(
+                  Expanded(
                     child: ListView(
-                      shrinkWrap: true,
                       padding: const EdgeInsets.all(8),
                       children: [
                         for (final item in items)
