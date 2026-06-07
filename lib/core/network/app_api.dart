@@ -29,7 +29,17 @@ class AppApi {
     return normalizeRepository(res.data);
   }
 
+  Future<void> fetchRepositoryPackages(String id) async {
+    await _dio.get('/github/repositories/$id/packages');
+  }
+
+  Future<void> fetchRepositoryCommits(String id) async {
+    await _dio.get('/github/repositories/$id/commits');
+  }
+
   Future<AnalysisModel> analyzeRepository(String id) async {
+    await fetchRepositoryPackages(id);
+    await fetchRepositoryCommits(id);
     final res = await _dio.post('/analysis/repositories/$id');
     return normalizeAnalysis(res.data);
   }
@@ -42,6 +52,21 @@ class AppApi {
   Future<List<AnalysisModel>> getMyAnalyses() async {
     final res = await _dio.get('/analysis/me');
     return normalizeAnalyses(res.data);
+  }
+
+  Future<AiFeedbackModel> generateAiFeedback(String repoId) async {
+    final res = await _dio.post('/ai-feedback/repositories/$repoId');
+    return normalizeAiFeedback(res.data);
+  }
+
+  Future<AiFeedbackModel?> getAiFeedback(String repoId) async {
+    final res = await _dio.get('/ai-feedback/results/$repoId');
+    return normalizeAiFeedback(res.data);
+  }
+
+  Future<List<AiFeedbackModel>> getMyAiFeedback() async {
+    final res = await _dio.get('/ai-feedback/me');
+    return normalizeAiFeedbacks(res.data);
   }
 
   Future<Map<String, dynamic>> getGitHubOAuthUrl() async {
@@ -101,14 +126,14 @@ class AppApi {
   }
 
   Future<ProfileModel> getProfile() async {
-    final res = await _dio.get('/profile/me');
+    final res = await _dio.get('/profiles/me');
     return normalizeProfile(res.data);
   }
 
   Future<ProfileModel> saveProfile(ProfileModel profile, {bool exists = false}) async {
     final res = exists
-        ? await _dio.put('/profile/me', data: profile.toJson())
-        : await _dio.post('/profile/me', data: profile.toJson());
+        ? await _dio.patch('/profiles/me', data: profile.toJson())
+        : await _dio.post('/profiles', data: profile.toJson());
     return normalizeProfile(res.data);
   }
 
@@ -122,5 +147,39 @@ class AppApi {
       'newPassword': newPassword,
       'confirmPassword': confirmPassword,
     });
+  }
+
+  Future<List<RoadmapModel>> getMyRoadmaps({String? status, String? targetRole}) async {
+    final res = await _dio.get('/roadmaps/me', queryParameters: {
+      if (status != null && status.isNotEmpty) 'status': status,
+      if (targetRole != null && targetRole.isNotEmpty) 'targetRole': targetRole,
+    });
+    return normalizeRoadmaps(res.data);
+  }
+
+  Future<RoadmapModel> generateRoadmap({
+    required String targetRole,
+    bool forceRegenerate = false,
+  }) async {
+    final res = await _dio.post('/roadmaps/generate', data: {
+      'targetRole': targetRole,
+      'forceRegenerate': forceRegenerate,
+    });
+    return normalizeRoadmap(res.data);
+  }
+
+  Future<RoadmapModel> getRoadmap(String id) async {
+    final res = await _dio.get('/roadmaps/$id');
+    return normalizeRoadmap(res.data);
+  }
+
+  Future<RoadmapModel> archiveRoadmap(String id) async {
+    final res = await _dio.patch('/roadmaps/$id/archive');
+    return normalizeRoadmap(res.data);
+  }
+
+  Future<Map<String, dynamic>> getMyProgress() async {
+    final res = await _dio.get('/progress/me');
+    return Map<String, dynamic>.from(unwrapResponse(res.data) as Map? ?? {});
   }
 }

@@ -69,3 +69,195 @@ ProfileModel normalizeProfile(dynamic payload) {
   final map = extractApiResource<Map<String, dynamic>>(payload, ['profile', 'studentProfile']);
   return ProfileModel.fromJson(toRecord(map.isNotEmpty ? map : payload));
 }
+
+String mapRoadmapTaskStatus(String? status) {
+  switch (status) {
+    case 'completed':
+      return 'completed';
+    case 'in_progress':
+      return 'in-progress';
+    default:
+      return 'unlocked';
+  }
+}
+
+String categoryFromTargetRole(String targetRole) {
+  if (targetRole.contains('Frontend')) return 'Frontend';
+  if (targetRole.contains('Backend')) return 'Backend';
+  if (targetRole.contains('Mobile')) return 'Mobile';
+  if (targetRole.contains('DevOps')) return 'DevOps';
+  if (targetRole.contains('Tester') || targetRole.contains('QA')) return 'Testing';
+  if (targetRole.contains('AI') || targetRole.contains('Machine Learning')) return 'AI/ML';
+  if (targetRole.contains('Data')) return 'Data';
+  return 'Fullstack';
+}
+
+RoadmapModel normalizeRoadmap(dynamic payload) {
+  final map = toRecord(extractApiResource<dynamic>(payload, ['roadmap']));
+  final id = (map['_id'] ?? map['id'] ?? '').toString();
+  final targetRole = (map['targetRole'] ?? '').toString();
+  final summary = (map['summary'] ?? '').toString();
+  final mainPath = map['mainPath'] is Map ? Map<String, dynamic>.from(map['mainPath'] as Map) : <String, dynamic>{};
+  final phases = mainPath['phases'] as List? ?? [];
+
+  var totalHours = 0;
+  var completedTasks = 0;
+  var totalTasks = 0;
+
+  final modules = <RoadmapModuleModel>[];
+  for (var phaseIndex = 0; phaseIndex < phases.length; phaseIndex++) {
+    final phase = Map<String, dynamic>.from(phases[phaseIndex] as Map);
+    final tasks = phase['tasks'] as List? ?? [];
+    final nodes = <LearningNodeModel>[];
+    for (var taskIndex = 0; taskIndex < tasks.length; taskIndex++) {
+      final task = Map<String, dynamic>.from(tasks[taskIndex] as Map);
+      final hours = int.tryParse(task['estimatedHours']?.toString() ?? '') ?? 4;
+      totalHours += hours;
+      totalTasks++;
+      final status = task['status']?.toString() ?? 'not_started';
+      if (status == 'completed') completedTasks++;
+      nodes.add(LearningNodeModel(
+        id: (task['_id'] ?? task['id'] ?? 'task-$phaseIndex-$taskIndex').toString(),
+        title: (task['title'] ?? 'Task').toString(),
+        description: (task['description'] ?? '').toString(),
+        estimatedHours: hours,
+        difficulty: 'Intermediate',
+        status: mapRoadmapTaskStatus(status),
+        skills: (task['skillTags'] as List? ?? []).map((e) => e.toString()).toList(),
+        xp: hours * 40,
+      ));
+    }
+    modules.add(RoadmapModuleModel(
+      id: (phase['_id'] ?? phase['id'] ?? 'phase-$phaseIndex').toString(),
+      title: (phase['title'] ?? 'Phase ${phaseIndex + 1}').toString(),
+      description: (phase['goal'] ?? '').toString(),
+      nodes: nodes,
+    ));
+  }
+
+  final supporting = map['supportingPaths'] as List? ?? [];
+  for (var i = 0; i < supporting.length; i++) {
+    final path = Map<String, dynamic>.from(supporting[i] as Map);
+    final suggested = path['suggestedTasks'] as List? ?? [];
+    if (suggested.isEmpty) continue;
+    modules.add(RoadmapModuleModel(
+      id: (path['_id'] ?? 'support-$i').toString(),
+      title: (path['title'] ?? 'Supporting Path').toString(),
+      description: (path['reason'] ?? '').toString(),
+      nodes: suggested.asMap().entries.map((entry) {
+        return LearningNodeModel(
+          id: 'support-$i-${entry.key}',
+          title: entry.value.toString(),
+          description: '',
+          estimatedHours: 4,
+          difficulty: 'Intermediate',
+          status: 'locked',
+          skills: (path['skills'] as List? ?? []).map((e) => e.toString()).toList(),
+          xp: 160,
+        );
+      }).toList(),
+    ));
+  }
+
+  final sourceCtx = map['sourceContextSummary'] is Map
+      ? Map<String, dynamic>.from(map['sourceContextSummary'] as Map)
+      : <String, dynamic>{};
+  final detected = (sourceCtx['detectedSkills'] as List? ?? []).map((e) => e.toString()).toList();
+  final missing = (sourceCtx['missingSkills'] as List? ?? []).map((e) => e.toString()).toList();
+  final progress = totalTasks == 0 ? 0 : ((completedTasks / totalTasks) * 100).round();
+  final estimatedWeeks = (totalHours / 8).ceil().clamp(1, 52);
+
+  return RoadmapModel(
+    id: id,
+    slug: targetRole.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-'),
+    title: (mainPath['title'] ?? targetRole).toString(),
+    subtitle: targetRole,
+    description: summary.isNotEmpty ? summary : (mainPath['reason'] ?? '').toString(),
+    category: categoryFromTargetRole(targetRole),
+    difficulty: 'Intermediate',
+    estimatedWeeks: estimatedWeeks,
+    estimatedHours: totalHours > 0 ? totalHours : estimatedWeeks * 8,
+    tags: [...detected, ...missing].take(8).toList(),
+    isFeatured: false,
+    isAIRecommended: true,
+    progress: progress,
+    modules: modules,
+    careerOutcome: targetRole,
+  );
+}
+
+List<RoadmapModel> normalizeRoadmaps(dynamic payload) {
+  return asMapList(payload, ['roadmaps', 'items']).map(normalizeRoadmap).toList();
+}
+
+AIRecommendationModel normalizeAiRecommendation(RoadmapModel roadmap, {List<String>? strengths, List<String>? weaknesses, List<String>? missingSkills}) {
+  final detected = strengths ?? roadmap.tags;
+  final missing = missingSkills ?? (detected.length > 4 ? detected.skip(4).toList() : <String>[]);
+  return AIRecommendationModel(
+    summary: roadmap.description,
+    confidence: 82,
+    strengths: detected.take(4).toList(),
+    weaknesses: weaknesses ?? [],
+    missingSkills: missing,
+    careerSuggestion: roadmap.careerOutcome,
+    estimatedCompletionWeeks: roadmap.estimatedWeeks,
+    roadmap: roadmap,
+  );
+}
+
+AiFeedbackModel normalizeAiFeedback(dynamic payload) {
+  final map = extractApiResource<Map<String, dynamic>>(payload, ['feedback', 'aiFeedback', 'result']);
+  return AiFeedbackModel.fromJson(toRecord(map.isNotEmpty ? map : payload));
+}
+
+List<AiFeedbackModel> normalizeAiFeedbacks(dynamic payload) {
+  return asMapList(payload, ['feedbacks', 'items', 'results']).map(normalizeAiFeedback).toList();
+}
+
+LearningStatsModel computeLearningStats(List<RoadmapModel> roadmaps) {
+  var completedNodes = 0;
+  var totalNodes = 0;
+  var totalHours = 0;
+  final activeIds = <String>[];
+
+  for (final roadmap in roadmaps) {
+    if (roadmap.id.isNotEmpty) activeIds.add(roadmap.id);
+    for (final module in roadmap.modules) {
+      for (final node in module.nodes) {
+        totalNodes++;
+        totalHours += node.estimatedHours;
+        if (node.status == 'completed') completedNodes++;
+      }
+    }
+  }
+
+  return LearningStatsModel(
+    activeRoadmapIds: activeIds,
+    completedNodes: completedNodes,
+    totalNodes: totalNodes,
+    totalXp: completedNodes * 120,
+    level: (completedNodes / 5).floor() + 1,
+    currentStreak: 0,
+    weeklyGoalHours: 10,
+    weeklyHoursCompleted: totalHours.clamp(0, 10),
+    bookmarkedNodeIds: const [],
+  );
+}
+
+List<SkillProgressModel> computeSkillProgress(List<RoadmapModel> roadmaps) {
+  final counts = <String, int>{};
+  for (final roadmap in roadmaps) {
+    for (final tag in roadmap.tags) {
+      counts[tag] = (counts[tag] ?? 0) + 1;
+    }
+  }
+  if (counts.isEmpty) return const [];
+  return counts.entries
+      .map((entry) => SkillProgressModel(
+            skill: entry.key,
+            category: 'GitHub',
+            current: (entry.value * 15).clamp(10, 90),
+            target: 100,
+          ))
+      .toList();
+}

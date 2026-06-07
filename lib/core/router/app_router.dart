@@ -21,13 +21,18 @@ import '../../features/settings/screens/settings_screen.dart';
 import '../../features/shell/screens/main_shell.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final auth = ref.watch(authProvider);
+  // Chỉ tạo lại router khi trạng thái đăng nhập đổi — không rebuild khi profile/loading thay đổi.
+  ref.watch(authProvider.select((s) => s.status));
 
-  return GoRouter(
+  final refresh = _AuthRefreshListenable(ref);
+  ref.onDispose(refresh.dispose);
+
+  final router = GoRouter(
     initialLocation: '/dashboard',
-    refreshListenable: _AuthRefreshListenable(ref),
+    refreshListenable: refresh,
     errorBuilder: (_, __) => const NotFoundScreen(),
     redirect: (context, state) {
+      final auth = ref.read(authProvider);
       final isBootstrapping = auth.status == AuthStatus.unknown;
       final isAuthenticated = auth.isAuthenticated;
       final loc = state.matchedLocation;
@@ -74,12 +79,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+
+  ref.onDispose(router.dispose);
+  return router;
 });
 
 class _AuthRefreshListenable extends ChangeNotifier {
   _AuthRefreshListenable(this.ref) {
-    ref.listen<AuthState>(authProvider, (_, __) => notifyListeners());
+    _subscription = ref.listen<AuthState>(authProvider, (_, __) => notifyListeners());
   }
 
   final Ref ref;
+  late final ProviderSubscription<AuthState> _subscription;
+
+  @override
+  void dispose() {
+    _subscription.close();
+    super.dispose();
+  }
 }

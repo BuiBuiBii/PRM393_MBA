@@ -12,8 +12,8 @@ class ProgressScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final roadmap = ref.watch(roadmapProvider);
-    final stats = roadmap.learningStats;
-    final skills = roadmap.skillProgress;
+    final stats = roadmap.learningStats ?? mockLearningStats;
+    final skills = roadmap.skillProgress.isNotEmpty ? roadmap.skillProgress : mockSkillProgress;
     final compact = isCompactPhone(context);
 
     return ListView(

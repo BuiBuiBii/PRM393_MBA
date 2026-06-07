@@ -40,10 +40,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return ListView(
       padding: appScreenPadding(context),
       children: [
-            InkWell(
-              onTap: () => context.go('/profile'),
-              borderRadius: BorderRadius.circular(12),
-              child: Row(
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => context.go('/profile'),
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   UserAvatar(imageUrl: user?.avatar, name: user?.name, size: 52),
@@ -54,10 +58,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       subtitle: 'Chạm để xem hồ sơ • Tổng quan GitHub và phân tích.',
                     ),
                   ),
-                  const Icon(Icons.chevron_right, color: AppColors.slate500),
-                ],
+                    const Icon(Icons.chevron_right, color: AppColors.slate500),
+                  ],
+                ),
               ),
             ),
+          ),
         if (dashboard.error != null) ...[
           const SizedBox(height: 12),
           BannerMessage(message: 'Dashboard API: ${dashboard.error}', isWarning: true),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../app_providers.dart';
 import '../../../shared/models/app_models.dart';
 import '../data/roadmap_mock_data.dart';
@@ -23,11 +24,22 @@ List<RoadmapModel> _filterRoadmaps(RoadmapState state) {
   }).toList();
 }
 
-class RoadmapsScreen extends ConsumerWidget {
+class RoadmapsScreen extends ConsumerStatefulWidget {
   const RoadmapsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RoadmapsScreen> createState() => _RoadmapsScreenState();
+}
+
+class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => ref.read(roadmapProvider.notifier).loadRoadmaps());
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(roadmapProvider);
     final filtered = _filterRoadmaps(state);
     final featured = filtered.where((r) => r.isFeatured).toList();
@@ -139,13 +151,28 @@ class RoadmapsScreen extends ConsumerWidget {
   }
 }
 
-class AIRoadmapScreen extends ConsumerWidget {
+class AIRoadmapScreen extends ConsumerStatefulWidget {
   const AIRoadmapScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AIRoadmapScreen> createState() => _AIRoadmapScreenState();
+}
+
+class _AIRoadmapScreenState extends ConsumerState<AIRoadmapScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => ref.read(roadmapProvider.notifier).loadRoadmaps());
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(roadmapProvider);
     final rec = state.aiRecommendation;
+
+    if (state.isLoading && rec == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return ListView(
       padding: appScreenPadding(context),
@@ -157,7 +184,7 @@ class AIRoadmapScreen extends ConsumerWidget {
           trailing: PrimaryButton(
             label: 'Tạo lại',
             loading: state.isGenerating,
-            onPressed: () => ref.read(roadmapProvider.notifier).generateAI(),
+            onPressed: state.isGenerating ? null : () => ref.read(roadmapProvider.notifier).generateAI(forceRegenerate: true),
           ),
         ),
         const SizedBox(height: 12),
@@ -165,28 +192,60 @@ class AIRoadmapScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  const Text('Độ tin cậy', style: TextStyle(fontWeight: FontWeight.w600)),
-                  const Spacer(),
-                  AppBadge(label: '${rec.confidence}%', variant: AppBadgeVariant.success),
-                ],
-              ),
+              const Text('Vai trò mục tiêu', style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
-              Text(rec.summary),
+              DropdownButtonFormField<String>(
+                value: state.selectedTargetRole,
+                isExpanded: true,
+                items: AppConfig.targetRoles.map((role) => DropdownMenuItem(value: role, child: Text(role))).toList(),
+                onChanged: state.isGenerating ? null : (value) {
+                  if (value != null) ref.read(roadmapProvider.notifier).setTargetRole(value);
+                },
+              ),
               const SizedBox(height: 12),
-              Text('Hướng đề xuất: ${rec.careerSuggestion}', style: const TextStyle(fontWeight: FontWeight.w500)),
+              PrimaryButton(
+                label: rec == null ? 'Tạo roadmap AI' : 'Tạo roadmap mới',
+                icon: Icons.psychology,
+                expand: true,
+                loading: state.isGenerating,
+                onPressed: state.isGenerating ? null : () => ref.read(roadmapProvider.notifier).generateAI(),
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
-        _bulletCard('Điểm mạnh', rec.strengths, AppColors.emerald),
-        const SizedBox(height: 12),
-        _bulletCard('Điểm yếu', rec.weaknesses, AppColors.amber),
-        const SizedBox(height: 12),
-        _bulletCard('Kỹ năng thiếu', rec.missingSkills, AppColors.primary),
-        const SizedBox(height: 16),
-        PrimaryButton(label: 'Xem roadmap đề xuất', expand: true, onPressed: () => context.push('/roadmaps/${rec.roadmap.id}')),
+        if (state.error != null) ...[
+          const SizedBox(height: 12),
+          AppCard(child: Text(state.error!, style: const TextStyle(color: AppColors.amber))),
+        ],
+        if (rec != null) ...[
+          const SizedBox(height: 12),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text('Độ tin cậy', style: TextStyle(fontWeight: FontWeight.w600)),
+                    const Spacer(),
+                    AppBadge(label: '${rec.confidence}%', variant: AppBadgeVariant.success),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(rec.summary),
+                const SizedBox(height: 12),
+                Text('Hướng đề xuất: ${rec.careerSuggestion}', style: const TextStyle(fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          _bulletCard('Điểm mạnh', rec.strengths, AppColors.emerald),
+          const SizedBox(height: 12),
+          _bulletCard('Điểm yếu', rec.weaknesses, AppColors.amber),
+          const SizedBox(height: 12),
+          _bulletCard('Kỹ năng thiếu', rec.missingSkills, AppColors.primary),
+          const SizedBox(height: 16),
+          PrimaryButton(label: 'Xem roadmap đề xuất', expand: true, onPressed: () => context.push('/roadmaps/${rec.roadmap.id}')),
+        ],
       ],
     );
   }
@@ -205,16 +264,31 @@ class AIRoadmapScreen extends ConsumerWidget {
   }
 }
 
-class RoadmapDetailScreen extends ConsumerWidget {
+class RoadmapDetailScreen extends ConsumerStatefulWidget {
   const RoadmapDetailScreen({super.key, required this.roadmapId});
 
   final String roadmapId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final roadmap = ref.read(roadmapProvider.notifier).getById(roadmapId);
+  ConsumerState<RoadmapDetailScreen> createState() => _RoadmapDetailScreenState();
+}
+
+class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() async {
+      if (ref.read(roadmapProvider.notifier).getById(widget.roadmapId) == null) {
+        await ref.read(roadmapProvider.notifier).fetchRoadmap(widget.roadmapId);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final roadmap = ref.watch(roadmapProvider.notifier).getById(widget.roadmapId);
     if (roadmap == null) {
-      return const Center(child: Text('Không tìm thấy roadmap'));
+      return const Center(child: CircularProgressIndicator());
     }
 
     return ListView(

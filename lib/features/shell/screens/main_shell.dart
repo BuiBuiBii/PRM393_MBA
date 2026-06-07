@@ -20,12 +20,12 @@ class _MainShellState extends ConsumerState<MainShell> {
   static const _primaryTabs = [
     _ShellTab(path: '/dashboard', label: 'Trang chủ', icon: Icons.home_outlined, selectedIcon: Icons.home),
     _ShellTab(path: '/repositories', label: 'Repos', icon: Icons.folder_outlined, selectedIcon: Icons.folder),
-    _ShellTab(path: '/roadmaps', label: 'Lộ trình', icon: Icons.route_outlined, selectedIcon: Icons.route),
+    _ShellTab(path: '/profile', label: 'Hồ sơ', icon: Icons.person_outline, selectedIcon: Icons.person),
     _ShellTab(path: '/chat', label: 'AI Mentor', icon: Icons.chat_bubble_outline, selectedIcon: Icons.chat_bubble),
   ];
 
   static const _secondaryItems = [
-    _MenuItem(path: '/profile', label: 'Hồ sơ của tôi', icon: Icons.person_outline),
+    _MenuItem(path: '/roadmaps', label: 'Lộ trình', icon: Icons.route_outlined),
     _MenuItem(path: '/settings', label: 'Cài đặt', icon: Icons.settings_outlined),
     _MenuItem(path: '/dashboard', label: 'Tổng quan', icon: Icons.dashboard_outlined),
     _MenuItem(path: '/home', label: 'Giới thiệu', icon: Icons.info_outline),
@@ -175,46 +175,37 @@ class _MainShellState extends ConsumerState<MainShell> {
             ),
           ),
           actions: [
-            IconButton(
+            _ShellActionButton(
               tooltip: 'Hồ sơ',
-              padding: const EdgeInsets.all(8),
-              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+              active: _routeActive('/profile'),
               onPressed: () => _navigateTo('/profile'),
-              icon: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: _routeActive('/profile') ? AppColors.primary : const Color(0xFFE2E8F0),
-                    width: _routeActive('/profile') ? 2 : 1,
-                  ),
-                ),
-                child: UserAvatar(imageUrl: user?.avatar, name: user?.name, size: 28),
-              ),
+              child: UserAvatar(imageUrl: user?.avatar, name: user?.name, size: 28),
             ),
-            IconButton(
+            _ShellActionButton(
               tooltip: 'Cài đặt',
-              iconSize: 22,
-              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-              icon: Icon(
+              active: _routeActive('/settings'),
+              onPressed: () => _navigateTo('/settings'),
+              child: Icon(
                 Icons.settings_outlined,
+                size: 22,
                 color: _routeActive('/settings') ? AppColors.primary : AppColors.slate600,
               ),
-              onPressed: () => _navigateTo('/settings'),
             ),
-            IconButton(
+            _ShellActionButton(
               tooltip: 'Thông báo',
-              iconSize: 22,
-              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-              icon: Stack(
+              active: _routeActive('/notifications'),
+              onPressed: () => _navigateTo('/notifications'),
+              child: Stack(
                 clipBehavior: Clip.none,
                 children: [
                   Icon(
                     Icons.notifications_outlined,
+                    size: 22,
                     color: _routeActive('/notifications') ? AppColors.primary : AppColors.slate600,
                   ),
                   Positioned(
-                    right: 2,
-                    top: 2,
+                    right: 0,
+                    top: 0,
                     child: Container(
                       width: 8,
                       height: 8,
@@ -223,7 +214,6 @@ class _MainShellState extends ConsumerState<MainShell> {
                   ),
                 ],
               ),
-              onPressed: () => _navigateTo('/notifications'),
             ),
             const SizedBox(width: 4),
           ],
@@ -265,7 +255,7 @@ class _MainShellState extends ConsumerState<MainShell> {
           child: SafeArea(
             top: false,
             child: SizedBox(
-              height: 52,
+              height: 56,
               child: Row(
                 children: [
                   for (var i = 0; i < _primaryTabs.length; i++)
@@ -286,6 +276,53 @@ class _MainShellState extends ConsumerState<MainShell> {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShellActionButton extends StatelessWidget {
+  const _ShellActionButton({
+    required this.tooltip,
+    required this.active,
+    required this.onPressed,
+    required this.child,
+  });
+
+  final String tooltip;
+  final bool active;
+  final VoidCallback onPressed;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        customBorder: const CircleBorder(),
+        child: Semantics(
+          button: true,
+          label: tooltip,
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: Center(
+              child: DecoratedBox(
+                decoration: active
+                    ? BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.primary, width: 2),
+                      )
+                    : const BoxDecoration(),
+                child: Padding(
+                  padding: const EdgeInsets.all(2),
+                  child: child,
+                ),
               ),
             ),
           ),
@@ -316,7 +353,8 @@ class _BottomNavItem extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: SizedBox(
-          height: 52,
+          height: 56,
+          width: double.infinity,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
