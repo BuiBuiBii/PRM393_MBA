@@ -231,6 +231,58 @@ class NotificationModel {
   }
 }
 
+class AiFeedbackModel {
+  const AiFeedbackModel({
+    required this.id,
+    required this.repositoryId,
+    required this.repositoryName,
+    required this.summary,
+    required this.strengthFeedback,
+    required this.weaknessFeedback,
+    required this.learningAdvice,
+    required this.nextSteps,
+    required this.recommendedTopics,
+    this.careerSuggestion,
+    this.portfolioAdvice,
+    this.generatedAt,
+  });
+
+  final String id;
+  final String repositoryId;
+  final String repositoryName;
+  final String summary;
+  final List<String> strengthFeedback;
+  final List<String> weaknessFeedback;
+  final String learningAdvice;
+  final List<String> nextSteps;
+  final List<String> recommendedTopics;
+  final String? careerSuggestion;
+  final String? portfolioAdvice;
+  final String? generatedAt;
+
+  factory AiFeedbackModel.fromJson(Map<String, dynamic> json) {
+    List<String> listOf(dynamic value) {
+      if (value is List) return value.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+      return [];
+    }
+
+    return AiFeedbackModel(
+      id: (json['id'] ?? json['_id'] ?? '').toString(),
+      repositoryId: (json['repositoryId'] ?? '').toString(),
+      repositoryName: (json['repoName'] ?? json['fullName'] ?? json['repositoryName'] ?? 'Repository').toString(),
+      summary: (json['summary'] ?? '').toString(),
+      strengthFeedback: listOf(json['strengthFeedback']),
+      weaknessFeedback: listOf(json['weaknessFeedback']),
+      learningAdvice: (json['learningAdvice'] ?? '').toString(),
+      nextSteps: listOf(json['nextSteps']),
+      recommendedTopics: listOf(json['recommendedTopics']),
+      careerSuggestion: json['careerSuggestion']?.toString(),
+      portfolioAdvice: json['portfolioAdvice']?.toString(),
+      generatedAt: (json['generatedAt'] ?? json['createdAt'])?.toString(),
+    );
+  }
+}
+
 class ProfileModel {
   const ProfileModel({
     required this.fullName,

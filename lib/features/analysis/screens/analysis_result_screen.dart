@@ -20,9 +20,11 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      if (ref.read(repositoryProvider.notifier).getAnalysisById(widget.repoId) == null) {
-        ref.read(repositoryProvider.notifier).fetchAnalysis(widget.repoId);
+      final repoId = widget.repoId;
+      if (ref.read(repositoryProvider.notifier).getAnalysisById(repoId) == null) {
+        ref.read(repositoryProvider.notifier).fetchAnalysis(repoId);
       }
+      ref.read(repositoryProvider.notifier).fetchAiFeedback(repoId);
     });
   }
 
@@ -30,6 +32,7 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(repositoryProvider);
     final analysis = state.analyses.where((a) => a.repositoryId == widget.repoId || a.id == widget.repoId).firstOrNull;
+    final feedback = state.feedbackFor(widget.repoId);
 
     if (analysis == null) {
       return ListView(
@@ -155,6 +158,49 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
             ),
           ),
         ],
+        const SizedBox(height: 12),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text('AI Feedback', style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                  PrimaryButton(
+                    label: feedback == null ? 'Tạo feedback' : 'Tạo lại',
+                    outlined: true,
+                    loading: state.isGeneratingFeedback(widget.repoId),
+                    onPressed: state.isGeneratingFeedback(widget.repoId)
+                        ? null
+                        : () async {
+                            try {
+                              await ref.read(repositoryProvider.notifier).generateAiFeedback(widget.repoId);
+                            } catch (_) {}
+                          },
+                  ),
+                ],
+              ),
+              if (feedback != null) ...[
+                const SizedBox(height: 8),
+                Text(feedback.summary),
+                if (feedback.learningAdvice.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(feedback.learningAdvice, style: const TextStyle(color: AppColors.slate500)),
+                ],
+                if (feedback.nextSteps.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  ...feedback.nextSteps.map((step) => Text('• $step')),
+                ],
+              ] else
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text('Chưa có AI feedback cho repository này.', style: TextStyle(color: AppColors.slate500)),
+                ),
+            ],
+          ),
+        ),
         const SizedBox(height: 16),
         PrimaryButton(label: 'Hỏi AI Mentor', icon: Icons.chat, expand: true, onPressed: () => context.go('/chat')),
       ],

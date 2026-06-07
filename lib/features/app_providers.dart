@@ -7,45 +7,60 @@ import '../core/network/app_api.dart';
 import '../core/network/dio_client.dart';
 import 'auth/providers/auth_provider.dart';
 import '../shared/models/app_models.dart';
+import '../core/network/normalizers.dart';
 import 'roadmaps/data/roadmap_mock_data.dart';
 
 class RepositoryState {
   const RepositoryState({
     this.repositories = const [],
     this.analyses = const [],
+    this.aiFeedbacks = const {},
     this.selected,
     this.isLoading = false,
     this.analyzingRepoId,
+    this.generatingFeedbackRepoId,
     this.error,
   });
 
   final List<RepositoryModel> repositories;
   final List<AnalysisModel> analyses;
+  final Map<String, AiFeedbackModel> aiFeedbacks;
   final RepositoryModel? selected;
   final bool isLoading;
   final String? analyzingRepoId;
+  final String? generatingFeedbackRepoId;
   final String? error;
 
   bool isAnalyzingRepo(String id) => analyzingRepoId == id;
 
+  bool isGeneratingFeedback(String id) => generatingFeedbackRepoId == id;
+
   bool get isAnalyzing => analyzingRepoId != null;
+
+  AiFeedbackModel? feedbackFor(String repoId) => aiFeedbacks[repoId];
 
   RepositoryState copyWith({
     List<RepositoryModel>? repositories,
     List<AnalysisModel>? analyses,
+    Map<String, AiFeedbackModel>? aiFeedbacks,
     RepositoryModel? selected,
     bool? isLoading,
     String? analyzingRepoId,
     bool clearAnalyzingRepoId = false,
+    String? generatingFeedbackRepoId,
+    bool clearGeneratingFeedbackRepoId = false,
     String? error,
     bool clearError = false,
   }) {
     return RepositoryState(
       repositories: repositories ?? this.repositories,
       analyses: analyses ?? this.analyses,
+      aiFeedbacks: aiFeedbacks ?? this.aiFeedbacks,
       selected: selected ?? this.selected,
       isLoading: isLoading ?? this.isLoading,
       analyzingRepoId: clearAnalyzingRepoId ? null : (analyzingRepoId ?? this.analyzingRepoId),
+      generatingFeedbackRepoId:
+          clearGeneratingFeedbackRepoId ? null : (generatingFeedbackRepoId ?? this.generatingFeedbackRepoId),
       error: clearError ? null : (error ?? this.error),
     );
   }
@@ -151,6 +166,46 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
       if (a.id == id || a.repositoryId == id) return a;
     }
     return null;
+  }
+
+  Future<AiFeedbackModel?> fetchAiFeedback(String repoId) async {
+    try {
+      if (AppConfig.demoMode) return null;
+      final feedback = await safeRequest(() => _api.getAiFeedback(repoId));
+      if (feedback == null) return null;
+      state = state.copyWith(aiFeedbacks: {...state.aiFeedbacks, repoId: feedback});
+      return feedback;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<AiFeedbackModel> generateAiFeedback(String repoId) async {
+    state = state.copyWith(generatingFeedbackRepoId: repoId, clearError: true);
+    try {
+      final feedback = AppConfig.demoMode
+          ? AiFeedbackModel(
+              id: 'demo-feedback',
+              repositoryId: repoId,
+              repositoryName: 'Demo Repository',
+              summary: 'Demo AI feedback',
+              strengthFeedback: const ['Clean structure'],
+              weaknessFeedback: const ['Needs tests'],
+              learningAdvice: 'Add unit tests and CI.',
+              nextSteps: const ['Write tests', 'Add README'],
+              recommendedTopics: const ['Testing'],
+              careerSuggestion: 'Backend Developer',
+            )
+          : await safeRequest(() => _api.generateAiFeedback(repoId));
+      state = state.copyWith(
+        clearGeneratingFeedbackRepoId: true,
+        aiFeedbacks: {...state.aiFeedbacks, repoId: feedback},
+      );
+      return feedback;
+    } catch (e) {
+      state = state.copyWith(clearGeneratingFeedbackRepoId: true, error: getApiErrorMessage(e));
+      rethrow;
+    }
   }
 }
 
@@ -316,26 +371,27 @@ class RoadmapFilters {
 }
 
 class RoadmapState {
-  RoadmapState({
-    List<RoadmapModel>? roadmaps,
-    AIRecommendationModel? aiRecommendation,
-    List<SkillProgressModel>? skillProgress,
-    LearningStatsModel? learningStats,
+  const RoadmapState({
+    this.roadmaps = const [],
+    this.aiRecommendation,
+    this.skillProgress = const [],
+    this.learningStats,
     this.filters = const RoadmapFilters(),
     this.isLoading = false,
     this.isGenerating = false,
-  })  : roadmaps = roadmaps ?? mockRoadmaps,
-        aiRecommendation = aiRecommendation ?? mockAIRecommendation,
-        skillProgress = skillProgress ?? mockSkillProgress,
-        learningStats = learningStats ?? mockLearningStats;
+    this.error,
+    this.selectedTargetRole = 'Backend Developer',
+  });
 
   final List<RoadmapModel> roadmaps;
-  final AIRecommendationModel aiRecommendation;
+  final AIRecommendationModel? aiRecommendation;
   final List<SkillProgressModel> skillProgress;
-  final LearningStatsModel learningStats;
+  final LearningStatsModel? learningStats;
   final RoadmapFilters filters;
   final bool isLoading;
   final bool isGenerating;
+  final String? error;
+  final String selectedTargetRole;
 
   RoadmapState copyWith({
     List<RoadmapModel>? roadmaps,
@@ -345,6 +401,9 @@ class RoadmapState {
     RoadmapFilters? filters,
     bool? isLoading,
     bool? isGenerating,
+    String? error,
+    bool clearError = false,
+    String? selectedTargetRole,
   }) {
     return RoadmapState(
       roadmaps: roadmaps ?? this.roadmaps,
@@ -354,25 +413,117 @@ class RoadmapState {
       filters: filters ?? this.filters,
       isLoading: isLoading ?? this.isLoading,
       isGenerating: isGenerating ?? this.isGenerating,
+      error: clearError ? null : (error ?? this.error),
+      selectedTargetRole: selectedTargetRole ?? this.selectedTargetRole,
     );
   }
 }
 
 class RoadmapNotifier extends Notifier<RoadmapState> {
+  late AppApi _api;
+
   @override
-  RoadmapState build() => RoadmapState(
+  RoadmapState build() {
+    _api = ref.read(appApiProvider);
+    if (AppConfig.demoMode) {
+      return RoadmapState(
         roadmaps: mockRoadmaps,
         aiRecommendation: mockAIRecommendation,
         skillProgress: mockSkillProgress,
         learningStats: mockLearningStats,
       );
+    }
+    Future.microtask(loadRoadmaps);
+    return const RoadmapState();
+  }
 
   void setFilters(RoadmapFilters filters) => state = state.copyWith(filters: filters);
 
-  Future<void> generateAI() async {
-    state = state.copyWith(isGenerating: true);
-    await Future<void>.delayed(const Duration(milliseconds: 800));
-    state = state.copyWith(isGenerating: false);
+  void setTargetRole(String role) => state = state.copyWith(selectedTargetRole: role);
+
+  Future<void> loadRoadmaps() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      if (AppConfig.demoMode) {
+        state = state.copyWith(
+          roadmaps: mockRoadmaps,
+          aiRecommendation: mockAIRecommendation,
+          skillProgress: mockSkillProgress,
+          learningStats: mockLearningStats,
+          isLoading: false,
+        );
+        return;
+      }
+      final roadmaps = await safeRequest(_api.getMyRoadmaps);
+      final stats = computeLearningStats(roadmaps);
+      final skills = computeSkillProgress(roadmaps);
+      final recommendation = roadmaps.isNotEmpty
+          ? normalizeAiRecommendation(
+              roadmaps.first,
+              strengths: roadmaps.first.tags.take(4).toList(),
+              missingSkills: roadmaps.first.tags.skip(4).toList(),
+            )
+          : null;
+      state = state.copyWith(
+        roadmaps: roadmaps,
+        learningStats: stats,
+        skillProgress: skills,
+        aiRecommendation: recommendation,
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: getApiErrorMessage(e));
+    }
+  }
+
+  Future<void> generateAI({bool forceRegenerate = false}) async {
+    state = state.copyWith(isGenerating: true, clearError: true);
+    try {
+      if (AppConfig.demoMode) {
+        await Future<void>.delayed(const Duration(milliseconds: 800));
+        state = state.copyWith(isGenerating: false);
+        return;
+      }
+      final roadmap = await safeRequest(
+        () => _api.generateRoadmap(
+          targetRole: state.selectedTargetRole,
+          forceRegenerate: forceRegenerate,
+        ),
+      );
+      final recommendation = normalizeAiRecommendation(roadmap);
+      final roadmaps = [
+        roadmap,
+        ...state.roadmaps.where((r) => r.id != roadmap.id),
+      ];
+      state = state.copyWith(
+        roadmaps: roadmaps,
+        aiRecommendation: recommendation,
+        learningStats: computeLearningStats(roadmaps),
+        skillProgress: computeSkillProgress(roadmaps),
+        isGenerating: false,
+      );
+    } catch (e) {
+      state = state.copyWith(isGenerating: false, error: getApiErrorMessage(e));
+      rethrow;
+    }
+  }
+
+  Future<RoadmapModel?> fetchRoadmap(String id) async {
+    final cached = getById(id);
+    if (cached != null) return cached;
+    if (AppConfig.demoMode) return null;
+    try {
+      final roadmap = await safeRequest(() => _api.getRoadmap(id));
+      state = state.copyWith(
+        roadmaps: [
+          roadmap,
+          ...state.roadmaps.where((r) => r.id != roadmap.id),
+        ],
+      );
+      return roadmap;
+    } catch (_) {
+      return null;
+    }
   }
 
   RoadmapModel? getById(String id) {
@@ -411,11 +562,12 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
       );
     }).toList();
     final delta = status == 'completed' ? 120 : -120;
+    final stats = state.learningStats ?? computeLearningStats(state.roadmaps);
     state = state.copyWith(
       roadmaps: roadmaps,
-      learningStats: state.learningStats.copyWith(
-        completedNodes: status == 'completed' ? state.learningStats.completedNodes + 1 : state.learningStats.completedNodes,
-        totalXp: state.learningStats.totalXp + delta,
+      learningStats: stats.copyWith(
+        completedNodes: status == 'completed' ? stats.completedNodes + 1 : stats.completedNodes,
+        totalXp: stats.totalXp + delta,
       ),
     );
   }

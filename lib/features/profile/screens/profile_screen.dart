@@ -30,7 +30,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(authProvider.notifier).fetchProfile());
+    Future.microtask(() {
+      final auth = ref.read(authProvider);
+      if (auth.profile == null) {
+        ref.read(authProvider.notifier).fetchProfile();
+      }
+    });
   }
 
   void _fill(ProfileModel? profile, UserModel? user) {
