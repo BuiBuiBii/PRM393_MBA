@@ -386,6 +386,28 @@ If you want one realistic end-to-end test sequence, use this order:
 - For chat quality, always analyze repository first.
 - Some endpoints are already functional, while some are still scaffold-only as noted above.
 
+## AI / Gemini Integration
+
+Gemini calls are centralized in `src/services/ai.service.js`. The shared service reads:
+
+```txt
+LLM_PROVIDER=gemini
+LLM_API_KEY=your_gemini_api_key
+LLM_MODEL=gemini-2.5-flash
+LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta
+```
+
+`LLM_MODEL` must be a model id such as `gemini-2.5-flash` or `gemini-2.0-flash`, not `models/gemini-2.5-flash`.
+
+APIs using Gemini:
+
+- `POST /api/ai-feedback/repositories/:repoId`: generates AI feedback from the latest repository analysis snapshot, with fallback feedback if Gemini fails.
+- `POST /api/chat/sessions/:sessionId/messages`: generates mentor chat replies from the user's GitHub context, with fallback chat text if Gemini fails.
+- `POST /api/roadmaps/generate`: generates roadmap JSON from GitHub context, with fallback roadmap if Gemini fails or JSON parsing fails.
+- `GET /api/ai/health`: checks AI env configuration without exposing secrets.
+
+Gemini failure logs include status, message, response data, provider, and model only. API keys and full keyed endpoints must not be logged.
+
 ## Deployment
 
 ### MongoDB Atlas
