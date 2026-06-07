@@ -21,14 +21,37 @@ const { successResponse, errorResponse } = require("./utils/response");
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URL,
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://localhost:8081",
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== "production") {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 
-app.get("/api/health", (req, res) => {
-  return successResponse(res, "Backend is running", {
+const healthHandler = (req, res) =>
+  successResponse(res, "Server is running", {
+    status: "ok",
+    environment: process.env.NODE_ENV || "development",
     service: "career-roadmap-be",
   });
-});
+
+app.get("/health", healthHandler);
+app.get("/api/health", healthHandler);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/profiles", profileRoutes);
