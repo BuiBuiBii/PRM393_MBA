@@ -15,6 +15,8 @@ const aiRoutes = require("./routes/ai.routes");
 const chatRoutes = require("./routes/chat.routes");
 const roadmapRoutes = require("./routes/roadmap.routes");
 const progressRoutes = require("./routes/progress.routes");
+const adminRoutes = require("./routes/admin.routes");
+const reportRoutes = require("./routes/report.routes");
 
 const errorMiddleware = require("./middlewares/error.middleware");
 const { errorResponse } = require("./utils/response");
@@ -41,7 +43,7 @@ app.use(
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
-  })
+  }),
 );
 app.use(express.json());
 
@@ -81,6 +83,8 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/roadmaps", roadmapRoutes);
 app.use("/api/progress", progressRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/reports", reportRoutes);
 app.use(
   "/api/swagger",
   swaggerUi.serve,
@@ -89,7 +93,7 @@ app.use(
       operationsSorter: "alpha",
       tagsSorter: "alpha",
     },
-  })
+  }),
 );
 
 app.use((req, res) => {

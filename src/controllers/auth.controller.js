@@ -19,6 +19,48 @@ const login = async (req, res, next) => {
   }
 };
 
+const loginWithGoogle = async (req, res, next) => {
+  try {
+    const result = await authService.loginWithGoogle(req.body);
+    return res.status(result.statusCode).json({
+      success: true,
+      message: result.message,
+      data: result.data,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+        data: null,
+      });
+    }
+
+    return next(error);
+  }
+};
+
+const loginWithGithub = async (req, res, next) => {
+  try {
+    const result = await authService.loginWithGithub(req.body);
+    return res.status(result.statusCode).json({
+      success: true,
+      message: result.message,
+      data: result.data,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+        data: null,
+      });
+    }
+
+    return next(error);
+  }
+};
+
 const getMe = async (req, res, next) => {
   try {
     const result = await authService.getCurrentUser(req.user);
@@ -50,6 +92,8 @@ module.exports = {
   changePassword,
   register,
   login,
+  loginWithGoogle,
+  loginWithGithub,
   getMe,
   logout,
 };

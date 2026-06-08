@@ -1,13 +1,13 @@
-const express = require('express');
+const express = require("express");
 
-const authController = require('../controllers/auth.controller');
-const authMiddleware = require('../middlewares/auth.middleware');
-const validate = require('../middlewares/validate.middleware');
+const authController = require("../controllers/auth.controller");
+const authMiddleware = require("../middlewares/auth.middleware");
+const validate = require("../middlewares/validate.middleware");
 const {
   validateChangePasswordBody,
   validateRegisterBody,
   validateLoginBody,
-} = require('../validators/auth.validator');
+} = require("../validators/auth.validator");
 
 const router = express.Router();
 
@@ -53,7 +53,11 @@ const router = express.Router();
  *       409:
  *         description: Email already exists
  */
-router.post('/register', validate(validateRegisterBody), authController.register);
+router.post(
+  "/register",
+  validate(validateRegisterBody),
+  authController.register,
+);
 
 /**
  * @swagger
@@ -86,7 +90,126 @@ router.post('/register', validate(validateRegisterBody), authController.register
  *       401:
  *         description: Invalid email or password
  */
-router.post('/login', validate(validateLoginBody), authController.login);
+router.post("/login", validate(validateLoginBody), authController.login);
+
+/**
+ * @swagger
+ * /api/auth/google:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Login with Google ID token
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - idToken
+ *             properties:
+ *               idToken:
+ *                 type: string
+ *                 example: google_id_token
+ *     responses:
+ *       200:
+ *         description: Login with Google successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Login with Google successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     accessToken:
+ *                       type: string
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         avatar:
+ *                           type: string
+ *                         provider:
+ *                           type: string
+ *                           example: google
+ *       400:
+ *         description: idToken is required
+ *       401:
+ *         description: Invalid Google token
+ */
+router.post("/google", authController.loginWithGoogle);
+
+/**
+ * @swagger
+ * /api/auth/github:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Login with GitHub access token
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - accessToken
+ *             properties:
+ *               accessToken:
+ *                 type: string
+ *                 example: github_access_token
+ *     responses:
+ *       200:
+ *         description: Login with GitHub successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Login with GitHub successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     accessToken:
+ *                       type: string
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                           nullable: true
+ *                         avatar:
+ *                           type: string
+ *                         provider:
+ *                           type: string
+ *                           example: github
+ *       400:
+ *         description: accessToken is required
+ *       401:
+ *         description: Invalid GitHub token
+ */
+router.post("/github", authController.loginWithGithub);
 
 /**
  * @swagger
@@ -102,7 +225,7 @@ router.post('/login', validate(validateLoginBody), authController.login);
  *       401:
  *         description: Unauthorized
  */
-router.post('/logout', authMiddleware, authController.logout);
+router.post("/logout", authMiddleware, authController.logout);
 
 /**
  * @swagger
@@ -142,7 +265,12 @@ router.post('/logout', authMiddleware, authController.logout);
  *       404:
  *         description: User not found
  */
-router.post('/change-password', authMiddleware, validate(validateChangePasswordBody), authController.changePassword);
+router.post(
+  "/change-password",
+  authMiddleware,
+  validate(validateChangePasswordBody),
+  authController.changePassword,
+);
 
 /**
  * @swagger
@@ -160,6 +288,6 @@ router.post('/change-password', authMiddleware, validate(validateChangePasswordB
  *       404:
  *         description: User not found
  */
-router.get('/me', authMiddleware, authController.getMe);
+router.get("/me", authMiddleware, authController.getMe);
 
 module.exports = router;
