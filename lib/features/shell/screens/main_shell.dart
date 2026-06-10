@@ -27,7 +27,6 @@ class _MainShellState extends ConsumerState<MainShell> {
   static const _secondaryItems = [
     _MenuItem(path: '/roadmaps', label: 'Lộ trình', icon: Icons.route_outlined),
     _MenuItem(path: '/settings', label: 'Cài đặt', icon: Icons.settings_outlined),
-    _MenuItem(path: '/dashboard', label: 'Tổng quan', icon: Icons.dashboard_outlined),
     _MenuItem(path: '/home', label: 'Giới thiệu', icon: Icons.info_outline),
     _MenuItem(path: '/progress', label: 'Tiến độ', icon: Icons.trending_up),
     _MenuItem(path: '/github/connect', label: 'GitHub', icon: Icons.code),
@@ -175,6 +174,21 @@ class _MainShellState extends ConsumerState<MainShell> {
             ),
           ),
           actions: [
+            if (user?.isAdmin == true)
+              _ShellActionButton(
+                tooltip: 'Admin Console',
+                active: false,
+                onPressed: () => _navigateTo('/admin'),
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF312E81).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.admin_panel_settings_outlined, size: 18, color: Color(0xFF312E81)),
+                ),
+              ),
             _ShellActionButton(
               tooltip: 'Hồ sơ',
               active: _routeActive('/profile'),

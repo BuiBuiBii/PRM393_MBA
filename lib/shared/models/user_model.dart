@@ -86,4 +86,6 @@ class UserModel {
       role: role ?? other.role,
     );
   }
+
+  bool get isAdmin => role == 'admin';
 }
