@@ -2,6 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/admin/screens/admin_access_denied_screen.dart';
+import '../../features/admin/screens/admin_ai_feedback_screen.dart';
+import '../../features/admin/screens/admin_analysis_screen.dart';
+import '../../features/admin/screens/admin_dashboard_screen.dart';
+import '../../features/admin/screens/admin_report_detail_screen.dart';
+import '../../features/admin/screens/admin_reports_screen.dart';
+import '../../features/admin/screens/admin_repositories_screen.dart';
+import '../../features/admin/screens/admin_roadmaps_screen.dart';
+import '../../features/admin/screens/admin_shell.dart';
+import '../../features/admin/screens/admin_user_detail_screen.dart';
+import '../../features/admin/screens/admin_users_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/analysis/screens/analysis_result_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
@@ -35,10 +46,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuthenticated = auth.isAuthenticated;
       final loc = state.matchedLocation;
       final isAuthRoute = loc == '/login' || loc == '/register';
+      final isGitHubCallback =
+          loc.startsWith('/github/oauth/callback') || loc.startsWith('/github/callback');
+      final isPublicRoute = isAuthRoute || isGitHubCallback;
+      final isAdminRoute = loc.startsWith('/admin');
+      final isAdminDenied = loc == '/admin/denied';
+      final isAdmin = auth.user?.isAdmin == true;
 
       if (isBootstrapping) return null;
-      if (!isAuthenticated && !isAuthRoute) return '/login';
+      if (!isAuthenticated && !isPublicRoute) return '/login';
       if (isAuthenticated && isAuthRoute) return '/dashboard';
+      if (isAdminRoute && !isAdminDenied && isAuthenticated && !isAdmin) return '/admin/denied';
       return null;
     },
     routes: [
@@ -46,6 +64,27 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(path: '/github/oauth/callback', builder: (_, __) => const GitHubCallbackScreen()),
       GoRoute(path: '/github/callback', builder: (_, __) => const GitHubCallbackScreen()),
+      GoRoute(path: '/admin/denied', builder: (_, __) => const AdminAccessDeniedScreen()),
+      ShellRoute(
+        builder: (_, __, child) => AdminShell(child: child),
+        routes: [
+          GoRoute(path: '/admin', builder: (_, __) => const AdminDashboardScreen()),
+          GoRoute(path: '/admin/users', builder: (_, __) => const AdminUsersScreen()),
+          GoRoute(
+            path: '/admin/users/:userId',
+            builder: (_, state) => AdminUserDetailScreen(userId: state.pathParameters['userId']!),
+          ),
+          GoRoute(path: '/admin/reports', builder: (_, __) => const AdminReportsScreen()),
+          GoRoute(
+            path: '/admin/reports/:reportId',
+            builder: (_, state) => AdminReportDetailScreen(reportId: state.pathParameters['reportId']!),
+          ),
+          GoRoute(path: '/admin/repositories', builder: (_, __) => const AdminRepositoriesScreen()),
+          GoRoute(path: '/admin/analysis', builder: (_, __) => const AdminAnalysisScreen()),
+          GoRoute(path: '/admin/ai-feedback', builder: (_, __) => const AdminAiFeedbackScreen()),
+          GoRoute(path: '/admin/roadmaps', builder: (_, __) => const AdminRoadmapsScreen()),
+        ],
+      ),
       ShellRoute(
         builder: (_, __, child) => MainShell(child: child),
         routes: [
