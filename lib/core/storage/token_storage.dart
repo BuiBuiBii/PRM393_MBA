@@ -6,6 +6,7 @@ import '../config/app_config.dart';
 
 abstract class TokenStorageReader {
   Future<String?> getToken();
+  Future<Map<String, dynamic>?> getUser();
   Future<void> saveToken(String token);
   Future<void> saveUser(Map<String, dynamic> user);
   Future<void> clear();

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../auth/providers/auth_provider.dart';
+import '../../../core/theme/theme_provider.dart';
 import '../../../shared/widgets/app_image_assets.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
@@ -30,6 +31,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
+    final themeMode = ref.watch(themeModeProvider);
     final user = auth.user;
 
     return ListView(
@@ -37,7 +39,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       children: [
         const PageHeader(
           title: 'Cài đặt',
-          subtitle: 'Bảo mật tài khoản và các tùy chọn ứng dụng.',
+          subtitle: 'Bảo mật tài khoản, giao diện và các tùy chọn ứng dụng.',
         ),
         if (auth.error != null) ...[const SizedBox(height: 12), BannerMessage(message: auth.error!, isError: true)],
         if (_success != null) ...[const SizedBox(height: 12), BannerMessage(message: _success!)],
@@ -53,11 +55,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(user?.name ?? 'Người dùng', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                    const Text('Xem và chỉnh sửa hồ sơ', style: TextStyle(color: AppColors.slate500, fontSize: 13)),
+                    const Text('Xem và chỉnh sửa hồ sơ sinh viên', style: TextStyle(color: AppColors.slate500, fontSize: 13)),
                   ],
                 ),
               ),
               const Icon(Icons.chevron_right, color: AppColors.slate500),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.palette_outlined, size: 18),
+                  SizedBox(width: 8),
+                  Text('Giao diện', style: TextStyle(fontWeight: FontWeight.w600)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: PrimaryButton(
+                      label: 'Light',
+                      outlined: themeMode != ThemeMode.light,
+                      onPressed: () => ref.read(themeModeProvider.notifier).setTheme(ThemeMode.light),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: PrimaryButton(
+                      label: 'Dark',
+                      outlined: themeMode != ThemeMode.dark,
+                      onPressed: () => ref.read(themeModeProvider.notifier).setTheme(ThemeMode.dark),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/auth/social_auth_service.dart';
 import '../../../core/network/app_api.dart';
 import '../../../core/network/api_utils.dart';
 import '../../../core/network/dio_client.dart';
@@ -146,6 +147,41 @@ class AuthNotifier extends Notifier<AuthState> {
         isLoading: false,
         error: getApiErrorMessage(error),
       );
+      rethrow;
+    }
+  }
+
+  Future<void> loginWithGoogle() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      if (AppConfig.demoMode) {
+        throw ApiException('Demo mode không hỗ trợ đăng nhập Google.');
+      }
+      final social = ref.read(socialAuthServiceProvider);
+      final idToken = await social.signInWithGoogle();
+      final user = await safeRequest(() => _repository.loginWithGoogle(idToken));
+      state = AuthState(status: AuthStatus.authenticated, user: user, isLoading: false);
+    } catch (error) {
+      state = state.copyWith(isLoading: false, error: getApiErrorMessage(error));
+      rethrow;
+    }
+  }
+
+  Future<void> loginWithGithub() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      if (AppConfig.demoMode) {
+        throw ApiException('Demo mode không hỗ trợ đăng nhập GitHub.');
+      }
+      final social = ref.read(socialAuthServiceProvider);
+      final accessToken = await social.signInWithGithub();
+      final user = await safeRequest(() => _repository.loginWithGithub(accessToken));
+      state = AuthState(status: AuthStatus.authenticated, user: user, isLoading: false);
+      if (user.provider == 'github' || user.githubConnected) {
+        await refreshGitHubAccount();
+      }
+    } catch (error) {
+      state = state.copyWith(isLoading: false, error: getApiErrorMessage(error));
       rethrow;
     }
   }
@@ -307,6 +343,8 @@ class AuthNotifier extends Notifier<AuthState> {
 final authApiProvider = Provider<AuthApi>((ref) {
   return AuthApi(ref.watch(dioProvider));
 });
+
+final socialAuthServiceProvider = Provider<SocialAuthService>((ref) => SocialAuthService());
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final storage = ref.watch(tokenStorageProvider);

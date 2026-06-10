@@ -394,6 +394,7 @@ class RoadmapModel {
     required this.progress,
     required this.modules,
     required this.careerOutcome,
+    this.status = 'active',
   });
 
   final String id;
@@ -411,6 +412,9 @@ class RoadmapModel {
   final int progress;
   final List<RoadmapModuleModel> modules;
   final String careerOutcome;
+  final String status;
+
+  bool get isArchived => status == 'archived';
 }
 
 class SkillProgressModel {

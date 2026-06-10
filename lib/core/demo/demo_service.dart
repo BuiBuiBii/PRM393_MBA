@@ -1,5 +1,6 @@
 import '../../shared/models/app_models.dart';
 import '../../shared/models/user_model.dart';
+import '../network/normalizers.dart';
 import 'demo_data.dart';
 
 class DemoService {
@@ -100,7 +101,7 @@ class DemoService {
 
   Future<Map<String, dynamic>> dashboardMe() async {
     await _delay();
-    return DemoData.dashboardPayload();
+    return normalizeDashboard(DemoData.dashboardPayload());
   }
 
   Future<List<RepositoryModel>> getRepositories() async {

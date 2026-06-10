@@ -26,6 +26,18 @@ List<Map<String, dynamic>> asMapList(dynamic payload, [List<String> keys = const
   return [];
 }
 
+List<dynamic> normalizeRepoPayloadList(dynamic payload) {
+  final unwrapped = unwrapResponse<dynamic>(payload);
+  if (unwrapped is List) return unwrapped;
+  if (unwrapped is Map) {
+    for (final key in ['files', 'packages', 'commits', 'items', 'data']) {
+      final value = unwrapped[key];
+      if (value is List) return List<dynamic>.from(value);
+    }
+  }
+  return asMapList(payload, ['files', 'packages', 'commits', 'items']);
+}
+
 List<RepositoryModel> normalizeRepositories(dynamic payload) {
   return asMapList(payload, ['repositories', 'items']).map(RepositoryModel.fromJson).toList();
 }
@@ -68,6 +80,45 @@ List<NotificationModel> normalizeNotifications(dynamic payload) {
 ProfileModel normalizeProfile(dynamic payload) {
   final map = extractApiResource<Map<String, dynamic>>(payload, ['profile', 'studentProfile']);
   return ProfileModel.fromJson(toRecord(map.isNotEmpty ? map : payload));
+}
+
+/// Chuẩn hóa payload `/dashboard/me` — hỗ trợ cả format cũ (flat) và mới (nested).
+Map<String, dynamic> normalizeDashboard(dynamic payload) {
+  final map = toRecord(unwrapResponse<dynamic>(payload));
+  final github = map['github'];
+  final repositories = map['repositories'];
+  final skills = map['skills'];
+
+  final githubMap = github is Map ? Map<String, dynamic>.from(github) : null;
+  final repoMap = repositories is Map ? Map<String, dynamic>.from(repositories) : null;
+  final skillsMap = skills is Map ? Map<String, dynamic>.from(skills) : null;
+
+  return {
+    ...map,
+    'totalRepositories': map['totalRepositories'] ??
+        map['repositoryCount'] ??
+        repoMap?['total'],
+    'analyzedRepositories': map['analyzedRepositories'] ??
+        map['analysisCount'] ??
+        repoMap?['analyzed'],
+    'unanalyzedRepositories': map['unanalyzedRepositories'] ?? repoMap?['unanalyzed'],
+    'githubConnected': map['githubConnected'] ?? githubMap?['connected'] ?? false,
+    'githubUsername': map['githubUsername'] ?? githubMap?['username'],
+    'strongSkills': map['strongSkills'] ?? skillsMap?['strong'] ?? const [],
+    'missingSkills': map['missingSkills'] ?? skillsMap?['missing'] ?? const [],
+    'suggestedCareerPath': map['suggestedCareerPath'],
+    'roadmapProgress': map['roadmapProgress'] ?? 0,
+    'latestAnalysisAt': map['latestAnalysisAt'],
+  };
+}
+
+Map<String, dynamic> normalizeApiHealth(dynamic payload) {
+  final map = toRecord(unwrapResponse<dynamic>(payload));
+  return {
+    ...map,
+    'status': map['status'] ?? 'unknown',
+    'environment': map['environment'],
+  };
 }
 
 String mapRoadmapTaskStatus(String? status) {
@@ -183,6 +234,7 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
     progress: progress,
     modules: modules,
     careerOutcome: targetRole,
+    status: (map['status'] ?? 'active').toString(),
   );
 }
 

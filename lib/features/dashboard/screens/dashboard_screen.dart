@@ -32,10 +32,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final dashboard = ref.watch(dashboardProvider);
     final repoState = ref.watch(repositoryProvider);
     final payload = dashboard.payload ?? {};
-    final totalRepos = payload['totalRepositories'] ?? payload['repositoryCount'] ?? repoState.repositories.length;
-    final analyzed = payload['analyzedRepositories'] ?? payload['analysisCount'] ?? repoState.analyses.length;
-    final githubConnected = payload['githubConnected'] ?? user?.githubConnected ?? false;
+    final totalRepos = payload['totalRepositories'] ?? repoState.repositories.length;
+    final analyzed = payload['analyzedRepositories'] ?? repoState.analyses.length;
+    final githubConnected = payload['githubConnected'] == true || user?.githubConnected == true;
     final overall = payload['overallScore'] ?? (repoState.analyses.isNotEmpty ? repoState.analyses.first.scores.overall : 0);
+    final strongSkills = (payload['strongSkills'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
+    final missingSkills = (payload['missingSkills'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
+    final suggestedCareer = payload['suggestedCareerPath']?.toString();
 
     return ListView(
       padding: appScreenPadding(context),
@@ -90,6 +93,50 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
         const SizedBox(height: 16),
+        if (suggestedCareer != null && suggestedCareer.isNotEmpty) ...[
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Định hướng nghề nghiệp', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Text(suggestedCareer, style: const TextStyle(color: AppColors.slate600, height: 1.45)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (strongSkills.isNotEmpty || missingSkills.isNotEmpty) ...[
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Kỹ năng (từ phân tích mới nhất)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                if (strongSkills.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const Text('Điểm mạnh', style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.emerald)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: strongSkills.take(8).map((s) => AppBadge(label: s, variant: AppBadgeVariant.success)).toList(),
+                  ),
+                ],
+                if (missingSkills.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const Text('Cần cải thiện', style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.amber)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: missingSkills.take(8).map((s) => AppBadge(label: s, variant: AppBadgeVariant.warning)).toList(),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
         AppCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

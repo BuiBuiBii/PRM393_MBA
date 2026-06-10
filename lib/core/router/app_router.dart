@@ -8,6 +8,7 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/chat/screens/chat_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
+import '../../features/github/screens/github_callback_screen.dart';
 import '../../features/github/screens/github_connect_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/misc/screens/not_found_screen.dart';
@@ -21,9 +22,6 @@ import '../../features/settings/screens/settings_screen.dart';
 import '../../features/shell/screens/main_shell.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  // Chỉ tạo lại router khi trạng thái đăng nhập đổi — không rebuild khi profile/loading thay đổi.
-  ref.watch(authProvider.select((s) => s.status));
-
   final refresh = _AuthRefreshListenable(ref);
   ref.onDispose(refresh.dispose);
 
@@ -46,6 +44,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
+      GoRoute(path: '/github/oauth/callback', builder: (_, __) => const GitHubCallbackScreen()),
+      GoRoute(path: '/github/callback', builder: (_, __) => const GitHubCallbackScreen()),
       ShellRoute(
         builder: (_, __, child) => MainShell(child: child),
         routes: [
@@ -86,14 +86,21 @@ final routerProvider = Provider<GoRouter>((ref) {
 
 class _AuthRefreshListenable extends ChangeNotifier {
   _AuthRefreshListenable(this.ref) {
-    _subscription = ref.listen<AuthState>(authProvider, (_, __) => notifyListeners());
+    _subscription = ref.listen<AuthState>(authProvider, (_, __) => _notifyAuthChanged());
   }
 
   final Ref ref;
   late final ProviderSubscription<AuthState> _subscription;
+  var _disposed = false;
+
+  void _notifyAuthChanged() {
+    if (_disposed) return;
+    notifyListeners();
+  }
 
   @override
   void dispose() {
+    _disposed = true;
     _subscription.close();
     super.dispose();
   }

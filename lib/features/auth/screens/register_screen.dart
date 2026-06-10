@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../shared/widgets/app_image_assets.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../../shared/widgets/auth_layout.dart';
@@ -69,6 +70,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             _passwordController.text,
             _nameController.text.trim(),
           );
+      if (mounted) context.go('/dashboard');
+    } catch (_) {}
+  }
+
+  Future<void> _submitGoogle() async {
+    if (!AppConfig.isGoogleLoginConfigured) {
+      setState(() => _oauthNotice = 'Chưa cấu hình GOOGLE_CLIENT_ID.');
+      return;
+    }
+    setState(() => _oauthNotice = '');
+    try {
+      await ref.read(authProvider.notifier).loginWithGoogle();
+      if (mounted) context.go('/dashboard');
+    } catch (_) {}
+  }
+
+  Future<void> _submitGithub() async {
+    if (!AppConfig.isGithubLoginConfigured) {
+      setState(() {
+        _oauthNotice =
+            'Chưa cấu hình GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET cho đăng nhập GitHub.';
+      });
+      return;
+    }
+    setState(() => _oauthNotice = '');
+    try {
+      await ref.read(authProvider.notifier).loginWithGithub();
       if (mounted) context.go('/dashboard');
     } catch (_) {}
   }
@@ -216,11 +244,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           child: PrimaryButton(
                             label: 'GitHub',
                             outlined: true,
+                            loading: auth.isLoading,
                             leading: const AppSvgIcon(asset: AppAssets.githubIcon, size: 18),
-                            onPressed: () => setState(() {
-                              _oauthNotice =
-                                  'Backend hiện tại chưa hỗ trợ đăng ký/đăng nhập bằng GitHub. Hãy tạo tài khoản bằng email trước, sau đó kết nối GitHub trong app.';
-                            }),
+                            onPressed: auth.isLoading ? null : _submitGithub,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -228,10 +254,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           child: PrimaryButton(
                             label: 'Google',
                             outlined: true,
+                            loading: auth.isLoading,
                             leading: const AppSvgIcon(asset: AppAssets.googleIcon, size: 18),
-                            onPressed: () => setState(() {
-                              _oauthNotice = 'Backend hiện tại chưa có endpoint đăng ký bằng Google.';
-                            }),
+                            onPressed: auth.isLoading ? null : _submitGoogle,
                           ),
                         ),
                       ],

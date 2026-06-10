@@ -28,4 +28,22 @@ class AppConfig {
 
   static const String demoEmail = 'demo@gitanalyzer.vn';
   static const String demoPassword = 'demo123';
+
+  /// Khớp BE GOOGLE_CLIENT_ID — dùng cho Google Sign-In (idToken).
+  static const String googleClientId = String.fromEnvironment(
+    'GOOGLE_CLIENT_ID',
+    defaultValue: '970437677508-k1jc855q10hnl3sktcop9job68hgkd0r.apps.googleusercontent.com',
+  );
+
+  /// GitHub OAuth App — cần cho nút đăng nhập GitHub (khác OAuth kết nối repo trên BE).
+  static const String githubClientId = String.fromEnvironment('GITHUB_CLIENT_ID');
+  static const String githubClientSecret = String.fromEnvironment('GITHUB_CLIENT_SECRET');
+  static const String githubAuthRedirectUri = String.fromEnvironment(
+    'GITHUB_AUTH_REDIRECT_URI',
+    defaultValue: 'gitanalyzer://github/auth/callback',
+  );
+
+  static bool get isGoogleLoginConfigured => googleClientId.isNotEmpty;
+  static bool get isGithubLoginConfigured =>
+      githubClientId.isNotEmpty && githubClientSecret.isNotEmpty;
 }

@@ -266,11 +266,18 @@ class DemoData {
   ];
 
   static Map<String, dynamic> dashboardPayload() => {
+        'user': {'name': demoUser.name, 'email': demoUser.email},
+        'github': {'connected': true, 'username': 'alexjohnson'},
+        'repositories': {'total': 5, 'analyzed': 2, 'unanalyzed': 3},
+        'skills': {
+          'strong': ['JavaScript', 'React', 'Node.js'],
+          'missing': ['Testing', 'Docker'],
+        },
+        'suggestedCareerPath': 'Fullstack Developer',
+        'roadmapProgress': 35,
         'totalRepositories': 5,
         'analyzedRepositories': 2,
         'githubConnected': true,
         'overallScore': 82,
-        'repositoryCount': 5,
-        'analysisCount': 2,
       };
 }

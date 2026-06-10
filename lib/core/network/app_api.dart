@@ -11,7 +11,12 @@ class AppApi {
 
   Future<Map<String, dynamic>> dashboardMe() async {
     final res = await _dio.get('/dashboard/me');
-    return Map<String, dynamic>.from(unwrapResponse(res.data) as Map? ?? {});
+    return normalizeDashboard(res.data);
+  }
+
+  Future<Map<String, dynamic>> checkServerHealth() async {
+    final res = await _dio.get('/health');
+    return normalizeApiHealth(res.data);
   }
 
   Future<List<RepositoryModel>> getCachedRepositories() async {
@@ -29,17 +34,33 @@ class AppApi {
     return normalizeRepository(res.data);
   }
 
-  Future<void> fetchRepositoryPackages(String id) async {
-    await _dio.get('/github/repositories/$id/packages');
+  Future<List<dynamic>> getCachedPackages(String id) async {
+    final res = await _dio.get('/github/repositories/$id/packages/cached');
+    return normalizeRepoPayloadList(res.data);
   }
 
-  Future<void> fetchRepositoryCommits(String id) async {
-    await _dio.get('/github/repositories/$id/commits');
+  Future<List<dynamic>> syncPackages(String id) async {
+    final res = await _dio.get('/github/repositories/$id/packages');
+    return normalizeRepoPayloadList(res.data);
+  }
+
+  Future<List<dynamic>> getCachedCommits(String id) async {
+    final res = await _dio.get('/github/repositories/$id/commits/cached');
+    return normalizeRepoPayloadList(res.data);
+  }
+
+  Future<List<dynamic>> syncCommits(String id) async {
+    final res = await _dio.get('/github/repositories/$id/commits');
+    return normalizeRepoPayloadList(res.data);
+  }
+
+  Future<void> completeGitHubOAuthCallback(Map<String, String> queryParams) async {
+    await _dio.get('/github/oauth/callback', queryParameters: queryParams);
   }
 
   Future<AnalysisModel> analyzeRepository(String id) async {
-    await fetchRepositoryPackages(id);
-    await fetchRepositoryCommits(id);
+    await syncPackages(id);
+    await syncCommits(id);
     final res = await _dio.post('/analysis/repositories/$id');
     return normalizeAnalysis(res.data);
   }
@@ -181,5 +202,24 @@ class AppApi {
   Future<Map<String, dynamic>> getMyProgress() async {
     final res = await _dio.get('/progress/me');
     return Map<String, dynamic>.from(unwrapResponse(res.data) as Map? ?? {});
+  }
+
+  Future<Map<String, dynamic>> getAiHealth() async {
+    final res = await _dio.get('/ai/health');
+    return Map<String, dynamic>.from(unwrapResponse(res.data) as Map? ?? {});
+  }
+
+  Future<void> submitReport({
+    required String reason,
+    String? targetType,
+    String? targetId,
+    String? description,
+  }) async {
+    await _dio.post('/reports', data: {
+      'reason': reason,
+      if (targetType != null && targetType.isNotEmpty) 'targetType': targetType,
+      if (targetId != null && targetId.isNotEmpty) 'targetId': targetId,
+      if (description != null && description.isNotEmpty) 'description': description,
+    });
   }
 }

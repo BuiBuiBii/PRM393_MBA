@@ -5,16 +5,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app_providers.dart';
 import '../../roadmaps/data/roadmap_mock_data.dart';
 import '../../../shared/widgets/app_widgets.dart';
+import '../../../shared/widgets/roadmap_widgets.dart';
 
-class ProgressScreen extends ConsumerWidget {
+class ProgressScreen extends ConsumerStatefulWidget {
   const ProgressScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProgressScreen> createState() => _ProgressScreenState();
+}
+
+class _ProgressScreenState extends ConsumerState<ProgressScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => ref.read(roadmapProvider.notifier).loadRoadmaps());
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final roadmap = ref.watch(roadmapProvider);
     final stats = roadmap.learningStats ?? mockLearningStats;
     final skills = roadmap.skillProgress.isNotEmpty ? roadmap.skillProgress : mockSkillProgress;
     final compact = isCompactPhone(context);
+    final growth = stats.totalNodes == 0 ? 0 : ((stats.completedNodes / stats.totalNodes) * 100).round();
 
     return ListView(
       padding: appScreenPadding(context),
@@ -31,86 +44,45 @@ class ProgressScreen extends ConsumerWidget {
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
           childAspectRatio: compact ? 1.1 : 1.25,
-          children: const [
+          children: [
             StatCard(
-              label: 'Tăng trưởng',
-              value: '+27%',
+              label: 'Hoàn thành',
+              value: '$growth%',
               icon: Icons.trending_up,
               iconColor: AppColors.emerald,
-              iconBg: Color(0xFFD1FAE5),
-              subtitle: 'So với tháng trước',
+              iconBg: const Color(0xFFD1FAE5),
+              subtitle: 'Tiến độ roadmap',
             ),
             StatCard(
               label: 'Mục tiêu',
-              value: '12/15',
+              value: '${stats.completedNodes}/${stats.totalNodes}',
               icon: Icons.flag,
               iconColor: AppColors.primary,
-              iconBg: Color(0xFFE0E7FF),
-              subtitle: 'Tỷ lệ 80%',
+              iconBg: const Color(0xFFE0E7FF),
+              subtitle: 'Node hoàn thành',
             ),
             StatCard(
-              label: 'Kỹ năng cải thiện',
-              value: '8',
+              label: 'Roadmap active',
+              value: '${stats.activeRoadmapIds.length}',
               icon: Icons.emoji_events,
               iconColor: AppColors.purple,
-              iconBg: Color(0xFFEDE9FE),
-              subtitle: 'Trong quý này',
+              iconBg: const Color(0xFFEDE9FE),
+              subtitle: 'Lộ trình đang học',
             ),
             StatCard(
-              label: 'Giờ học',
-              value: '124',
+              label: 'Giờ học tuần',
+              value: '${stats.weeklyHoursCompleted}',
               icon: Icons.menu_book,
               iconColor: AppColors.cyan,
-              iconBg: Color(0xFFCFFAFE),
-              subtitle: '30 ngày gần nhất',
+              iconBg: const Color(0xFFCFFAFE),
+              subtitle: 'Mục tiêu ${stats.weeklyGoalHours}h',
             ),
           ],
         ),
         const SizedBox(height: 16),
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Tổng quan học tập', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 12),
-              _row('Level', '${stats.level}'),
-              _row('XP', '${stats.totalXp}'),
-              _row('Chuỗi ngày', '${stats.currentStreak}'),
-              _row('Node hoàn thành', '${stats.completedNodes}/${stats.totalNodes}'),
-              const SizedBox(height: 8),
-              LinearProgressIndicator(
-                value: stats.weeklyHoursCompleted / stats.weeklyGoalHours,
-                color: AppColors.primary,
-              ),
-              Text('Mục tiêu tuần: ${stats.weeklyHoursCompleted}/${stats.weeklyGoalHours} giờ'),
-            ],
-          ),
-        ),
+        XPCardWidget(stats: stats),
         const SizedBox(height: 16),
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Radar kỹ năng', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 12),
-              ...skills.map(
-                (s) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [Text(s.skill), Text('${s.current}/${s.target}')],
-                      ),
-                      LinearProgressIndicator(value: s.current / s.target, color: AppColors.primary),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        SkillRadarChartWidget(skills: skills),
         const SizedBox(height: 16),
         AppCard(
           child: SizedBox(
@@ -152,12 +124,4 @@ class ProgressScreen extends ConsumerWidget {
       ],
     );
   }
-
-  Widget _row(String k, String v) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [Text(k), Text(v, style: const TextStyle(fontWeight: FontWeight.w600))],
-        ),
-      );
 }
