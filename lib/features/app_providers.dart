@@ -15,20 +15,28 @@ class RepositoryState {
     this.repositories = const [],
     this.analyses = const [],
     this.aiFeedbacks = const {},
+    this.packagesByRepoId = const {},
+    this.commitsByRepoId = const {},
     this.selected,
     this.isLoading = false,
     this.analyzingRepoId,
     this.generatingFeedbackRepoId,
+    this.loadingPackagesFor,
+    this.loadingCommitsFor,
     this.error,
   });
 
   final List<RepositoryModel> repositories;
   final List<AnalysisModel> analyses;
   final Map<String, AiFeedbackModel> aiFeedbacks;
+  final Map<String, List<dynamic>> packagesByRepoId;
+  final Map<String, List<dynamic>> commitsByRepoId;
   final RepositoryModel? selected;
   final bool isLoading;
   final String? analyzingRepoId;
   final String? generatingFeedbackRepoId;
+  final String? loadingPackagesFor;
+  final String? loadingCommitsFor;
   final String? error;
 
   bool isAnalyzingRepo(String id) => analyzingRepoId == id;
@@ -39,16 +47,26 @@ class RepositoryState {
 
   AiFeedbackModel? feedbackFor(String repoId) => aiFeedbacks[repoId];
 
+  List<dynamic> packagesFor(String repoId) => packagesByRepoId[repoId] ?? const [];
+
+  List<dynamic> commitsFor(String repoId) => commitsByRepoId[repoId] ?? const [];
+
   RepositoryState copyWith({
     List<RepositoryModel>? repositories,
     List<AnalysisModel>? analyses,
     Map<String, AiFeedbackModel>? aiFeedbacks,
+    Map<String, List<dynamic>>? packagesByRepoId,
+    Map<String, List<dynamic>>? commitsByRepoId,
     RepositoryModel? selected,
     bool? isLoading,
     String? analyzingRepoId,
     bool clearAnalyzingRepoId = false,
     String? generatingFeedbackRepoId,
     bool clearGeneratingFeedbackRepoId = false,
+    String? loadingPackagesFor,
+    bool clearLoadingPackagesFor = false,
+    String? loadingCommitsFor,
+    bool clearLoadingCommitsFor = false,
     String? error,
     bool clearError = false,
   }) {
@@ -56,11 +74,15 @@ class RepositoryState {
       repositories: repositories ?? this.repositories,
       analyses: analyses ?? this.analyses,
       aiFeedbacks: aiFeedbacks ?? this.aiFeedbacks,
+      packagesByRepoId: packagesByRepoId ?? this.packagesByRepoId,
+      commitsByRepoId: commitsByRepoId ?? this.commitsByRepoId,
       selected: selected ?? this.selected,
       isLoading: isLoading ?? this.isLoading,
       analyzingRepoId: clearAnalyzingRepoId ? null : (analyzingRepoId ?? this.analyzingRepoId),
       generatingFeedbackRepoId:
           clearGeneratingFeedbackRepoId ? null : (generatingFeedbackRepoId ?? this.generatingFeedbackRepoId),
+      loadingPackagesFor: clearLoadingPackagesFor ? null : (loadingPackagesFor ?? this.loadingPackagesFor),
+      loadingCommitsFor: clearLoadingCommitsFor ? null : (loadingCommitsFor ?? this.loadingCommitsFor),
       error: clearError ? null : (error ?? this.error),
     );
   }
@@ -205,6 +227,40 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
     } catch (e) {
       state = state.copyWith(clearGeneratingFeedbackRepoId: true, error: getApiErrorMessage(e));
       rethrow;
+    }
+  }
+
+  Future<void> fetchPackages(String id, {bool sync = false}) async {
+    state = state.copyWith(loadingPackagesFor: id, clearError: true);
+    try {
+      final items = AppConfig.demoMode
+          ? const [
+              {'fileName': 'package.json', 'content': '{"name":"demo-app","dependencies":{"express":"^4"}}'},
+            ]
+          : await safeRequest(() => sync ? _api.syncPackages(id) : _api.getCachedPackages(id));
+      state = state.copyWith(
+        clearLoadingPackagesFor: true,
+        packagesByRepoId: {...state.packagesByRepoId, id: items},
+      );
+    } catch (e) {
+      state = state.copyWith(clearLoadingPackagesFor: true, error: getApiErrorMessage(e));
+    }
+  }
+
+  Future<void> fetchCommits(String id, {bool sync = false}) async {
+    state = state.copyWith(loadingCommitsFor: id, clearError: true);
+    try {
+      final items = AppConfig.demoMode
+          ? const [
+              {'message': 'feat: initial commit', 'author': 'demo', 'date': '2026-01-01'},
+            ]
+          : await safeRequest(() => sync ? _api.syncCommits(id) : _api.getCachedCommits(id));
+      state = state.copyWith(
+        clearLoadingCommitsFor: true,
+        commitsByRepoId: {...state.commitsByRepoId, id: items},
+      );
+    } catch (e) {
+      state = state.copyWith(clearLoadingCommitsFor: true, error: getApiErrorMessage(e));
     }
   }
 }
@@ -376,9 +432,11 @@ class RoadmapState {
     this.aiRecommendation,
     this.skillProgress = const [],
     this.learningStats,
+    this.bookmarkedNodeIds = const {},
     this.filters = const RoadmapFilters(),
     this.isLoading = false,
     this.isGenerating = false,
+    this.isArchiving = false,
     this.error,
     this.selectedTargetRole = 'Backend Developer',
   });
@@ -387,9 +445,11 @@ class RoadmapState {
   final AIRecommendationModel? aiRecommendation;
   final List<SkillProgressModel> skillProgress;
   final LearningStatsModel? learningStats;
+  final Set<String> bookmarkedNodeIds;
   final RoadmapFilters filters;
   final bool isLoading;
   final bool isGenerating;
+  final bool isArchiving;
   final String? error;
   final String selectedTargetRole;
 
@@ -398,9 +458,11 @@ class RoadmapState {
     AIRecommendationModel? aiRecommendation,
     List<SkillProgressModel>? skillProgress,
     LearningStatsModel? learningStats,
+    Set<String>? bookmarkedNodeIds,
     RoadmapFilters? filters,
     bool? isLoading,
     bool? isGenerating,
+    bool? isArchiving,
     String? error,
     bool clearError = false,
     String? selectedTargetRole,
@@ -410,9 +472,11 @@ class RoadmapState {
       aiRecommendation: aiRecommendation ?? this.aiRecommendation,
       skillProgress: skillProgress ?? this.skillProgress,
       learningStats: learningStats ?? this.learningStats,
+      bookmarkedNodeIds: bookmarkedNodeIds ?? this.bookmarkedNodeIds,
       filters: filters ?? this.filters,
       isLoading: isLoading ?? this.isLoading,
       isGenerating: isGenerating ?? this.isGenerating,
+      isArchiving: isArchiving ?? this.isArchiving,
       error: clearError ? null : (error ?? this.error),
       selectedTargetRole: selectedTargetRole ?? this.selectedTargetRole,
     );
@@ -533,6 +597,56 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
     return null;
   }
 
+  ({int completed, int total, int hoursRemaining}) progressFor(RoadmapModel? roadmap) {
+    if (roadmap == null) return (completed: 0, total: 0, hoursRemaining: 0);
+    var completed = 0;
+    var total = 0;
+    var hoursRemaining = 0;
+    for (final module in roadmap.modules) {
+      for (final node in module.nodes) {
+        total++;
+        if (node.status == 'completed') {
+          completed++;
+        } else {
+          hoursRemaining += node.estimatedHours;
+        }
+      }
+    }
+    return (completed: completed, total: total, hoursRemaining: hoursRemaining);
+  }
+
+  Future<void> archiveRoadmap(String id) async {
+    state = state.copyWith(isArchiving: true, clearError: true);
+    try {
+      if (!AppConfig.demoMode) {
+        final archived = await safeRequest(() => _api.archiveRoadmap(id));
+        state = state.copyWith(
+          roadmaps: state.roadmaps.map((r) => r.id == id ? archived : r).toList(),
+        );
+      } else {
+        state = state.copyWith(
+          roadmaps: state.roadmaps.where((r) => r.id != id).toList(),
+        );
+      }
+      state = state.copyWith(isArchiving: false);
+    } catch (e) {
+      state = state.copyWith(isArchiving: false, error: getApiErrorMessage(e));
+      rethrow;
+    }
+  }
+
+  void toggleBookmark(String nodeId) {
+    final next = Set<String>.from(state.bookmarkedNodeIds);
+    if (next.contains(nodeId)) {
+      next.remove(nodeId);
+    } else {
+      next.add(nodeId);
+    }
+    state = state.copyWith(bookmarkedNodeIds: next);
+  }
+
+  bool isBookmarked(String nodeId) => state.bookmarkedNodeIds.contains(nodeId);
+
   void updateNodeStatus(String roadmapId, String nodeId, String status) {
     final roadmaps = state.roadmaps.map((roadmap) {
       if (roadmap.id != roadmapId && roadmap.slug != roadmapId) return roadmap;
@@ -559,6 +673,7 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
         progress: roadmap.progress,
         modules: modules,
         careerOutcome: roadmap.careerOutcome,
+        status: roadmap.status,
       );
     }).toList();
     final delta = status == 'completed' ? 120 : -120;

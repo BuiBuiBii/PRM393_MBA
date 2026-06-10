@@ -33,6 +33,16 @@ class AuthApi {
     return unwrapResponse<Map<String, dynamic>>(response.data);
   }
 
+  Future<Map<String, dynamic>> loginWithGoogle({required String idToken}) async {
+    final response = await _dio.post('/auth/google', data: {'idToken': idToken});
+    return unwrapResponse<Map<String, dynamic>>(response.data);
+  }
+
+  Future<Map<String, dynamic>> loginWithGithub({required String accessToken}) async {
+    final response = await _dio.post('/auth/github', data: {'accessToken': accessToken});
+    return unwrapResponse<Map<String, dynamic>>(response.data);
+  }
+
   Future<void> logout() async {
     await _dio.post('/auth/logout');
   }
@@ -82,6 +92,18 @@ class AuthRepository {
     return _loadCurrentUser();
   }
 
+  Future<UserModel> loginWithGoogle(String idToken) async {
+    final payload = await _api.loginWithGoogle(idToken: idToken);
+    await _persistSession(payload);
+    return _loadCurrentUser();
+  }
+
+  Future<UserModel> loginWithGithub(String accessToken) async {
+    final payload = await _api.loginWithGithub(accessToken: accessToken);
+    await _persistSession(payload);
+    return _loadCurrentUser();
+  }
+
   Future<UserModel?> bootstrap() async {
     final token = await storage.getToken();
     if (token == null || token.isEmpty) return null;
@@ -91,7 +113,8 @@ class AuthRepository {
       payload,
       ['user', 'account', 'profile'],
     );
-    final user = UserModel.fromJson(toRecord(userPayload));
+    var user = UserModel.fromJson(toRecord(userPayload));
+    user = await _mergeWithCachedUser(user);
     await storage.saveUser(user.toJson());
     return user;
   }
@@ -110,9 +133,16 @@ class AuthRepository {
       payload,
       ['user', 'account', 'profile'],
     );
-    final user = UserModel.fromJson(toRecord(userPayload));
+    var user = UserModel.fromJson(toRecord(userPayload));
+    user = await _mergeWithCachedUser(user);
     await storage.saveUser(user.toJson());
     return user;
+  }
+
+  Future<UserModel> _mergeWithCachedUser(UserModel user) async {
+    final cached = await storage.getUser();
+    if (cached == null) return user;
+    return user.mergeMissingFrom(UserModel.fromJson(cached));
   }
 
   Future<void> _persistSession(

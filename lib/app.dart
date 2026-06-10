@@ -6,6 +6,7 @@ import 'core/network/dio_client.dart';
 import 'core/router/app_router.dart';
 import 'core/storage/token_storage.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_provider.dart';
 import 'features/auth/providers/auth_provider.dart';
 
 class GitAnalyzerApp extends ConsumerWidget {
@@ -14,6 +15,7 @@ class GitAnalyzerApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
+    final themeMode = ref.watch(themeModeProvider);
     final router = ref.watch(routerProvider);
 
     if (auth.status == AuthStatus.unknown) {
@@ -21,6 +23,8 @@ class GitAnalyzerApp extends ConsumerWidget {
         title: AppConfig.appName,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: themeMode,
         home: const Scaffold(
           body: Center(child: CircularProgressIndicator()),
         ),
@@ -31,6 +35,8 @@ class GitAnalyzerApp extends ConsumerWidget {
       title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: themeMode,
       routerConfig: router,
     );
   }

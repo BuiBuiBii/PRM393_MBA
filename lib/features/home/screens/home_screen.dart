@@ -2,17 +2,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../features/roadmaps/data/roadmap_mock_data.dart';
+import '../../app_providers.dart';
 import '../../../shared/utils/format_utils.dart';
 import '../../../shared/widgets/app_image_assets.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final analysis = mockHomeAnalysis;
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref.read(repositoryProvider.notifier).fetchRepositories();
+      ref.read(repositoryProvider.notifier).fetchMyAnalyses();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final repoState = ref.watch(repositoryProvider);
+    final analysis = repoState.analyses.isNotEmpty ? repoState.analyses.first : null;
     final compact = isCompactPhone(context);
 
     return ListView(
@@ -23,7 +38,7 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const AppBadge(label: 'Phân tích developer bằng AI', variant: AppBadgeVariant.info),
+              const AppBadge(label: 'Tổng quan sản phẩm', variant: AppBadgeVariant.info),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -52,7 +67,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 PrimaryButton(
-                  label: 'Xem repositories',
+                  label: 'Xem repositories (${repoState.repositories.length})',
                   outlined: true,
                   expand: true,
                   onPressed: () => context.go('/repositories'),
@@ -71,7 +86,7 @@ class HomeScreen extends ConsumerWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: PrimaryButton(
-                        label: 'Xem repositories',
+                        label: 'Repositories (${repoState.repositories.length})',
                         outlined: true,
                         expand: true,
                         onPressed: () => context.go('/repositories'),
@@ -84,36 +99,45 @@ class HomeScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Phân tích gần đây', style: TextStyle(color: AppColors.slate500)),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      analysis['repositoryName'] as String,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          child: analysis == null
+              ? const Text('Chưa có phân tích nào. Hãy đồng bộ repository và chạy phân tích.', style: TextStyle(color: AppColors.slate500))
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Phân tích gần đây', style: TextStyle(color: AppColors.slate500)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            analysis.repositoryName,
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        Text(
+                          '${analysis.scores.overall}',
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: scoreColor(analysis.scores.overall),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  Text(
-                    '${analysis['overall']}',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: scoreColor(analysis['overall'] as int),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: analysis.techStack.map((t) => AppBadge(label: t)).toList(),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: (analysis['techStack'] as List<String>).map((t) => AppBadge(label: t)).toList(),
-              ),
-            ],
-          ),
+                    const SizedBox(height: 12),
+                    PrimaryButton(
+                      label: 'Xem chi tiết phân tích',
+                      outlined: true,
+                      expand: true,
+                      onPressed: () => context.push('/repositories/${analysis.repositoryId}/analysis'),
+                    ),
+                  ],
+                ),
         ),
         const SizedBox(height: 16),
         const Text('Tính năng chính', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),

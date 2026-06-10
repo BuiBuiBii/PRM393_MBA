@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../shared/widgets/roadmap_widgets.dart';
 import '../../app_providers.dart';
 import '../../../shared/models/app_models.dart';
 import '../data/roadmap_mock_data.dart';
@@ -244,6 +245,15 @@ class _AIRoadmapScreenState extends ConsumerState<AIRoadmapScreen> {
           const SizedBox(height: 12),
           _bulletCard('Kỹ năng thiếu', rec.missingSkills, AppColors.primary),
           const SizedBox(height: 16),
+          RoadmapTreeWidget(
+            roadmap: rec.roadmap,
+            onStatusChange: (nodeId, status) => ref.read(roadmapProvider.notifier).updateNodeStatus(rec.roadmap.id, nodeId, status),
+            onBookmarkToggle: (nodeId) => ref.read(roadmapProvider.notifier).toggleBookmark(nodeId),
+            isBookmarked: (nodeId) => ref.read(roadmapProvider.notifier).isBookmarked(nodeId),
+          ),
+          const SizedBox(height: 16),
+          LearningTimelineWidget(roadmap: rec.roadmap),
+          const SizedBox(height: 16),
           PrimaryButton(label: 'Xem roadmap đề xuất', expand: true, onPressed: () => context.push('/roadmaps/${rec.roadmap.id}')),
         ],
       ],
@@ -286,16 +296,39 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final roadmap = ref.watch(roadmapProvider.notifier).getById(widget.roadmapId);
+    final roadmapState = ref.watch(roadmapProvider);
+    final roadmap = ref.read(roadmapProvider.notifier).getById(widget.roadmapId);
     if (roadmap == null) {
       return const Center(child: CircularProgressIndicator());
     }
+
+    final progress = ref.read(roadmapProvider.notifier).progressFor(roadmap);
+    final notifier = ref.read(roadmapProvider.notifier);
 
     return ListView(
       padding: appScreenPadding(context),
       children: [
         TextButton.icon(onPressed: () => context.pop(), icon: const Icon(Icons.arrow_back), label: const Text('Lộ trình')),
-        PageHeader(title: roadmap.title, subtitle: roadmap.subtitle),
+        PageHeader(
+          title: roadmap.title,
+          subtitle: roadmap.subtitle,
+          trailing: roadmap.isArchived
+              ? null
+              : PrimaryButton(
+                  label: 'Lưu trữ',
+                  outlined: true,
+                  loading: roadmapState.isArchiving,
+                  onPressed: roadmapState.isArchiving
+                      ? null
+                      : () async {
+                          try {
+                            await notifier.archiveRoadmap(roadmap.id);
+                            if (context.mounted) context.go('/roadmaps');
+                          } catch (_) {}
+                        },
+                ),
+        ),
+        if (roadmap.isArchived) const AppBadge(label: 'Đã lưu trữ', variant: AppBadgeVariant.warning),
         const SizedBox(height: 8),
         Text(roadmap.description),
         const SizedBox(height: 12),
@@ -305,66 +338,30 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
             AppBadge(label: roadmap.category),
             AppBadge(label: roadmap.difficulty),
             AppBadge(label: '${roadmap.estimatedHours} giờ'),
+            AppBadge(label: '${progress.hoursRemaining}h còn lại'),
             AppBadge(label: roadmap.careerOutcome, variant: AppBadgeVariant.info),
           ],
         ),
         const SizedBox(height: 16),
-        LinearProgressIndicator(value: roadmap.progress / 100, minHeight: 8, borderRadius: BorderRadius.circular(8), color: AppColors.primary),
+        LinearProgressIndicator(
+          value: roadmap.progress / 100,
+          minHeight: 8,
+          borderRadius: BorderRadius.circular(8),
+          color: AppColors.primary,
+        ),
         const SizedBox(height: 4),
-        Text('${roadmap.progress}% hoàn thành'),
+        Text('${roadmap.progress}% hoàn thành • ${progress.completed}/${progress.total} node'),
         const SizedBox(height: 16),
-        ...roadmap.modules.map((module) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(module.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                    Text(module.description, style: const TextStyle(color: AppColors.slate500, fontSize: 13)),
-                    const SizedBox(height: 12),
-                    ...module.nodes.map((node) => Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade200),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(child: Text(node.title, style: const TextStyle(fontWeight: FontWeight.w600))),
-                                  AppBadge(label: node.status),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(node.description, style: const TextStyle(fontSize: 13, color: AppColors.slate500)),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 8,
-                                children: [
-                                  AppBadge(label: '${node.estimatedHours}h'),
-                                  AppBadge(label: '${node.xp} XP'),
-                                  ...node.skills.map((s) => AppBadge(label: s, variant: AppBadgeVariant.info)),
-                                ],
-                              ),
-                              if (node.status != 'completed')
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: PrimaryButton(
-                                    label: 'Đánh dấu hoàn thành',
-                                    outlined: true,
-                                    onPressed: () => ref.read(roadmapProvider.notifier).updateNodeStatus(roadmap.id, node.id, 'completed'),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        )),
-                  ],
-                ),
-              ),
-            )),
+        const Text('Cây lộ trình', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        RoadmapTreeWidget(
+          roadmap: roadmap,
+          onStatusChange: (nodeId, status) => notifier.updateNodeStatus(roadmap.id, nodeId, status),
+          onBookmarkToggle: notifier.toggleBookmark,
+          isBookmarked: notifier.isBookmarked,
+        ),
+        const SizedBox(height: 16),
+        LearningTimelineWidget(roadmap: roadmap),
       ],
     );
   }

@@ -19,6 +19,8 @@ dependencies:
   fl_chart: ^0.70.2
   flutter_svg: ^2.0.17
   cached_network_image: ^3.4.1
+  google_sign_in: ^6.3.0
+  flutter_web_auth_2: ^4.1.0
 
 dev_dependencies:
   flutter_test:

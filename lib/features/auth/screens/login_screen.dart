@@ -56,6 +56,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     await _submit();
   }
 
+  Future<void> _submitGoogle() async {
+    if (AppConfig.demoMode) {
+      setState(() => _oauthNotice = 'Demo mode không hỗ trợ đăng nhập Google.');
+      return;
+    }
+    if (!AppConfig.isGoogleLoginConfigured) {
+      setState(() => _oauthNotice = 'Chưa cấu hình GOOGLE_CLIENT_ID.');
+      return;
+    }
+    setState(() => _oauthNotice = '');
+    try {
+      await ref.read(authProvider.notifier).loginWithGoogle();
+      if (mounted) context.go('/dashboard');
+    } catch (_) {}
+  }
+
+  Future<void> _submitGithub() async {
+    if (AppConfig.demoMode) {
+      setState(() => _oauthNotice = 'Demo mode không hỗ trợ đăng nhập GitHub.');
+      return;
+    }
+    if (!AppConfig.isGithubLoginConfigured) {
+      setState(() {
+        _oauthNotice =
+            'Chưa cấu hình GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET. '
+            'Đăng ký OAuth App trên GitHub và thêm dart-define khi build.';
+      });
+      return;
+    }
+    setState(() => _oauthNotice = '');
+    try {
+      await ref.read(authProvider.notifier).loginWithGithub();
+      if (mounted) context.go('/dashboard');
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
@@ -189,11 +225,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           child: PrimaryButton(
                             label: 'GitHub',
                             outlined: true,
+                            loading: auth.isLoading,
                             leading: const AppSvgIcon(asset: AppAssets.githubIcon, size: 18),
-                            onPressed: () => setState(() {
-                              _oauthNotice =
-                                  'Backend hiện tại chưa hỗ trợ đăng nhập bằng GitHub. Hãy đăng nhập bằng email trước, sau đó vào trang GitHub để kết nối OAuth.';
-                            }),
+                            onPressed: auth.isLoading ? null : _submitGithub,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -201,10 +235,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           child: PrimaryButton(
                             label: 'Google',
                             outlined: true,
+                            loading: auth.isLoading,
                             leading: const AppSvgIcon(asset: AppAssets.googleIcon, size: 18),
-                            onPressed: () => setState(() {
-                              _oauthNotice = 'Backend hiện tại chưa có endpoint đăng nhập bằng Google.';
-                            }),
+                            onPressed: auth.isLoading ? null : _submitGoogle,
                           ),
                         ),
                       ],
