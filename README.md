@@ -244,6 +244,11 @@ Profile is used later by AI feedback and chat context.
 
 Usage notes:
 
+- FE calls `GET /api/github/oauth` with JWT, then opens the returned `data.authorizeUrl`.
+- After the user authorizes on GitHub, the backend callback redirects to `/github/connect` on the localhost or Vercel frontend that started the flow.
+- Allowed frontend origins are configured through comma-separated `FRONTEND_URLS`.
+- Flutter and React Native call `GET /api/github/oauth?redirectUrl=gitanalyzer%3A%2F%2Fgithub%2Fconnect`. The callback redirects to the exact allowlisted `MOBILE_REDIRECT_URL`.
+
 - `GET /api/github/repositories` syncs from GitHub to MongoDB
 - `GET /api/github/repositories/cached` only reads local database
 - `GET /api/github/repositories/:repoId/packages` fetches package/config files from GitHub and stores cache

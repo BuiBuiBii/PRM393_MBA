@@ -24,6 +24,14 @@ const attachFullNameRepoId = (req, res, next) => {
  *     summary: Start GitHub OAuth flow
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: redirectUrl
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: gitanalyzer://github/connect
+ *         description: Allowlisted web URL or the exact MOBILE_REDIRECT_URL for Flutter and React Native
  *     responses:
  *       200:
  *         description: OAuth URL generated successfully
