@@ -57,7 +57,7 @@ const buildAuthSuccessHtml = () => `
   </head>
   <body>
     <h1>GitHub connected successfully</h1>
-    <p>You can close this tab and return to Postman.</p>
+    <p>You can close this tab and return to Web.</p>
   </body>
 </html>`;
 
