@@ -51,18 +51,7 @@ const ensureGithubQuery = (query) => {
   return { code, state };
 };
 
-const buildAuthSuccessHtml = () => `
-<html>
-  <head>
-    <title>GitHub connected successfully</title>
-  </head>
-  <body>
-    <h1>GitHub connected successfully</h1>
-    <p>You can close this tab and return to Postman.</p>
-  </body>
-</html>`;
-
-const startOAuth = async (authUser) => {
+const startOAuth = async (authUser, options = {}) => {
   ensureAuthorizedUser(authUser);
 
   const { GITHUB_CLIENT_ID, GITHUB_CALLBACK_URL, FRONTEND_URL } = requireGithubConfig();

@@ -1,4 +1,5 @@
 const githubService = require('../services/github.service');
+const { getGithubConnectUrl } = require('../config/frontend');
 const { successResponse } = require('../utils/response');
 
 const startOAuth = async (req, res, next) => {
@@ -18,7 +19,11 @@ const handleOAuthCallback = async (req, res, next) => {
     const redirectUrl = await githubService.handleOAuthCallback(req.query);
     return res.redirect(302, redirectUrl);
   } catch (error) {
-    return next(error);
+    const fallbackUrl = new URL(
+      getGithubConnectUrl(req.get('origin'), process.env.FRONTEND_URL)
+    );
+    fallbackUrl.searchParams.set('error', error.message || 'GitHub OAuth failed');
+    return res.redirect(302, fallbackUrl.toString());
   }
 };
 
