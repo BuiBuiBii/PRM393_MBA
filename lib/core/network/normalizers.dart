@@ -316,13 +316,15 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
     ));
   }
 
-  final supporting = map['supportingPaths'] as List? ?? [];
+  final supportingRaw = map['supportingPaths'];
+  final List<dynamic> supporting = supportingRaw is List ? supportingRaw : [];
   for (var i = 0; i < supporting.length; i++) {
-    final path = Map<String, dynamic>.from(supporting[i] as Map);
-    final suggested = path['suggestedTasks'] as List? ?? [];
+    final path = toRecord(supporting[i]);
+    final suggestedRaw = path['suggestedTasks'];
+    final List<dynamic> suggested = suggestedRaw is List ? suggestedRaw : [];
     if (suggested.isEmpty) continue;
     modules.add(RoadmapModuleModel(
-      id: (path['_id'] ?? 'support-$i').toString(),
+      id: (path['_id'] ?? path['id'] ?? 'support-$i').toString(),
       title: (path['title'] ?? 'Supporting Path').toString(),
       description: (path['reason'] ?? '').toString(),
       nodes: suggested.asMap().entries.map((entry) {
@@ -333,7 +335,7 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
           estimatedHours: 4,
           difficulty: 'Intermediate',
           status: 'locked',
-          skills: (path['skills'] as List? ?? []).map((e) => e.toString()).toList(),
+          skills: (path['skills'] is List ? path['skills'] as List : []).map((e) => e.toString()).toList(),
           xp: 160,
         );
       }).toList(),
@@ -345,8 +347,26 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
       : <String, dynamic>{};
   final detected = (sourceCtx['detectedSkills'] as List? ?? []).map((e) => e.toString()).toList();
   final missing = (sourceCtx['missingSkills'] as List? ?? []).map((e) => e.toString()).toList();
+  final repositoriesCount = int.tryParse(sourceCtx['repositoriesCount']?.toString() ?? '') ?? 0;
   final progress = totalTasks == 0 ? 0 : ((completedTasks / totalTasks) * 100).round();
   final estimatedWeeks = (totalHours / 8).ceil().clamp(1, 52);
+
+  final objectivesRaw = map['objectives'];
+  final objectives = objectivesRaw is List
+      ? objectivesRaw.map((e) => e.toString()).toList()
+      : phases.map((p) => (toRecord(p)['goal'] ?? '').toString()).where((g) => g.isNotEmpty).toList();
+
+  final reqSkillsRaw = map['requiredSkills'] ?? sourceCtx['detectedSkills'] ?? sourceCtx['requiredSkills'];
+  final requiredSkills = (reqSkillsRaw is List ? reqSkillsRaw : []).map((e) => e.toString()).toList();
+
+  final missingSkillsRaw = map['missingSkills'] ?? sourceCtx['missingSkills'];
+  final missingSkills = (missingSkillsRaw is List ? missingSkillsRaw : []).map((e) => e.toString()).toList();
+
+  final List<dynamic> supportingList = supportingRaw is List ? supportingRaw : [];
+  final supportingPaths = supportingList.map((item) => SupportingPathModel.fromJson(toRecord(item))).toList();
+
+  final sourceReposCountRaw = map['sourceRepositoriesCount'] ?? sourceCtx['repositoriesCount'];
+  final sourceRepositoriesCount = int.tryParse(sourceReposCountRaw?.toString() ?? '') ?? 0;
 
   return RoadmapModel(
     id: id,
@@ -365,6 +385,13 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
     modules: modules,
     careerOutcome: targetRole,
     status: (map['status'] ?? 'active').toString(),
+    detectedSkills: detected,
+    repositoriesCount: repositoriesCount,
+    objectives: objectives,
+    requiredSkills: requiredSkills,
+    missingSkills: missingSkills,
+    supportingPaths: supportingPaths,
+    sourceRepositoriesCount: sourceRepositoriesCount,
   );
 }
 
