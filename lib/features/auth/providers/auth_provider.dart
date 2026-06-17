@@ -160,6 +160,7 @@ class AuthNotifier extends Notifier<AuthState> {
       final idToken = await social.signInWithGoogle();
       final user = await safeRequest(() => _repository.loginWithGoogle(idToken));
       state = AuthState(status: AuthStatus.authenticated, user: user, isLoading: false);
+      await fetchProfile();
     } catch (error) {
       state = state.copyWith(isLoading: false, error: getApiErrorMessage(error));
       rethrow;
@@ -173,8 +174,27 @@ class AuthNotifier extends Notifier<AuthState> {
         throw ApiException('Demo mode không hỗ trợ đăng nhập GitHub.');
       }
       final social = ref.read(socialAuthServiceProvider);
-      final accessToken = await social.signInWithGithub();
-      final user = await safeRequest(() => _repository.loginWithGithub(accessToken));
+      final result = await social.signInWithGithub();
+      final UserModel user;
+      if (result.mode == GithubSignInMode.appToken) {
+        user = await safeRequest(() => _repository.completeSocialLoginWithToken(result.value));
+      } else {
+        user = await safeRequest(() => _repository.loginWithGithub(result.value));
+      }
+      state = AuthState(status: AuthStatus.authenticated, user: user, isLoading: false);
+      if (user.provider == 'github' || user.githubConnected) {
+        await refreshGitHubAccount();
+      }
+    } catch (error) {
+      state = state.copyWith(isLoading: false, error: getApiErrorMessage(error));
+      rethrow;
+    }
+  }
+
+  Future<void> completeGithubLoginWithToken(String token) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final user = await safeRequest(() => _repository.completeSocialLoginWithToken(token));
       state = AuthState(status: AuthStatus.authenticated, user: user, isLoading: false);
       if (user.provider == 'github' || user.githubConnected) {
         await refreshGitHubAccount();
@@ -186,6 +206,11 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> logout() async {
+    if (!AppConfig.demoMode) {
+      try {
+        await ref.read(socialAuthServiceProvider).signOutGoogle();
+      } catch (_) {}
+    }
     if (AppConfig.demoMode) {
       await DemoService.instance.logout();
       await ref.read(tokenStorageProvider).clear();

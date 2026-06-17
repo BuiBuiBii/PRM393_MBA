@@ -57,7 +57,9 @@ AnalysisModel normalizeAnalysis(dynamic payload) {
 }
 
 List<ChatSessionModel> normalizeChatSessions(dynamic payload) {
-  return asMapList(payload, ['sessions', 'items']).map(ChatSessionModel.fromJson).toList();
+  return asMapList(payload, ['sessions', 'chatSessions', 'items'])
+      .map((item) => normalizeChatSession(item))
+      .toList();
 }
 
 ChatSessionModel normalizeChatSession(dynamic payload) {
@@ -65,8 +67,136 @@ ChatSessionModel normalizeChatSession(dynamic payload) {
   return ChatSessionModel.fromJson(toRecord(map.isNotEmpty ? map : payload));
 }
 
+ChatSessionModel normalizeChatSessionDetail(dynamic payload) {
+  final record = toRecord(unwrapResponse<dynamic>(payload));
+  final sessionMap = extractApiResource<Map<String, dynamic>>(record, ['session', 'chatSession']);
+  var session = ChatSessionModel.fromJson(toRecord(sessionMap.isNotEmpty ? sessionMap : record));
+
+  final messagesRaw = record['messages'] is List
+      ? record['messages'] as List
+      : (toRecord(record['data'])['messages'] is List ? toRecord(record['data'])['messages'] as List : null);
+
+  if (messagesRaw != null && messagesRaw.isNotEmpty) {
+    session = session.copyWith(
+      messages: messagesRaw.whereType<Map>().map((e) => normalizeChatMessage(e)).toList(),
+    );
+  }
+  return session;
+}
+
+ChatSessionModel mergeChatSession(ChatSessionModel base, ChatSessionModel next) {
+  final merged = [...base.messages];
+  for (final message in next.messages) {
+    final index = merged.indexWhere((item) => item.id == message.id);
+    if (index >= 0) {
+      merged[index] = message;
+    } else {
+      merged.add(message);
+    }
+  }
+  return ChatSessionModel(
+    id: next.id.isNotEmpty ? next.id : base.id,
+    title: next.title.isNotEmpty ? next.title : base.title,
+    createdAt: next.createdAt.isNotEmpty ? next.createdAt : base.createdAt,
+    messages: merged,
+    repositoryContext: next.repositoryContext ?? base.repositoryContext,
+  );
+}
+
+ChatMessageModel? pickAssistantMessage(dynamic payload) {
+  final record = toRecord(unwrapResponse<dynamic>(payload));
+  final data = toRecord(record['data']);
+
+  final candidates = [
+    record['assistantMessage'],
+    data['assistantMessage'],
+    record['aiMessage'],
+    data['aiMessage'],
+    record['reply'],
+    data['reply'],
+    record['answer'],
+    data['answer'],
+    record['aiResponse'],
+    data['aiResponse'],
+    record['response'],
+    data['response'],
+    record['message'],
+    data['message'],
+  ];
+
+  for (final candidate in candidates) {
+    if (candidate is String && candidate.trim().isNotEmpty) {
+      return ChatMessageModel(
+        id: 'assistant-${DateTime.now().millisecondsSinceEpoch}',
+        role: 'assistant',
+        content: candidate.trim(),
+        timestamp: DateTime.now().toIso8601String(),
+      );
+    }
+
+    final candidateRecord = toRecord(candidate);
+    if (candidateRecord.isEmpty) continue;
+
+    final nested = toRecord(candidateRecord['content']);
+    final directText = [
+      candidateRecord['answer'],
+      candidateRecord['assistantResponse'],
+      candidateRecord['aiResponse'],
+      candidateRecord['response'],
+      candidateRecord['reply'],
+      candidateRecord['text'],
+      candidateRecord['message'],
+      candidateRecord['output'],
+      nested['text'],
+      nested['message'],
+    ].whereType<String>().map((s) => s.trim()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
+
+    if (directText.isNotEmpty) {
+      return ChatMessageModel(
+        id: (candidateRecord['id'] ?? candidateRecord['_id'] ?? 'assistant-${DateTime.now().millisecondsSinceEpoch}').toString(),
+        role: 'assistant',
+        content: directText,
+        timestamp: (candidateRecord['createdAt'] ?? DateTime.now().toIso8601String()).toString(),
+      );
+    }
+
+    final message = normalizeChatMessage(candidateRecord);
+    if (message.content.isNotEmpty) return message;
+  }
+
+  final messages = record['messages'] is List
+      ? record['messages'] as List
+      : (data['messages'] is List ? data['messages'] as List : null);
+  if (messages != null) {
+    for (final item in messages.reversed) {
+      final message = normalizeChatMessage(item);
+      if (message.role == 'assistant' && message.content.isNotEmpty) return message;
+    }
+  }
+  return null;
+}
+
 ChatMessageModel normalizeChatMessage(dynamic payload) {
-  return ChatMessageModel.fromJson(toRecord(payload));
+  final json = toRecord(payload);
+  final rawRole = (json['role'] ?? json['sender'] ?? json['type'] ?? json['author'] ?? 'assistant')
+      .toString()
+      .toLowerCase();
+  final role = ['user', 'human'].contains(rawRole) ? 'user' : 'assistant';
+  final content = [
+    json['content'],
+    json['message'],
+    json['text'],
+    json['reply'],
+    json['response'],
+    json['aiResponse'],
+  ].whereType<String>().map((s) => s.trim()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
+
+  return ChatMessageModel(
+    id: (json['id'] ?? json['_id'] ?? 'message-${DateTime.now().millisecondsSinceEpoch}').toString(),
+    role: role,
+    content: content,
+    timestamp: (json['timestamp'] ?? json['createdAt'] ?? DateTime.now().toIso8601String()).toString(),
+  );
 }
 
 UserModel normalizeUser(dynamic payload) {

@@ -2,16 +2,20 @@ class AppConfig {
   static const String appName = 'GitAnalyzer AI';
 
   /// Override at build time:
-  /// flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5000/api
+  /// - Android emulator + BE local: --dart-define=API_BASE_URL=http://10.0.2.2:5000/api
+  /// - API Render (mặc định): https://career-roadmap-api-zs7y.onrender.com/api
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: 'https://career-roadmap-api-zs7y.onrender.com/api',
   );
 
+  /// BE chạy trên máy host, dùng khi develop với emulator.
+  static const String localAndroidApiBaseUrl = 'http://10.0.2.2:5000/api';
+
   static const String tokenKey = 'gitanalyzer.jwt';
   static const String userKey = 'gitanalyzer.user';
 
-  /// Bật demo: flutter run --dart-define=DEMO_MODE=true
+  /// Bật demo (offline): flutter run --dart-define=DEMO_MODE=true
   static const bool demoMode = bool.fromEnvironment('DEMO_MODE', defaultValue: false);
 
   /// Target roles khớp BE (/api/roadmaps/generate)
@@ -44,6 +48,13 @@ class AppConfig {
   );
 
   static bool get isGoogleLoginConfigured => googleClientId.isNotEmpty;
+
+  /// Mặc định đăng nhập GitHub qua BE (`GET /auth/github/authorize`) — không cần secret trong app.
+  static const bool useBackendGithubLogin = bool.fromEnvironment(
+    'USE_BACKEND_GITHUB_LOGIN',
+    defaultValue: true,
+  );
+
   static bool get isGithubLoginConfigured =>
-      githubClientId.isNotEmpty && githubClientSecret.isNotEmpty;
+      useBackendGithubLogin || (githubClientId.isNotEmpty && githubClientSecret.isNotEmpty);
 }

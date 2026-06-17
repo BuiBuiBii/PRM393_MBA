@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/router/auth_navigation.dart';
 import '../../../shared/widgets/app_image_assets.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../../shared/widgets/auth_layout.dart';
+import '../../../shared/widgets/social_login_panel.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -20,7 +22,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   var _rememberMe = false;
-  var _oauthNotice = '';
 
   @override
   void initState() {
@@ -46,7 +47,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             _emailController.text.trim(),
             _passwordController.text,
           );
-      if (mounted) context.go('/dashboard');
+      if (mounted) context.go(getDefaultAuthenticatedPath(ref.read(authProvider).user));
     } catch (_) {}
   }
 
@@ -54,42 +55,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _emailController.text = AppConfig.demoEmail;
     _passwordController.text = AppConfig.demoPassword;
     await _submit();
-  }
-
-  Future<void> _submitGoogle() async {
-    if (AppConfig.demoMode) {
-      setState(() => _oauthNotice = 'Demo mode không hỗ trợ đăng nhập Google.');
-      return;
-    }
-    if (!AppConfig.isGoogleLoginConfigured) {
-      setState(() => _oauthNotice = 'Chưa cấu hình GOOGLE_CLIENT_ID.');
-      return;
-    }
-    setState(() => _oauthNotice = '');
-    try {
-      await ref.read(authProvider.notifier).loginWithGoogle();
-      if (mounted) context.go('/dashboard');
-    } catch (_) {}
-  }
-
-  Future<void> _submitGithub() async {
-    if (AppConfig.demoMode) {
-      setState(() => _oauthNotice = 'Demo mode không hỗ trợ đăng nhập GitHub.');
-      return;
-    }
-    if (!AppConfig.isGithubLoginConfigured) {
-      setState(() {
-        _oauthNotice =
-            'Chưa cấu hình GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET. '
-            'Đăng ký OAuth App trên GitHub và thêm dart-define khi build.';
-      });
-      return;
-    }
-    setState(() => _oauthNotice = '');
-    try {
-      await ref.read(authProvider.notifier).loginWithGithub();
-      if (mounted) context.go('/dashboard');
-    } catch (_) {}
   }
 
   @override
@@ -213,34 +178,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ],
                     const SizedBox(height: 24),
-                    const AuthDivider(label: 'Hoặc tiếp tục với'),
-                    if (_oauthNotice.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      BannerMessage(message: _oauthNotice, isWarning: true),
-                    ],
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: PrimaryButton(
-                            label: 'GitHub',
-                            outlined: true,
-                            loading: auth.isLoading,
-                            leading: const AppSvgIcon(asset: AppAssets.githubIcon, size: 18),
-                            onPressed: auth.isLoading ? null : _submitGithub,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: PrimaryButton(
-                            label: 'Google',
-                            outlined: true,
-                            loading: auth.isLoading,
-                            leading: const AppSvgIcon(asset: AppAssets.googleIcon, size: 18),
-                            onPressed: auth.isLoading ? null : _submitGoogle,
-                          ),
-                        ),
-                      ],
+                    SocialLoginPanel(
+                      dividerLabel: 'Hoặc tiếp tục với',
+                      onSuccess: () {
+                        if (mounted) context.go(getDefaultAuthenticatedPath(ref.read(authProvider).user));
+                      },
                     ),
                   ],
                 ),
