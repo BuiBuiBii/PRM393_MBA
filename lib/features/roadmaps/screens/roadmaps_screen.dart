@@ -391,7 +391,8 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
                       : () async {
                           try {
                             await notifier.archiveRoadmap(roadmap.id);
-                            if (context.mounted) context.go('/roadmaps');
+                            if (!context.mounted) return;
+                            context.go('/roadmaps');
                           } catch (_) {}
                         },
                 ),
