@@ -5,7 +5,7 @@ class AppConfig {
   /// flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5000/api
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:5000/api',
+    defaultValue: 'https://career-roadmap-api-zs7y.onrender.com/api',
   );
 
   static const String tokenKey = 'gitanalyzer.jwt';
