@@ -21,7 +21,7 @@ GitHub Learning Mentor Mobile App — phiên bản **Flutter**.
 
 1. Cài [Flutter SDK](https://docs.flutter.dev/get-started/install/windows) (>= 3.3)
 2. Cài Android Studio + Android SDK
-3. Backend GitAnalyzer đang chạy (mặc định `http://localhost:5000/api`) — hoặc dùng **demo mode**
+3. Backend GitAnalyzer (mặc định dùng API Render production, hoặc BE local khi develop)
 
 ## Cài đặt lần đầu
 
@@ -39,24 +39,37 @@ flutter pub get
 flutter doctor
 ```
 
-## Chạy app
+## Chạy app trên Android
+
+### Cách nhanh nhất (API thật — mặc định)
 
 ```powershell
-# Android emulator: localhost backend = 10.0.2.2
-flutter run
-
-# Demo mode (mặc định bật, không cần backend)
-# Tài khoản: demo@gitanalyzer.vn / demo123
-
-# Đổi API URL nếu cần
-flutter run --dart-define=API_BASE_URL=http://192.168.1.10:5000/api
-
-# Tắt demo mode
-flutter run --dart-define=DEMO_MODE=false
+cd flutter_app
+.\scripts\run_android.ps1
 ```
 
-## Lưu ý API URL
+Hoặc trong **VS Code / Cursor**: chọn **"Android — BE Render (mặc định)"** rồi bấm Run.
 
-- **Android Emulator**: dùng `http://10.0.2.2:5000/api` (mặc định trong `AppConfig`)
+- **API mặc định**: `https://career-roadmap-api-zs7y.onrender.com/api`
+- Đăng nhập bằng **tài khoản đã đăng ký** trên BE, hoặc **Đăng ký** / **Google** / **GitHub**
+- `DEMO_MODE=false` (mặc định) — không dùng dữ liệu giả
+
+### Các chế độ khác
+
+```powershell
+# BE chạy local trên máy (port 5000) — phải `npm run dev` trong folder BE trước
+.\scripts\run_android.ps1 -Mode Local
+
+# Demo offline (chỉ khi cần test không có mạng/BE)
+.\scripts\run_android.ps1 -Mode Demo
+```
+
+### Lưu ý
+
+- **Đã từng chạy demo**: gỡ cài app hoặc Đăng xuất để xóa token demo cũ
+- **Connection refused** (Local): BE chưa chạy hoặc sai URL
+- **Build lỗi `jni` / `RECORD_NOT_SET` / APK invalid**: chạy `.\scripts\fix_android_build.ps1` rồi build lại
+- **Google `ApiException: 10`**: chưa cấu hình SHA-1 OAuth trên Google Cloud → dùng đăng nhập email/demo.
+- **Android Emulator + BE local**: dùng `http://10.0.2.2:5000/api` (không dùng `localhost`).
 - **Máy thật**: dùng IP LAN của máy chạy backend, ví dụ `http://192.168.x.x:5000/api`
 - **iOS Simulator**: dùng `http://localhost:5000/api`

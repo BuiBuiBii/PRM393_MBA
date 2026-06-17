@@ -116,7 +116,7 @@ class AppApi {
 
   Future<ChatSessionModel> getChatSession(String id) async {
     final res = await _dio.get('/chat/sessions/$id');
-    return normalizeChatSession(res.data);
+    return normalizeChatSessionDetail(res.data);
   }
 
   Future<dynamic> sendChatMessage(String sessionId, String message) async {

@@ -191,7 +191,7 @@ class ChatSessionModel {
   factory ChatSessionModel.fromJson(Map<String, dynamic> json) {
     return ChatSessionModel(
       id: (json['id'] ?? json['_id'] ?? '').toString(),
-      title: (json['title'] ?? 'Chat session').toString(),
+      title: (json['title'] ?? json['name'] ?? 'Cuộc trò chuyện mới').toString(),
       createdAt: (json['createdAt'] ?? DateTime.now().toIso8601String()).toString(),
       repositoryContext: json['repositoryContext']?.toString(),
       messages: (json['messages'] as List? ?? [])
