@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/config/app_config.dart';
+import '../../../core/router/auth_navigation.dart';
 import '../../../shared/widgets/app_image_assets.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../../shared/widgets/auth_layout.dart';
+import '../../../shared/widgets/social_login_panel.dart';
 import '../providers/auth_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -23,7 +24,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   var _acceptedTerms = false;
-  var _oauthNotice = '';
   String? _localError;
 
   @override
@@ -70,34 +70,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             _passwordController.text,
             _nameController.text.trim(),
           );
-      if (mounted) context.go('/dashboard');
-    } catch (_) {}
-  }
-
-  Future<void> _submitGoogle() async {
-    if (!AppConfig.isGoogleLoginConfigured) {
-      setState(() => _oauthNotice = 'Chưa cấu hình GOOGLE_CLIENT_ID.');
-      return;
-    }
-    setState(() => _oauthNotice = '');
-    try {
-      await ref.read(authProvider.notifier).loginWithGoogle();
-      if (mounted) context.go('/dashboard');
-    } catch (_) {}
-  }
-
-  Future<void> _submitGithub() async {
-    if (!AppConfig.isGithubLoginConfigured) {
-      setState(() {
-        _oauthNotice =
-            'Chưa cấu hình GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET cho đăng nhập GitHub.';
-      });
-      return;
-    }
-    setState(() => _oauthNotice = '');
-    try {
-      await ref.read(authProvider.notifier).loginWithGithub();
-      if (mounted) context.go('/dashboard');
+      if (mounted) context.go(getDefaultAuthenticatedPath(ref.read(authProvider).user));
     } catch (_) {}
   }
 
@@ -232,34 +205,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       onPressed: _submit,
                     ),
                     const SizedBox(height: 24),
-                    const AuthDivider(label: 'Hoặc đăng ký với'),
-                    if (_oauthNotice.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      BannerMessage(message: _oauthNotice, isWarning: true),
-                    ],
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: PrimaryButton(
-                            label: 'GitHub',
-                            outlined: true,
-                            loading: auth.isLoading,
-                            leading: const AppSvgIcon(asset: AppAssets.githubIcon, size: 18),
-                            onPressed: auth.isLoading ? null : _submitGithub,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: PrimaryButton(
-                            label: 'Google',
-                            outlined: true,
-                            loading: auth.isLoading,
-                            leading: const AppSvgIcon(asset: AppAssets.googleIcon, size: 18),
-                            onPressed: auth.isLoading ? null : _submitGoogle,
-                          ),
-                        ),
-                      ],
+                    SocialLoginPanel(
+                      dividerLabel: 'Hoặc đăng ký với',
+                      onSuccess: () {
+                        if (mounted) context.go(getDefaultAuthenticatedPath(ref.read(authProvider).user));
+                      },
                     ),
                   ],
                 ),

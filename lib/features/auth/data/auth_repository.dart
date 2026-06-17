@@ -95,12 +95,17 @@ class AuthRepository {
   Future<UserModel> loginWithGoogle(String idToken) async {
     final payload = await _api.loginWithGoogle(idToken: idToken);
     await _persistSession(payload);
-    return _loadCurrentUser();
+    return _userFromPayloadOrMe(payload);
   }
 
   Future<UserModel> loginWithGithub(String accessToken) async {
     final payload = await _api.loginWithGithub(accessToken: accessToken);
     await _persistSession(payload);
+    return _userFromPayloadOrMe(payload);
+  }
+
+  Future<UserModel> completeSocialLoginWithToken(String token) async {
+    await storage.saveToken(token);
     return _loadCurrentUser();
   }
 
@@ -125,6 +130,21 @@ class AuthRepository {
     } finally {
       await storage.clear();
     }
+  }
+
+  Future<UserModel> _userFromPayloadOrMe(Map<String, dynamic> payload) async {
+    final userPayload = extractApiResource<Map<String, dynamic>>(
+      payload,
+      ['user', 'account', 'profile'],
+    );
+    final record = toRecord(userPayload);
+    if (record.isNotEmpty) {
+      var user = UserModel.fromJson(record);
+      user = await _mergeWithCachedUser(user);
+      await storage.saveUser(user.toJson());
+      return user;
+    }
+    return _loadCurrentUser();
   }
 
   Future<UserModel> _loadCurrentUser() async {

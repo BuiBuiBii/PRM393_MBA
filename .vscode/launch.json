@@ -1,0 +1,37 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Android — BE Render (mặc định)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "emulator-5554",
+      "args": [
+        "--dart-define=DEMO_MODE=false",
+        "--dart-define=API_BASE_URL=https://career-roadmap-api-zs7y.onrender.com/api",
+        "--dart-define=GOOGLE_CLIENT_ID=970437677508-k1jc855q10hnl3sktcop9job68hgkd0r.apps.googleusercontent.com"
+      ]
+    },
+    {
+      "name": "Android — Demo (offline, tùy chọn)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "emulator-5554",
+      "args": [
+        "--dart-define=DEMO_MODE=true",
+        "--dart-define=API_BASE_URL=https://career-roadmap-api-zs7y.onrender.com/api"
+      ]
+    },
+    {
+      "name": "Android — BE local (port 5000)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "emulator-5554",
+      "args": [
+        "--dart-define=DEMO_MODE=false",
+        "--dart-define=API_BASE_URL=http://10.0.2.2:5000/api",
+        "--dart-define=GOOGLE_CLIENT_ID=970437677508-k1jc855q10hnl3sktcop9job68hgkd0r.apps.googleusercontent.com"
+      ]
+    }
+  ]
+}
