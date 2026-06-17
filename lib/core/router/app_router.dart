@@ -19,6 +19,7 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/chat/screens/chat_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
+import '../../features/github/screens/github_auth_callback_screen.dart';
 import '../../features/github/screens/github_callback_screen.dart';
 import '../../features/github/screens/github_connect_screen.dart';
 import '../../features/home/screens/home_screen.dart';
@@ -31,6 +32,7 @@ import '../../features/roadmaps/screens/roadmaps_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/shell/screens/main_shell.dart';
+import 'auth_navigation.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = _AuthRefreshListenable(ref);
@@ -47,7 +49,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       final loc = state.matchedLocation;
       final isAuthRoute = loc == '/login' || loc == '/register';
       final isGitHubCallback =
-          loc.startsWith('/github/oauth/callback') || loc.startsWith('/github/callback');
+          loc.startsWith('/github/oauth/callback') ||
+          loc.startsWith('/github/callback') ||
+          loc.startsWith('/github/auth/callback');
       final isPublicRoute = isAuthRoute || isGitHubCallback;
       final isAdminRoute = loc.startsWith('/admin');
       final isAdminDenied = loc == '/admin/denied';
@@ -55,7 +59,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (isBootstrapping) return null;
       if (!isAuthenticated && !isPublicRoute) return '/login';
-      if (isAuthenticated && isAuthRoute) return '/dashboard';
+      if (isAuthenticated && isAuthRoute) return getDefaultAuthenticatedPath(auth.user);
       if (isAdminRoute && !isAdminDenied && isAuthenticated && !isAdmin) return '/admin/denied';
       return null;
     },
@@ -64,6 +68,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(path: '/github/oauth/callback', builder: (_, __) => const GitHubCallbackScreen()),
       GoRoute(path: '/github/callback', builder: (_, __) => const GitHubCallbackScreen()),
+      GoRoute(path: '/github/auth/callback', builder: (_, __) => const GitHubAuthCallbackScreen()),
       GoRoute(path: '/admin/denied', builder: (_, __) => const AdminAccessDeniedScreen()),
       ShellRoute(
         builder: (_, __, child) => AdminShell(child: child),
