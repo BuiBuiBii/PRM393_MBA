@@ -296,6 +296,8 @@ class RoadmapDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
+  int _selectedTab = 0; // 0: Lộ trình, 1: Mục tiêu, 2: Hướng bổ trợ
+
   @override
   void initState() {
     super.initState();
@@ -304,6 +306,60 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
         await ref.read(roadmapProvider.notifier).fetchRoadmap(widget.roadmapId);
       }
     });
+  }
+
+  Widget _tabButton(int index, String label, IconData icon) {
+    final isSelected = _selectedTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedTab = index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    )
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected ? AppColors.primary : AppColors.slate500,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected ? AppColors.slate900 : AppColors.slate600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionHeader(String title, IconData icon, Color color) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 8),
+        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+      ],
+    );
   }
 
   @override
@@ -340,40 +396,190 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
                         },
                 ),
         ),
-        if (roadmap.isArchived) const AppBadge(label: 'Đã lưu trữ', variant: AppBadgeVariant.warning),
-        const SizedBox(height: 8),
-        Text(roadmap.description),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          children: [
-            AppBadge(label: roadmap.category),
-            AppBadge(label: roadmap.difficulty),
-            AppBadge(label: '${roadmap.estimatedHours} giờ'),
-            AppBadge(label: '${progress.hoursRemaining}h còn lại'),
-            AppBadge(label: roadmap.careerOutcome, variant: AppBadgeVariant.info),
-          ],
+        if (roadmap.isArchived) ...[
+          const AppBadge(label: 'Đã lưu trữ', variant: AppBadgeVariant.warning),
+          const SizedBox(height: 8),
+        ],
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(roadmap.description),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  AppBadge(label: roadmap.category),
+                  AppBadge(label: roadmap.difficulty),
+                  AppBadge(label: '${roadmap.estimatedHours} giờ'),
+                  AppBadge(label: '${progress.hoursRemaining}h còn lại'),
+                  AppBadge(label: roadmap.careerOutcome, variant: AppBadgeVariant.info),
+                  if (roadmap.sourceRepositoriesCount > 0)
+                    AppBadge(label: '${roadmap.sourceRepositoriesCount} repo', variant: AppBadgeVariant.success),
+                ],
+              ),
+              const SizedBox(height: 16),
+              LinearProgressIndicator(
+                value: roadmap.progress / 100,
+                minHeight: 8,
+                borderRadius: BorderRadius.circular(8),
+                color: AppColors.primary,
+              ),
+              const SizedBox(height: 4),
+              Text('${roadmap.progress}% hoàn thành • ${progress.completed}/${progress.total} node'),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
-        LinearProgressIndicator(
-          value: roadmap.progress / 100,
-          minHeight: 8,
-          borderRadius: BorderRadius.circular(8),
-          color: AppColors.primary,
-        ),
-        const SizedBox(height: 4),
-        Text('${roadmap.progress}% hoàn thành • ${progress.completed}/${progress.total} node'),
-        const SizedBox(height: 16),
-        const Text('Cây lộ trình', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        RoadmapTreeWidget(
-          roadmap: roadmap,
-          onStatusChange: (nodeId, status) => notifier.updateNodeStatus(roadmap.id, nodeId, status),
-          onBookmarkToggle: notifier.toggleBookmark,
-          isBookmarked: notifier.isBookmarked,
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.all(4),
+          child: Row(
+            children: [
+              _tabButton(0, 'Lộ trình', Icons.alt_route),
+              _tabButton(1, 'Mục tiêu', Icons.track_changes),
+              _tabButton(2, 'Bổ trợ', Icons.extension),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
-        LearningTimelineWidget(roadmap: roadmap),
+        if (_selectedTab == 0) ...[
+          const Text('Cây lộ trình', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          RoadmapTreeWidget(
+            roadmap: roadmap,
+            onStatusChange: (nodeId, status) => notifier.updateNodeStatus(roadmap.id, nodeId, status),
+            onBookmarkToggle: notifier.toggleBookmark,
+            isBookmarked: notifier.isBookmarked,
+          ),
+          const SizedBox(height: 16),
+          LearningTimelineWidget(roadmap: roadmap),
+        ],
+        if (_selectedTab == 1) ...[
+          _sectionHeader('Mục tiêu học tập', Icons.flag, AppColors.primary),
+          const SizedBox(height: 8),
+          if (roadmap.objectives.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text('Chưa có thông tin mục tiêu học tập.', style: TextStyle(fontStyle: FontStyle.italic)),
+            )
+          else
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: roadmap.objectives.map((obj) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.check_circle_outline, color: AppColors.primary, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(obj, style: const TextStyle(fontSize: 14))),
+                    ],
+                  ),
+                )).toList(),
+              ),
+            ),
+          const SizedBox(height: 16),
+          _sectionHeader('Kỹ năng hiện có', Icons.star_border, AppColors.emerald),
+          const SizedBox(height: 8),
+          if (roadmap.requiredSkills.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text('Chưa phân tích được kỹ năng hiện có.', style: TextStyle(fontStyle: FontStyle.italic)),
+            )
+          else
+            AppCard(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: roadmap.requiredSkills.map((s) => AppBadge(label: s, variant: AppBadgeVariant.success)).toList(),
+              ),
+            ),
+          const SizedBox(height: 16),
+          _sectionHeader('Kỹ năng cần bổ sung', Icons.warning_amber_rounded, AppColors.amber),
+          const SizedBox(height: 8),
+          if (roadmap.missingSkills.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text('Không phát hiện kỹ năng thiếu hụt nào.', style: TextStyle(fontStyle: FontStyle.italic)),
+            )
+          else
+            AppCard(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: roadmap.missingSkills.map((s) => AppBadge(label: s, variant: AppBadgeVariant.warning)).toList(),
+              ),
+            ),
+        ],
+        if (_selectedTab == 2) ...[
+          if (roadmap.supportingPaths.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 32),
+                child: Text('Không có hướng đi bổ trợ nào.', style: TextStyle(fontStyle: FontStyle.italic)),
+              ),
+            )
+          else
+            ...roadmap.supportingPaths.map((path) => Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.explore, color: AppColors.cyan, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            path.title,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.slate900),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      path.reason,
+                      style: const TextStyle(fontSize: 14, color: AppColors.slate600),
+                    ),
+                    const SizedBox(height: 12),
+                    if (path.skills.isNotEmpty) ...[
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: path.skills.map((s) => AppBadge(label: s)).toList(),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    const Text('Nhiệm vụ gợi ý:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    const SizedBox(height: 6),
+                    ...path.suggestedTasks.map((task) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('• ', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.cyan)),
+                          Expanded(
+                            child: Text(
+                              task,
+                              style: const TextStyle(fontSize: 13, color: AppColors.slate900),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )),
+                  ],
+                ),
+              ),
+            )),
+        ],
       ],
     );
   }

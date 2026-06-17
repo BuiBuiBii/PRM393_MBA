@@ -377,6 +377,32 @@ class RoadmapModuleModel {
   final List<LearningNodeModel> nodes;
 }
 
+class SupportingPathModel {
+  const SupportingPathModel({
+    required this.id,
+    required this.title,
+    required this.reason,
+    required this.skills,
+    required this.suggestedTasks,
+  });
+
+  final String id;
+  final String title;
+  final String reason;
+  final List<String> skills;
+  final List<String> suggestedTasks;
+
+  factory SupportingPathModel.fromJson(Map<String, dynamic> json) {
+    return SupportingPathModel(
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      reason: (json['reason'] ?? '').toString(),
+      skills: (json['skills'] as List? ?? []).map((e) => e.toString()).toList(),
+      suggestedTasks: (json['suggestedTasks'] as List? ?? []).map((e) => e.toString()).toList(),
+    );
+  }
+}
+
 class RoadmapModel {
   const RoadmapModel({
     required this.id,
@@ -395,6 +421,13 @@ class RoadmapModel {
     required this.modules,
     required this.careerOutcome,
     this.status = 'active',
+    this.detectedSkills,
+    this.repositoriesCount = 0,
+    this.objectives = const [],
+    this.requiredSkills = const [],
+    this.missingSkills = const [],
+    this.supportingPaths = const [],
+    this.sourceRepositoriesCount = 0,
   });
 
   final String id;
@@ -413,6 +446,13 @@ class RoadmapModel {
   final List<RoadmapModuleModel> modules;
   final String careerOutcome;
   final String status;
+  final List<String>? detectedSkills;
+  final int repositoriesCount;
+  final List<String> objectives;
+  final List<String> requiredSkills;
+  final List<String> missingSkills;
+  final List<SupportingPathModel> supportingPaths;
+  final int sourceRepositoriesCount;
 
   bool get isArchived => status == 'archived';
 }
