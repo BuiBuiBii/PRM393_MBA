@@ -185,7 +185,13 @@ class _AIRoadmapScreenState extends ConsumerState<AIRoadmapScreen> {
           trailing: PrimaryButton(
             label: 'Tạo lại',
             loading: state.isGenerating,
-            onPressed: state.isGenerating ? null : () => ref.read(roadmapProvider.notifier).generateAI(forceRegenerate: true),
+            onPressed: state.isGenerating ? null : () async {
+              try {
+                await ref.read(roadmapProvider.notifier).generateAI(forceRegenerate: true);
+                if (!context.mounted) return;
+                context.go('/roadmaps');
+              } catch (_) {}
+            },
           ),
         ),
         const SizedBox(height: 12),
@@ -209,7 +215,13 @@ class _AIRoadmapScreenState extends ConsumerState<AIRoadmapScreen> {
                 icon: Icons.psychology,
                 expand: true,
                 loading: state.isGenerating,
-                onPressed: state.isGenerating ? null : () => ref.read(roadmapProvider.notifier).generateAI(),
+                onPressed: state.isGenerating ? null : () async {
+                  try {
+                    await ref.read(roadmapProvider.notifier).generateAI();
+                    if (!context.mounted) return;
+                    context.go('/roadmaps');
+                  } catch (_) {}
+                },
               ),
             ],
           ),
