@@ -186,13 +186,15 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
     ));
   }
 
-  final supporting = map['supportingPaths'] as List? ?? [];
+  final supportingRaw = map['supportingPaths'];
+  final List<dynamic> supporting = supportingRaw is List ? supportingRaw : [];
   for (var i = 0; i < supporting.length; i++) {
-    final path = Map<String, dynamic>.from(supporting[i] as Map);
-    final suggested = path['suggestedTasks'] as List? ?? [];
+    final path = toRecord(supporting[i]);
+    final suggestedRaw = path['suggestedTasks'];
+    final List<dynamic> suggested = suggestedRaw is List ? suggestedRaw : [];
     if (suggested.isEmpty) continue;
     modules.add(RoadmapModuleModel(
-      id: (path['_id'] ?? 'support-$i').toString(),
+      id: (path['_id'] ?? path['id'] ?? 'support-$i').toString(),
       title: (path['title'] ?? 'Supporting Path').toString(),
       description: (path['reason'] ?? '').toString(),
       nodes: suggested.asMap().entries.map((entry) {
@@ -203,7 +205,7 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
           estimatedHours: 4,
           difficulty: 'Intermediate',
           status: 'locked',
-          skills: (path['skills'] as List? ?? []).map((e) => e.toString()).toList(),
+          skills: (path['skills'] is List ? path['skills'] as List : []).map((e) => e.toString()).toList(),
           xp: 160,
         );
       }).toList(),
@@ -215,6 +217,7 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
       : <String, dynamic>{};
   final detected = (sourceCtx['detectedSkills'] as List? ?? []).map((e) => e.toString()).toList();
   final missing = (sourceCtx['missingSkills'] as List? ?? []).map((e) => e.toString()).toList();
+  final repositoriesCount = int.tryParse(sourceCtx['repositoriesCount']?.toString() ?? '') ?? 0;
   final progress = totalTasks == 0 ? 0 : ((completedTasks / totalTasks) * 100).round();
   final estimatedWeeks = (totalHours / 8).ceil().clamp(1, 52);
 
@@ -235,6 +238,9 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
     modules: modules,
     careerOutcome: targetRole,
     status: (map['status'] ?? 'active').toString(),
+    detectedSkills: detected,
+    missingSkills: missing,
+    repositoriesCount: repositoriesCount,
   );
 }
 
