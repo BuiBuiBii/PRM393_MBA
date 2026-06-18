@@ -45,6 +45,7 @@ class AdminListState<T> {
     this.error,
     this.search = '',
     this.filter,
+    this.secondaryFilter,
   });
 
   final List<T> items;
@@ -53,6 +54,7 @@ class AdminListState<T> {
   final String? error;
   final String search;
   final String? filter;
+  final String? secondaryFilter;
 }
 
 mixin AdminPagedListMixin<T> on Notifier<AdminListState<T>> {
@@ -64,6 +66,7 @@ mixin AdminPagedListMixin<T> on Notifier<AdminListState<T>> {
     required Future<AdminPage<T>> Function() fetch,
     String? search,
     String? filter,
+    String? secondaryFilter,
   }) async {
     state = AdminListState<T>(
       items: state.items,
@@ -71,6 +74,7 @@ mixin AdminPagedListMixin<T> on Notifier<AdminListState<T>> {
       isLoading: true,
       search: search ?? state.search,
       filter: filter ?? state.filter,
+      secondaryFilter: secondaryFilter ?? state.secondaryFilter,
     );
     try {
       final pageData = await safeRequest(fetch);
@@ -79,6 +83,7 @@ mixin AdminPagedListMixin<T> on Notifier<AdminListState<T>> {
         pagination: pageData.pagination,
         search: search ?? state.search,
         filter: filter ?? state.filter,
+        secondaryFilter: secondaryFilter ?? state.secondaryFilter,
       );
     } catch (e) {
       state = AdminListState(
@@ -88,6 +93,7 @@ mixin AdminPagedListMixin<T> on Notifier<AdminListState<T>> {
         error: getApiErrorMessage(e),
         search: search ?? state.search,
         filter: filter ?? state.filter,
+        secondaryFilter: secondaryFilter ?? state.secondaryFilter,
       );
     }
   }
@@ -103,21 +109,38 @@ class AdminUsersNotifier extends Notifier<AdminListState<AdminUserRecord>> with 
     return const AdminListState();
   }
 
-  Future<void> load({int page = 1, String? search, String? role}) => loadPaged(
+  Future<void> load({int page = 1, String? search, String? role, String? status}) => loadPaged(
         page: page,
         search: search,
         filter: role,
-        fetch: () => adminApi.getUsers(page: page, limit: AdminPagedListMixin.limit, search: search, role: role),
+        secondaryFilter: status,
+        fetch: () => adminApi.getUsers(
+          page: page,
+          limit: AdminPagedListMixin.limit,
+          search: search,
+          role: role,
+          status: status,
+        ),
       );
 
   Future<void> nextPage() {
     if (!state.pagination.hasNext) return Future.value();
-    return load(page: state.pagination.page + 1, search: state.search, role: state.filter);
+    return load(
+      page: state.pagination.page + 1,
+      search: state.search,
+      role: state.filter,
+      status: state.secondaryFilter,
+    );
   }
 
   Future<void> prevPage() {
     if (!state.pagination.hasPrev) return Future.value();
-    return load(page: state.pagination.page - 1, search: state.search, role: state.filter);
+    return load(
+      page: state.pagination.page - 1,
+      search: state.search,
+      role: state.filter,
+      status: state.secondaryFilter,
+    );
   }
 }
 
@@ -276,6 +299,141 @@ class AdminRoadmapsNotifier extends Notifier<AdminListState<AdminRoadmapRecord>>
 
 final adminRoadmapsProvider =
     NotifierProvider<AdminRoadmapsNotifier, AdminListState<AdminRoadmapRecord>>(AdminRoadmapsNotifier.new);
+
+class AdminRoadmapDetailState {
+  const AdminRoadmapDetailState({this.roadmap, this.isLoading = false, this.error, this.isSaving = false});
+
+  final AdminRoadmapRecord? roadmap;
+  final bool isLoading;
+  final String? error;
+  final bool isSaving;
+}
+
+class AdminRoadmapDetailNotifier extends Notifier<AdminRoadmapDetailState> {
+  late AdminApi _api;
+
+  @override
+  AdminRoadmapDetailState build() {
+    _api = ref.read(adminApiProvider);
+    return const AdminRoadmapDetailState();
+  }
+
+  Future<void> load(String roadmapId) async {
+    state = const AdminRoadmapDetailState(isLoading: true);
+    try {
+      final roadmap = await safeRequest(() => _api.getRoadmap(roadmapId));
+      state = AdminRoadmapDetailState(roadmap: roadmap);
+    } catch (e) {
+      state = AdminRoadmapDetailState(error: getApiErrorMessage(e));
+    }
+  }
+
+  Future<void> updateStatus(String roadmapId, String status) async {
+    state = AdminRoadmapDetailState(roadmap: state.roadmap, isSaving: true);
+    try {
+      final roadmap = await safeRequest(() => _api.updateRoadmapStatus(roadmapId, status));
+      state = AdminRoadmapDetailState(roadmap: roadmap);
+    } catch (e) {
+      state = AdminRoadmapDetailState(roadmap: state.roadmap, error: getApiErrorMessage(e));
+    }
+  }
+}
+
+final adminRoadmapDetailProvider =
+    NotifierProvider<AdminRoadmapDetailNotifier, AdminRoadmapDetailState>(AdminRoadmapDetailNotifier.new);
+
+class AdminAnalysisDetailState {
+  const AdminAnalysisDetailState({this.analysis, this.isLoading = false, this.error});
+
+  final AdminAnalysisRecord? analysis;
+  final bool isLoading;
+  final String? error;
+}
+
+class AdminAnalysisDetailNotifier extends Notifier<AdminAnalysisDetailState> {
+  late AdminApi _api;
+
+  @override
+  AdminAnalysisDetailState build() {
+    _api = ref.read(adminApiProvider);
+    return const AdminAnalysisDetailState();
+  }
+
+  Future<void> load(String analysisId) async {
+    state = const AdminAnalysisDetailState(isLoading: true);
+    try {
+      final analysis = await safeRequest(() => _api.getAnalysis(analysisId));
+      state = AdminAnalysisDetailState(analysis: analysis);
+    } catch (e) {
+      state = AdminAnalysisDetailState(error: getApiErrorMessage(e));
+    }
+  }
+}
+
+final adminAnalysisDetailProvider =
+    NotifierProvider<AdminAnalysisDetailNotifier, AdminAnalysisDetailState>(AdminAnalysisDetailNotifier.new);
+
+class AdminFeedbackDetailState {
+  const AdminFeedbackDetailState({this.feedback, this.isLoading = false, this.error});
+
+  final AdminFeedbackRecord? feedback;
+  final bool isLoading;
+  final String? error;
+}
+
+class AdminFeedbackDetailNotifier extends Notifier<AdminFeedbackDetailState> {
+  late AdminApi _api;
+
+  @override
+  AdminFeedbackDetailState build() {
+    _api = ref.read(adminApiProvider);
+    return const AdminFeedbackDetailState();
+  }
+
+  Future<void> load(String feedbackId) async {
+    state = const AdminFeedbackDetailState(isLoading: true);
+    try {
+      final feedback = await safeRequest(() => _api.getAiFeedbackDetail(feedbackId));
+      state = AdminFeedbackDetailState(feedback: feedback);
+    } catch (e) {
+      state = AdminFeedbackDetailState(error: getApiErrorMessage(e));
+    }
+  }
+}
+
+final adminFeedbackDetailProvider =
+    NotifierProvider<AdminFeedbackDetailNotifier, AdminFeedbackDetailState>(AdminFeedbackDetailNotifier.new);
+
+class AdminRepoDetailState {
+  const AdminRepoDetailState({this.repository, this.isLoading = false, this.error});
+
+  final AdminRepoRecord? repository;
+  final bool isLoading;
+  final String? error;
+}
+
+class AdminRepoDetailNotifier extends Notifier<AdminRepoDetailState> {
+  late AdminApi _api;
+
+  @override
+  AdminRepoDetailState build() {
+    _api = ref.read(adminApiProvider);
+    return const AdminRepoDetailState();
+  }
+
+  Future<void> load(String repositoryId) async {
+    state = const AdminRepoDetailState(isLoading: true);
+    try {
+      final repository = await safeRequest(() => _api.getRepository(repositoryId));
+      state = AdminRepoDetailState(repository: repository);
+    } catch (e) {
+      state = AdminRepoDetailState(error: getApiErrorMessage(e));
+    }
+  }
+}
+
+final adminRepoDetailProvider =
+    NotifierProvider<AdminRepoDetailNotifier, AdminRepoDetailState>(AdminRepoDetailNotifier.new);
 
 class AdminUserDetailState {
   const AdminUserDetailState({this.user, this.isLoading = false, this.error, this.isSaving = false});

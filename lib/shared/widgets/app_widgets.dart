@@ -192,22 +192,26 @@ class StatCard extends StatelessWidget {
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(label, style: const TextStyle(color: AppColors.slate500, fontSize: 13)),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       value,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: isCompactPhone(context) ? 24 : 28,
+                        fontSize: isCompactPhone(context) ? 22 : 26,
                         fontWeight: FontWeight.bold,
+                        height: 1.15,
                         color: valueColor ?? AppColors.slate900,
                       ),
                     ),

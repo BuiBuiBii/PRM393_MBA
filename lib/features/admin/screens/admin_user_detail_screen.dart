@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../providers/admin_provider.dart';
 import '../widgets/admin_widgets.dart';
@@ -70,17 +71,15 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     final state = ref.watch(adminUserDetailProvider);
     final user = state.user;
 
-    if (state.isLoading && user == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (user == null) {
-      return Center(child: EmptyState(title: 'Không tải được user', subtitle: state.error));
-    }
-
-    return ListView(
-      padding: appScreenPadding(context),
-      children: [
-        AdminSectionHeader(title: user.name, subtitle: user.email.isEmpty ? 'Không có email' : user.email),
+    return AsyncPageBody(
+      isLoading: state.isLoading,
+      hasData: user != null,
+      error: state.error,
+      onRetry: () => ref.read(adminUserDetailProvider.notifier).load(widget.userId),
+      child: ListView(
+        padding: appScreenPadding(context),
+        children: [
+          AdminSectionHeader(title: user!.name, subtitle: user.email.isEmpty ? 'Không có email' : user.email),
         if (state.error != null) ...[
           const SizedBox(height: 12),
           BannerMessage(message: state.error!, isError: true),
@@ -124,6 +123,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
           ),
         ),
       ],
+      ),
     );
   }
 

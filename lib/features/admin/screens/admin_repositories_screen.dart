@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../shared/utils/format_utils.dart';
+import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../providers/admin_provider.dart';
 import '../widgets/admin_widgets.dart';
@@ -50,27 +51,32 @@ class _AdminRepositoriesScreenState extends ConsumerState<AdminRepositoriesScree
           BannerMessage(message: state.error!, isError: true),
         ],
         const SizedBox(height: 12),
-        if (state.isLoading && state.items.isEmpty)
-          const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
-        else if (state.items.isEmpty)
-          const EmptyState(title: 'Không có repository', subtitle: 'Chưa có dữ liệu đồng bộ.')
-        else
-          ...state.items.map(
-            (r) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: AdminListTileCard(
-                title: r.fullName,
-                subtitle: '${r.ownerName} • ${r.language}',
-                badges: [
-                  if (r.stars != null) AppBadge(label: '★ ${r.stars}', variant: AppBadgeVariant.neutral),
-                ],
-                trailing: Text(
-                  r.updatedAt != null ? formatRelativeTime(r.updatedAt!) : '',
-                  style: const TextStyle(color: AppColors.slate500, fontSize: 11),
+        AsyncListBody(
+          isLoading: state.isLoading,
+          isEmpty: state.items.isEmpty,
+          error: state.error,
+          onRetry: () => ref.read(adminReposProvider.notifier).load(search: _search.text.trim()),
+          emptyTitle: 'Không có repository',
+          emptySubtitle: 'Chưa có dữ liệu đồng bộ.',
+          child: Column(
+            children: [
+              ...state.items.map(
+                (r) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: AdminListTileCard(
+                    title: r.fullName,
+                    subtitle: '${r.ownerName} • ${r.language}',
+                    badges: [
+                      if (r.stars != null) AppBadge(label: '★ ${r.stars}', variant: AppBadgeVariant.neutral),
+                    ],
+                    trailing: const Icon(Icons.chevron_right, color: AppColors.slate500),
+                    onTap: () => context.push('/admin/repositories/${r.id}'),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
+        ),
         const SizedBox(height: 8),
         AdminPaginationBar(
           pagination: state.pagination,

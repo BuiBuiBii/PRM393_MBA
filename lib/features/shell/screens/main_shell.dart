@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../shared/widgets/app_app_bar.dart';
 import '../../../shared/widgets/app_image_assets.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -22,6 +23,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   static const _navItems = [
     _MenuItem(path: '/dashboard', label: 'Tổng quan', icon: Icons.dashboard_outlined),
     _MenuItem(path: '/repositories', label: 'Repositories', icon: Icons.folder_outlined),
+    _MenuItem(path: '/ai-feedback', label: 'AI Feedback', icon: Icons.auto_awesome_outlined),
     _MenuItem(path: '/profile', label: 'Hồ sơ', icon: Icons.person_outline),
     _MenuItem(path: '/roadmaps', label: 'Lộ trình', icon: Icons.route_outlined),
     _MenuItem(path: '/chat', label: 'AI Mentor', icon: Icons.chat_bubble_outline),
@@ -60,11 +62,8 @@ class _MainShellState extends ConsumerState<MainShell> {
       child: Scaffold(
         key: _scaffoldKey,
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.white.withValues(alpha: 0.95),
-          foregroundColor: AppColors.slate900,
-          elevation: 0,
-          scrolledUnderElevation: 0,
+        appBar: AppAppBar(
+          title: _title(),
           leading: canPop
               ? IconButton(
                   tooltip: 'Quay lại',
@@ -76,34 +75,6 @@ class _MainShellState extends ConsumerState<MainShell> {
                   onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                   icon: const Icon(Icons.menu),
                 ),
-          title: Row(
-            children: [
-              const AppBrandLogo(size: 28, withBackground: true),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [AppColors.primary, AppColors.purple],
-                      ).createShader(bounds),
-                      child: const Text(
-                        'GitAnalyzer',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
-                      ),
-                    ),
-                    Text(
-                      _title(),
-                      style: const TextStyle(fontSize: 11, color: AppColors.slate500),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
           actions: [
             if (user?.isAdmin == true)
               IconButton(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../providers/admin_provider.dart';
 import '../widgets/admin_widgets.dart';
@@ -58,23 +59,30 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
           BannerMessage(message: state.error!, isError: true),
         ],
         const SizedBox(height: 12),
-        if (state.isLoading && state.items.isEmpty)
-          const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
-        else if (state.items.isEmpty)
-          const EmptyState(title: 'Không có báo cáo', subtitle: 'Hàng đợi kiểm duyệt trống.')
-        else
-          ...state.items.map(
-            (r) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: AdminListTileCard(
-                title: r.reason,
-                subtitle: '${r.targetType}${r.reporterName != null ? ' • ${r.reporterName}' : ''}',
-                badges: [adminStatusLabel(r.status), AppBadge(label: r.targetType, variant: AppBadgeVariant.neutral)],
-                trailing: const Icon(Icons.chevron_right, color: AppColors.slate500),
-                onTap: () => context.push('/admin/reports/${r.id}'),
+        AsyncListBody(
+          isLoading: state.isLoading,
+          isEmpty: state.items.isEmpty,
+          error: state.error,
+          onRetry: () => ref.read(adminReportsProvider.notifier).load(status: _statusFilter),
+          emptyTitle: 'Không có báo cáo',
+          emptySubtitle: 'Hàng đợi kiểm duyệt trống.',
+          child: Column(
+            children: [
+              ...state.items.map(
+                (r) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: AdminListTileCard(
+                    title: r.reason,
+                    subtitle: '${r.targetType}${r.reporterName != null ? ' • ${r.reporterName}' : ''}',
+                    badges: [adminStatusLabel(r.status), AppBadge(label: r.targetType, variant: AppBadgeVariant.neutral)],
+                    trailing: const Icon(Icons.chevron_right, color: AppColors.slate500),
+                    onTap: () => context.push('/admin/reports/${r.id}'),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
+        ),
         const SizedBox(height: 8),
         AdminPaginationBar(
           pagination: state.pagination,

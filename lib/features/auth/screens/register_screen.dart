@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/auth_navigation.dart';
 import '../../../shared/widgets/app_image_assets.dart';
+import '../../../shared/widgets/app_feedback.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../../shared/widgets/auth_layout.dart';
 import '../../../shared/widgets/social_login_panel.dart';
@@ -36,18 +37,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   void _showLegalNotice(BuildContext context, String title) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(
-          '$title sẽ được cập nhật trên website chính thức. '
+    AppDialog.alert(
+      context,
+      title: title,
+      message: '$title sẽ được cập nhật trên website chính thức. '
           'Hiện tại bạn chỉ cần tick đồng ý để tiếp tục đăng ký.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Đã hiểu')),
-        ],
-      ),
     );
   }
 

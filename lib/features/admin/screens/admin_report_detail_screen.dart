@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/widgets/app_feedback.dart';
+import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../providers/admin_provider.dart';
 import '../widgets/admin_widgets.dart';
@@ -37,7 +39,7 @@ class _AdminReportDetailScreenState extends ConsumerState<AdminReportDetailScree
           adminNote: _note.text.trim().isEmpty ? null : _note.text.trim(),
         );
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Đã cập nhật: $status')));
+      AppSnackbar.show(context, message: 'Đã cập nhật: $status', variant: AppSnackVariant.success);
     }
   }
 
@@ -46,77 +48,78 @@ class _AdminReportDetailScreenState extends ConsumerState<AdminReportDetailScree
     final state = ref.watch(adminReportDetailProvider);
     final report = state.report;
 
-    if (state.isLoading && report == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (report == null) {
-      return Center(child: EmptyState(title: 'Không tải được báo cáo', subtitle: state.error));
-    }
-
-    final adminNote = report.adminNote;
-    if (adminNote != null && adminNote.isNotEmpty && adminNote != _syncedAdminNote) {
-      _syncedAdminNote = adminNote;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _note.text = adminNote;
-      });
+    if (report != null) {
+      final adminNote = report.adminNote;
+      if (adminNote != null && adminNote.isNotEmpty && adminNote != _syncedAdminNote) {
+        _syncedAdminNote = adminNote;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _note.text = adminNote;
+        });
+      }
     }
 
-    return ListView(
-      padding: appScreenPadding(context),
-      children: [
-        AdminSectionHeader(title: report.reason, subtitle: 'Loại: ${report.targetType}'),
-        if (state.error != null) ...[
-          const SizedBox(height: 12),
-          BannerMessage(message: state.error!, isError: true),
-        ],
-        const SizedBox(height: 16),
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              adminStatusLabel(report.status),
-              const SizedBox(height: 12),
-              if (report.description != null && report.description!.isNotEmpty)
-                Text(report.description!, style: const TextStyle(height: 1.45)),
-              const SizedBox(height: 12),
-              _row('Người báo cáo', report.reporterName ?? report.reporterEmail ?? '—'),
-              _row('Target ID', report.targetId ?? '—'),
-              _row('Tạo lúc', report.createdAt ?? '—'),
-            ],
+    return AsyncPageBody(
+      isLoading: state.isLoading,
+      hasData: report != null,
+      error: state.error,
+      onRetry: () => ref.read(adminReportDetailProvider.notifier).load(widget.reportId),
+      child: ListView(
+        padding: appScreenPadding(context),
+        children: [
+          AdminSectionHeader(title: report!.reason, subtitle: 'Loại: ${report.targetType}'),
+          if (state.error != null) ...[
+            const SizedBox(height: 12),
+            BannerMessage(message: state.error!, isError: true),
+          ],
+          const SizedBox(height: 16),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                adminStatusLabel(report.status),
+                const SizedBox(height: 12),
+                if (report.description != null && report.description!.isNotEmpty)
+                  Text(report.description!, style: const TextStyle(height: 1.45)),
+                const SizedBox(height: 12),
+                _row('Người báo cáo', report.reporterName ?? report.reporterEmail ?? '—'),
+                _row('Target ID', report.targetId ?? '—'),
+                _row('Tạo lúc', report.createdAt ?? '—'),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Ghi chú admin', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _note,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  hintText: 'Ghi chú xử lý (tuỳ chọn)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              for (final status in ['reviewing', 'resolved', 'rejected'])
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: PrimaryButton(
-                    label: 'Đánh dấu: $status',
-                    outlined: status != 'resolved',
-                    expand: true,
-                    loading: state.isSaving,
-                    onPressed: state.isSaving ? null : () => _updateStatus(status),
+          const SizedBox(height: 16),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Ghi chú admin', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _note,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    hintText: 'Ghi chú xử lý (tuỳ chọn)',
+                    border: OutlineInputBorder(),
                   ),
                 ),
-            ],
+                const SizedBox(height: 12),
+                for (final status in ['reviewing', 'resolved', 'rejected'])
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: PrimaryButton(
+                      label: 'Đánh dấu: $status',
+                      outlined: status != 'resolved',
+                      expand: true,
+                      loading: state.isSaving,
+                      onPressed: state.isSaving ? null : () => _updateStatus(status),
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
