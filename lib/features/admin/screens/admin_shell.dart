@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../shared/widgets/app_app_bar.dart';
 import '../../../shared/widgets/app_image_assets.dart';
 import '../../../shared/widgets/app_widgets.dart';
+import '../widgets/admin_detail_widgets.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class AdminShell extends ConsumerStatefulWidget {
@@ -53,10 +55,11 @@ class _AdminShellState extends ConsumerState<AdminShell> {
       child: Scaffold(
         key: _scaffoldKey,
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
+        appBar: AppAppBar(
+          title: _title(),
+          brandLabel: 'Admin Console',
           backgroundColor: const Color(0xFF1E1B4B).withValues(alpha: 0.95),
           foregroundColor: Colors.white,
-          elevation: 0,
           leading: _isDetailRoute && canPop
               ? IconButton(
                   tooltip: 'Quay lại',
@@ -68,25 +71,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                   onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                   icon: const Icon(Icons.menu),
                 ),
-          title: Row(
-            children: [
-              const AppBrandLogo(size: 28, withBackground: true),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Admin Console', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                  Text(_title(), style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.75))),
-                ],
-              ),
-            ],
-          ),
           actions: [
-            IconButton(
-              tooltip: 'Về app học viên',
-              onPressed: () => context.go('/dashboard'),
-              icon: const Icon(Icons.school_outlined, size: 22),
-            ),
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: UserAvatar(imageUrl: user?.avatar, name: user?.name, size: 30),
@@ -153,7 +138,15 @@ class _AdminShellState extends ConsumerState<AdminShell> {
             ],
           ),
         ),
-        body: KeyedSubtree(key: ValueKey(_location), child: widget.child),
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AdminBreadcrumb(location: _location),
+            Expanded(
+              child: KeyedSubtree(key: ValueKey(_location), child: widget.child),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../providers/admin_provider.dart';
 import '../widgets/admin_widgets.dart';
@@ -49,25 +51,34 @@ class _AdminAnalysisScreenState extends ConsumerState<AdminAnalysisScreen> {
           BannerMessage(message: state.error!, isError: true),
         ],
         const SizedBox(height: 12),
-        if (state.isLoading && state.items.isEmpty)
-          const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
-        else if (state.items.isEmpty)
-          const EmptyState(title: 'Không có phân tích', subtitle: 'Chưa có snapshot phân tích.')
-        else
-          ...state.items.map(
-            (a) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: AdminListTileCard(
-                title: a.repoName,
-                subtitle: '${a.ownerName} • ${a.projectType}',
-                badges: [
-                  AppBadge(label: a.careerDirection, variant: AppBadgeVariant.info),
-                  if (a.overallScore != null)
-                    AppBadge(label: 'Score ${a.overallScore}', variant: AppBadgeVariant.success),
-                ],
+        AsyncListBody(
+          isLoading: state.isLoading,
+          isEmpty: state.items.isEmpty,
+          error: state.error,
+          onRetry: () => ref.read(adminAnalysisProvider.notifier).load(search: _search.text.trim()),
+          emptyTitle: 'Không có phân tích',
+          emptySubtitle: 'Chưa có snapshot phân tích.',
+          child: Column(
+            children: [
+              ...state.items.map(
+                (a) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: AdminListTileCard(
+                    title: a.repoName,
+                    subtitle: '${a.ownerName} • ${a.projectType}',
+                    badges: [
+                      AppBadge(label: a.careerDirection, variant: AppBadgeVariant.info),
+                      if (a.overallScore != null)
+                        AppBadge(label: 'Score ${a.overallScore}', variant: AppBadgeVariant.success),
+                    ],
+                    trailing: const Icon(Icons.chevron_right, color: AppColors.slate500),
+                    onTap: () => context.push('/admin/analysis/${a.id}'),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
+        ),
         const SizedBox(height: 8),
         AdminPaginationBar(
           pagination: state.pagination,

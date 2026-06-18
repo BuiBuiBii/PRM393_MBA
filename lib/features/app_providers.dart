@@ -23,6 +23,7 @@ class RepositoryState {
     this.generatingFeedbackRepoId,
     this.loadingPackagesFor,
     this.loadingCommitsFor,
+    this.isLoadingMyFeedbacks = false,
     this.error,
   });
 
@@ -37,6 +38,7 @@ class RepositoryState {
   final String? generatingFeedbackRepoId;
   final String? loadingPackagesFor;
   final String? loadingCommitsFor;
+  final bool isLoadingMyFeedbacks;
   final String? error;
 
   bool isAnalyzingRepo(String id) => analyzingRepoId == id;
@@ -50,6 +52,16 @@ class RepositoryState {
   List<dynamic> packagesFor(String repoId) => packagesByRepoId[repoId] ?? const [];
 
   List<dynamic> commitsFor(String repoId) => commitsByRepoId[repoId] ?? const [];
+
+  List<AiFeedbackModel> get myFeedbacks {
+    final items = aiFeedbacks.values.toList();
+    items.sort((a, b) {
+      final ad = DateTime.tryParse(a.generatedAt ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bd = DateTime.tryParse(b.generatedAt ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return bd.compareTo(ad);
+    });
+    return items;
+  }
 
   RepositoryState copyWith({
     List<RepositoryModel>? repositories,
@@ -67,6 +79,7 @@ class RepositoryState {
     bool clearLoadingPackagesFor = false,
     String? loadingCommitsFor,
     bool clearLoadingCommitsFor = false,
+    bool? isLoadingMyFeedbacks,
     String? error,
     bool clearError = false,
   }) {
@@ -83,6 +96,7 @@ class RepositoryState {
           clearGeneratingFeedbackRepoId ? null : (generatingFeedbackRepoId ?? this.generatingFeedbackRepoId),
       loadingPackagesFor: clearLoadingPackagesFor ? null : (loadingPackagesFor ?? this.loadingPackagesFor),
       loadingCommitsFor: clearLoadingCommitsFor ? null : (loadingCommitsFor ?? this.loadingCommitsFor),
+      isLoadingMyFeedbacks: isLoadingMyFeedbacks ?? this.isLoadingMyFeedbacks,
       error: clearError ? null : (error ?? this.error),
     );
   }
@@ -199,6 +213,43 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
       return feedback;
     } catch (_) {
       return null;
+    }
+  }
+
+  Future<void> fetchMyAiFeedbacks() async {
+    state = state.copyWith(isLoadingMyFeedbacks: true, clearError: true);
+    try {
+      final List<AiFeedbackModel> feedbacks;
+      if (AppConfig.demoMode) {
+        await fetchRepositories();
+        feedbacks = state.repositories.take(2).map((repo) {
+          return AiFeedbackModel(
+            id: 'demo-feedback-${repo.id}',
+            repositoryId: repo.id,
+            repositoryName: repo.fullName,
+            summary: 'Repository ${repo.name} có cấu trúc ổn nhưng cần bổ sung test và CI.',
+            strengthFeedback: const ['Cấu trúc project rõ ràng', 'README đầy đủ'],
+            weaknessFeedback: const ['Thiếu unit test', 'Chưa có pipeline CI'],
+            learningAdvice: 'Ưu tiên viết test cho module core và thiết lập GitHub Actions.',
+            nextSteps: const ['Thêm Jest/pytest', 'Cấu hình CI', 'Bổ sung badge README'],
+            recommendedTopics: const ['Testing', 'DevOps'],
+            careerSuggestion: 'Full-Stack Developer',
+            generatedAt: DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
+          );
+        }).toList();
+      } else {
+        feedbacks = await safeRequest(_api.getMyAiFeedback);
+      }
+
+      final merged = <String, AiFeedbackModel>{...state.aiFeedbacks};
+      for (final feedback in feedbacks) {
+        final repoId = feedback.repositoryId.isNotEmpty ? feedback.repositoryId : feedback.id;
+        if (repoId.isEmpty) continue;
+        merged[repoId] = feedback.copyWithRepositoryId(repoId);
+      }
+      state = state.copyWith(isLoadingMyFeedbacks: false, aiFeedbacks: merged);
+    } catch (e) {
+      state = state.copyWith(isLoadingMyFeedbacks: false, error: getApiErrorMessage(e));
     }
   }
 
@@ -463,6 +514,7 @@ class RoadmapState {
     this.learningStats,
     this.bookmarkedNodeIds = const {},
     this.filters = const RoadmapFilters(),
+    this.statusFilter = 'active',
     this.isLoading = false,
     this.isGenerating = false,
     this.isArchiving = false,
@@ -476,6 +528,7 @@ class RoadmapState {
   final LearningStatsModel? learningStats;
   final Set<String> bookmarkedNodeIds;
   final RoadmapFilters filters;
+  final String statusFilter;
   final bool isLoading;
   final bool isGenerating;
   final bool isArchiving;
@@ -489,6 +542,7 @@ class RoadmapState {
     LearningStatsModel? learningStats,
     Set<String>? bookmarkedNodeIds,
     RoadmapFilters? filters,
+    String? statusFilter,
     bool? isLoading,
     bool? isGenerating,
     bool? isArchiving,
@@ -503,6 +557,7 @@ class RoadmapState {
       learningStats: learningStats ?? this.learningStats,
       bookmarkedNodeIds: bookmarkedNodeIds ?? this.bookmarkedNodeIds,
       filters: filters ?? this.filters,
+      statusFilter: statusFilter ?? this.statusFilter,
       isLoading: isLoading ?? this.isLoading,
       isGenerating: isGenerating ?? this.isGenerating,
       isArchiving: isArchiving ?? this.isArchiving,
@@ -534,12 +589,22 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
 
   void setTargetRole(String role) => state = state.copyWith(selectedTargetRole: role);
 
-  Future<void> loadRoadmaps() async {
-    state = state.copyWith(isLoading: true, clearError: true);
+  Future<void> setStatusFilter(String status) async {
+    if (status == state.statusFilter) return;
+    state = state.copyWith(statusFilter: status, clearError: true);
+    await loadRoadmaps(status: status);
+  }
+
+  Future<void> loadRoadmaps({String? status}) async {
+    final effectiveStatus = status ?? state.statusFilter;
+    state = state.copyWith(isLoading: true, clearError: true, statusFilter: effectiveStatus);
     try {
       if (AppConfig.demoMode) {
+        final items = effectiveStatus == 'archived'
+            ? mockRoadmaps.where((r) => r.isArchived).toList()
+            : mockRoadmaps.where((r) => !r.isArchived).toList();
         state = state.copyWith(
-          roadmaps: mockRoadmaps,
+          roadmaps: items,
           aiRecommendation: mockAIRecommendation,
           skillProgress: mockSkillProgress,
           learningStats: mockLearningStats,
@@ -547,21 +612,13 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
         );
         return;
       }
-      final roadmaps = await safeRequest(_api.getMyRoadmaps);
+      final roadmaps = await safeRequest(() => _api.getMyRoadmaps(status: effectiveStatus));
       final stats = computeLearningStats(roadmaps);
       final skills = computeSkillProgress(roadmaps);
-      final recommendation = roadmaps.isNotEmpty
-          ? normalizeAiRecommendation(
-              roadmaps.first,
-              strengths: roadmaps.first.tags.take(4).toList(),
-              missingSkills: roadmaps.first.tags.skip(4).toList(),
-            )
-          : null;
       state = state.copyWith(
         roadmaps: roadmaps,
         learningStats: stats,
         skillProgress: skills,
-        aiRecommendation: recommendation,
         isLoading: false,
       );
     } catch (e) {
@@ -569,17 +626,18 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
     }
   }
 
-  Future<void> generateAI({bool forceRegenerate = false}) async {
-    state = state.copyWith(isGenerating: true, clearError: true);
+  Future<RoadmapModel?> generateAI({String? targetRole, bool forceRegenerate = false}) async {
+    final role = targetRole ?? state.selectedTargetRole;
+    state = state.copyWith(isGenerating: true, clearError: true, selectedTargetRole: role);
     try {
       if (AppConfig.demoMode) {
         await Future<void>.delayed(const Duration(milliseconds: 800));
         state = state.copyWith(isGenerating: false);
-        return;
+        return mockRoadmaps.first;
       }
       final roadmap = await safeRequest(
         () => _api.generateRoadmap(
-          targetRole: state.selectedTargetRole,
+          targetRole: role,
           forceRegenerate: forceRegenerate,
         ),
       );
@@ -595,6 +653,7 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
         skillProgress: computeSkillProgress(roadmaps),
         isGenerating: false,
       );
+      return roadmap;
     } catch (e) {
       state = state.copyWith(isGenerating: false, error: getApiErrorMessage(e));
       rethrow;

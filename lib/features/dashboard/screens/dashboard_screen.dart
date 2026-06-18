@@ -78,7 +78,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: isCompactPhone(context) ? 1.15 : 1.3,
+          childAspectRatio: isCompactPhone(context) ? 1.05 : 1.15,
           children: [
             StatCard(label: 'Repositories', value: '$totalRepos', icon: Icons.folder_copy, iconColor: AppColors.primary, iconBg: const Color(0xFFE0E7FF)),
             StatCard(label: 'Đã phân tích', value: '$analyzed', icon: Icons.check_circle_outline, iconColor: AppColors.emerald, iconBg: const Color(0xFFD1FAE5)),

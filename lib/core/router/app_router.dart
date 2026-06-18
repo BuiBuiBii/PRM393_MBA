@@ -4,11 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/admin/screens/admin_access_denied_screen.dart';
 import '../../features/admin/screens/admin_ai_feedback_screen.dart';
+import '../../features/admin/screens/admin_analysis_detail_screen.dart';
 import '../../features/admin/screens/admin_analysis_screen.dart';
+import '../../features/admin/screens/admin_ai_feedback_detail_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
 import '../../features/admin/screens/admin_report_detail_screen.dart';
 import '../../features/admin/screens/admin_reports_screen.dart';
 import '../../features/admin/screens/admin_repositories_screen.dart';
+import '../../features/admin/screens/admin_repository_detail_screen.dart';
+import '../../features/admin/screens/admin_roadmap_detail_screen.dart';
 import '../../features/admin/screens/admin_roadmaps_screen.dart';
 import '../../features/admin/screens/admin_shell.dart';
 import '../../features/admin/screens/admin_user_detail_screen.dart';
@@ -19,6 +23,7 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/chat/screens/chat_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
+import '../../features/feedback/screens/ai_feedback_dashboard_screen.dart';
 import '../../features/github/screens/github_auth_callback_screen.dart';
 import '../../features/github/screens/github_callback_screen.dart';
 import '../../features/github/screens/github_connect_screen.dart';
@@ -85,9 +90,25 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, state) => AdminReportDetailScreen(reportId: state.pathParameters['reportId']!),
           ),
           GoRoute(path: '/admin/repositories', builder: (_, __) => const AdminRepositoriesScreen()),
+          GoRoute(
+            path: '/admin/repositories/:repositoryId',
+            builder: (_, state) => AdminRepositoryDetailScreen(repositoryId: state.pathParameters['repositoryId']!),
+          ),
           GoRoute(path: '/admin/analysis', builder: (_, __) => const AdminAnalysisScreen()),
+          GoRoute(
+            path: '/admin/analysis/:analysisId',
+            builder: (_, state) => AdminAnalysisDetailScreen(analysisId: state.pathParameters['analysisId']!),
+          ),
           GoRoute(path: '/admin/ai-feedback', builder: (_, __) => const AdminAiFeedbackScreen()),
+          GoRoute(
+            path: '/admin/ai-feedback/:feedbackId',
+            builder: (_, state) => AdminAiFeedbackDetailScreen(feedbackId: state.pathParameters['feedbackId']!),
+          ),
           GoRoute(path: '/admin/roadmaps', builder: (_, __) => const AdminRoadmapsScreen()),
+          GoRoute(
+            path: '/admin/roadmaps/:roadmapId',
+            builder: (_, state) => AdminRoadmapDetailScreen(roadmapId: state.pathParameters['roadmapId']!),
+          ),
         ],
       ),
       ShellRoute(
@@ -96,6 +117,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
           GoRoute(path: '/dashboard', builder: (_, __) => const DashboardScreen()),
           GoRoute(path: '/repositories', builder: (_, __) => const RepositoriesScreen()),
+          GoRoute(path: '/ai-feedback', builder: (_, __) => const AiFeedbackDashboardScreen()),
           GoRoute(
             path: '/repositories/:id',
             builder: (_, state) => RepositoryDetailScreen(repoId: state.pathParameters['id']!),

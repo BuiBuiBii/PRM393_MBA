@@ -158,9 +158,33 @@ class AdminApi {
     return _parsePage(res.data, AdminRoadmapRecord.fromJson);
   }
 
+  Future<AdminRoadmapRecord> getRoadmap(String roadmapId) async {
+    final res = await _dio.get('/admin/roadmaps/$roadmapId');
+    final map = _unwrapMap(res.data);
+    return AdminRoadmapRecord.fromJson(toRecord(map['roadmap'] ?? map['item'] ?? map['detail'] ?? map));
+  }
+
   Future<AdminRoadmapRecord> updateRoadmapStatus(String roadmapId, String status) async {
     final res = await _dio.patch('/admin/roadmaps/$roadmapId/status', data: {'status': status});
     final map = _unwrapMap(res.data);
     return AdminRoadmapRecord.fromJson(toRecord(map['roadmap'] ?? map));
+  }
+
+  Future<AdminAnalysisRecord> getAnalysis(String analysisId) async {
+    final res = await _dio.get('/admin/analysis/$analysisId');
+    final map = _unwrapMap(res.data);
+    return AdminAnalysisRecord.fromJson(toRecord(map['analysis'] ?? map['item'] ?? map['detail'] ?? map));
+  }
+
+  Future<AdminFeedbackRecord> getAiFeedbackDetail(String feedbackId) async {
+    final res = await _dio.get('/admin/ai-feedback/$feedbackId');
+    final map = _unwrapMap(res.data);
+    return AdminFeedbackRecord.fromJson(toRecord(map['aiFeedback'] ?? map['feedback'] ?? map['item'] ?? map['detail'] ?? map));
+  }
+
+  Future<AdminRepoRecord> getRepository(String repositoryId) async {
+    final res = await _dio.get('/admin/github/repositories/$repositoryId');
+    final map = _unwrapMap(res.data);
+    return AdminRepoRecord.fromJson(toRecord(map['repository'] ?? map['repo'] ?? map['item'] ?? map['detail'] ?? map));
   }
 }

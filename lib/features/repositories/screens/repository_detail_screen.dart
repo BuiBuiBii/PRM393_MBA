@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_providers.dart';
 import '../../../shared/utils/format_utils.dart';
+import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../../shared/widgets/roadmap_widgets.dart';
 
@@ -37,44 +38,41 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
     final packages = state.packagesFor(widget.repoId);
     final commits = state.commitsFor(widget.repoId);
     final feedback = state.feedbackFor(widget.repoId);
+    final detail = repo;
 
-    if (state.isLoading && repo == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (repo == null) {
-      return EmptyState(
-        title: 'Không tìm thấy repository',
-        action: TextButton(onPressed: () => context.go('/repositories'), child: const Text('Quay lại')),
-      );
-    }
-
-    return ListView(
-      padding: appScreenPadding(context),
-      children: [
-        TextButton.icon(
-          onPressed: () => context.go('/repositories'),
+    return AsyncPageBody(
+      isLoading: state.isLoading,
+      hasData: detail != null,
+      onRetry: () => ref.read(repositoryProvider.notifier).fetchRepository(widget.repoId),
+      child: detail == null
+          ? const SizedBox.shrink()
+          : ListView(
+        padding: appScreenPadding(context),
+        children: [
+          TextButton.icon(
+            onPressed: () => context.go('/repositories'),
           icon: const Icon(Icons.arrow_back),
           label: const Text('Repositories'),
         ),
-        PageHeader(title: repo.name, subtitle: repo.fullName),
-        if (repo.description != null) ...[const SizedBox(height: 8), Text(repo.description!)],
+        PageHeader(title: detail.name, subtitle: detail.fullName),
+        if (detail.description != null) ...[const SizedBox(height: 8), Text(detail.description!)],
         const SizedBox(height: 16),
         AppCard(
           child: Wrap(
             spacing: 16,
             runSpacing: 8,
             children: [
-              AppBadge(label: repo.language),
-              _meta(Icons.star, '${repo.stars} stars'),
-              _meta(Icons.call_split, '${repo.forks} forks'),
-              _meta(Icons.schedule, formatRelativeTime(repo.updatedAt)),
+              AppBadge(label: detail.language),
+              _meta(Icons.star, '${detail.stars} stars'),
+              _meta(Icons.call_split, '${detail.forks} forks'),
+              _meta(Icons.schedule, formatRelativeTime(detail.updatedAt)),
               AppBadge(
-                label: repo.hasReadme ? 'Có README' : 'Thiếu README',
-                variant: repo.hasReadme ? AppBadgeVariant.success : AppBadgeVariant.warning,
+                label: detail.hasReadme ? 'Có README' : 'Thiếu README',
+                variant: detail.hasReadme ? AppBadgeVariant.success : AppBadgeVariant.warning,
               ),
               AppBadge(
-                label: repo.analyzed ? 'Đã phân tích' : 'Chưa phân tích',
-                variant: repo.analyzed ? AppBadgeVariant.success : AppBadgeVariant.neutral,
+                label: detail.analyzed ? 'Đã phân tích' : 'Chưa phân tích',
+                variant: detail.analyzed ? AppBadgeVariant.success : AppBadgeVariant.neutral,
               ),
             ],
           ),
@@ -91,7 +89,7 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
               const Text('Phân tích repository này', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
               const SizedBox(height: 8),
               Text(
-                'Đồng bộ packages, commits, chạy phân tích và lấy AI feedback cho ${repo.fullName}.',
+                'Đồng bộ packages, commits, chạy phân tích và lấy AI feedback cho ${detail.fullName}.',
                 style: const TextStyle(color: AppColors.slate500, fontSize: 13),
               ),
               const SizedBox(height: 12),
@@ -100,14 +98,14 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
                 runSpacing: 8,
                 children: [
                   PrimaryButton(
-                    label: repo.analyzed ? 'Phân tích lại' : 'Phân tích ngay',
+                    label: detail.analyzed ? 'Phân tích lại' : 'Phân tích ngay',
                     icon: Icons.play_arrow,
-                    loading: state.isAnalyzingRepo(repo.id),
+                    loading: state.isAnalyzingRepo(detail.id),
                     onPressed: state.isAnalyzing
                         ? null
                         : () async {
                             try {
-                              final result = await ref.read(repositoryProvider.notifier).analyzeRepository(repo.id);
+                              final result = await ref.read(repositoryProvider.notifier).analyzeRepository(detail.id);
                               if (context.mounted) context.push('/repositories/${result.repositoryId}/analysis');
                             } catch (_) {}
                           },
@@ -115,20 +113,20 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
                   PrimaryButton(
                     label: 'Tải packages',
                     outlined: true,
-                    loading: state.loadingPackagesFor == repo.id,
-                    onPressed: () => ref.read(repositoryProvider.notifier).fetchPackages(repo.id, sync: true),
+                    loading: state.loadingPackagesFor == detail.id,
+                    onPressed: () => ref.read(repositoryProvider.notifier).fetchPackages(detail.id, sync: true),
                   ),
                   PrimaryButton(
                     label: 'Tải commits',
                     outlined: true,
-                    loading: state.loadingCommitsFor == repo.id,
-                    onPressed: () => ref.read(repositoryProvider.notifier).fetchCommits(repo.id, sync: true),
+                    loading: state.loadingCommitsFor == detail.id,
+                    onPressed: () => ref.read(repositoryProvider.notifier).fetchCommits(detail.id, sync: true),
                   ),
-                  if (repo.analyzed)
+                  if (detail.analyzed)
                     PrimaryButton(
                       label: 'Xem phân tích',
                       outlined: true,
-                      onPressed: () => context.push('/repositories/${repo.id}/analysis'),
+                      onPressed: () => context.push('/repositories/${detail.id}/analysis'),
                     ),
                 ],
               ),
@@ -194,13 +192,13 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
         const SizedBox(height: 16),
         AiFeedbackPanel(
           feedback: feedback,
-          isGenerating: state.isGeneratingFeedback(repo.id),
+          isGenerating: state.isGeneratingFeedback(detail.id),
           onGenerate: () async {
             try {
-              await ref.read(repositoryProvider.notifier).generateAiFeedback(repo.id);
+              await ref.read(repositoryProvider.notifier).generateAiFeedback(detail.id);
             } catch (_) {}
           },
-          onRefresh: () => ref.read(repositoryProvider.notifier).fetchAiFeedback(repo.id),
+          onRefresh: () => ref.read(repositoryProvider.notifier).fetchAiFeedback(detail.id),
         ),
         const SizedBox(height: 16),
         PrimaryButton(
@@ -208,9 +206,10 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
           outlined: true,
           icon: Icons.open_in_new,
           expand: true,
-          onPressed: () => launchUrl(Uri.parse(repo.url), mode: LaunchMode.externalApplication),
+          onPressed: () => launchUrl(Uri.parse(detail.url), mode: LaunchMode.externalApplication),
         ),
       ],
+      ),
     );
   }
 

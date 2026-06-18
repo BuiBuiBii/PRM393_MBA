@@ -6,6 +6,7 @@ import '../../app_providers.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/utils/format_utils.dart';
+import '../../../shared/widgets/app_feedback.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -63,8 +64,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _scrollToBottom();
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(ref.read(chatProvider).error ?? 'Không gửi được tin nhắn')),
+        AppSnackbar.show(
+          context,
+          message: ref.read(chatProvider).error ?? 'Không gửi được tin nhắn',
+          variant: AppSnackVariant.error,
         );
       }
     }

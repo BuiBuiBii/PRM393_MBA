@@ -8,6 +8,7 @@ import 'core/storage/token_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/auth/providers/auth_provider.dart';
+import 'shared/widgets/global_loading.dart';
 
 class GitAnalyzerApp extends ConsumerWidget {
   const GitAnalyzerApp({super.key});
@@ -26,7 +27,7 @@ class GitAnalyzerApp extends ConsumerWidget {
         darkTheme: AppTheme.dark(),
         themeMode: themeMode,
         home: const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
+          body: Center(child: GlobalLoadingIndicator(message: 'Đang khởi động...')),
         ),
       );
     }
@@ -38,6 +39,14 @@ class GitAnalyzerApp extends ConsumerWidget {
       darkTheme: AppTheme.dark(),
       themeMode: themeMode,
       routerConfig: router,
+      builder: (context, child) {
+        return Stack(
+          children: [
+            if (child != null) child,
+            const GlobalLoadingOverlay(),
+          ],
+        );
+      },
     );
   }
 }

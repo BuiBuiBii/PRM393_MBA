@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../shared/widgets/skeleton_loading.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../providers/admin_provider.dart';
 import '../widgets/admin_widgets.dart';
@@ -41,7 +42,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           ],
           const SizedBox(height: 16),
           if (state.isLoading && stats == null)
-            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+            const SkeletonStatGrid()
           else if (stats != null) ...[
             GridView.count(
               crossAxisCount: 2,

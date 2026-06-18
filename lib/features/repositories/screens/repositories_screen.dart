@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_providers.dart';
 import '../../../shared/utils/format_utils.dart';
+import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
 class RepositoriesScreen extends ConsumerStatefulWidget {
@@ -23,6 +24,7 @@ class _RepositoriesScreenState extends ConsumerState<RepositoriesScreen> {
     Future.microtask(() {
       ref.read(repositoryProvider.notifier).fetchRepositories();
       ref.read(repositoryProvider.notifier).fetchMyAnalyses();
+      ref.read(repositoryProvider.notifier).fetchMyAiFeedbacks();
     });
   }
 
@@ -67,15 +69,16 @@ class _RepositoriesScreenState extends ConsumerState<RepositoriesScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        if (state.isLoading && repos.isEmpty)
-          const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator()))
-        else if (repos.isEmpty)
-          const EmptyState(
-            title: 'Chưa có repository',
-            subtitle: 'Hãy kết nối GitHub và bấm Đồng bộ.',
-          )
-        else
-          ...repos.map((repo) {
+        AsyncListBody(
+          isLoading: state.isLoading,
+          isEmpty: repos.isEmpty,
+          error: state.error,
+          onRetry: () => ref.read(repositoryProvider.notifier).fetchRepositories(),
+          emptyTitle: 'Chưa có repository',
+          emptySubtitle: 'Hãy kết nối GitHub và bấm Đồng bộ.',
+          child: Column(
+            children: [
+              ...repos.map((repo) {
             final analysis = state.analyses.where((a) => a.repositoryId == repo.id).firstOrNull;
             final hasAnalysis = analysis != null || repo.analyzed;
             return Padding(
@@ -156,6 +159,9 @@ class _RepositoriesScreenState extends ConsumerState<RepositoriesScreen> {
               ),
             );
           }),
+            ],
+          ),
+        ),
       ],
     );
   }

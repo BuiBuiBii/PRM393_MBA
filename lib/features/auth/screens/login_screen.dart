@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/router/auth_navigation.dart';
 import '../../../shared/widgets/app_image_assets.dart';
+import '../../../shared/widgets/app_feedback.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../../shared/widgets/auth_layout.dart';
 import '../../../shared/widgets/social_login_panel.dart';
@@ -144,10 +145,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         TextButton(
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Tính năng quên mật khẩu đang được phát triển. Vui lòng liên hệ quản trị viên.'),
-                              ),
+                            AppSnackbar.show(
+                              context,
+                              message: 'Tính năng quên mật khẩu đang được phát triển. Vui lòng liên hệ quản trị viên.',
+                              variant: AppSnackVariant.info,
                             );
                           },
                           style: TextButton.styleFrom(

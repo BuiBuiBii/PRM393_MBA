@@ -268,8 +268,13 @@ class AiFeedbackModel {
 
     return AiFeedbackModel(
       id: (json['id'] ?? json['_id'] ?? '').toString(),
-      repositoryId: (json['repositoryId'] ?? '').toString(),
-      repositoryName: (json['repoName'] ?? json['fullName'] ?? json['repositoryName'] ?? 'Repository').toString(),
+      repositoryId: _refId(json['repositoryId']),
+      repositoryName: (json['repoName'] ??
+              json['fullName'] ??
+              json['repositoryName'] ??
+              _refName(json['repositoryId']) ??
+              'Repository')
+          .toString(),
       summary: (json['summary'] ?? '').toString(),
       strengthFeedback: listOf(json['strengthFeedback']),
       weaknessFeedback: listOf(json['weaknessFeedback']),
@@ -280,6 +285,33 @@ class AiFeedbackModel {
       portfolioAdvice: json['portfolioAdvice']?.toString(),
       generatedAt: (json['generatedAt'] ?? json['createdAt'])?.toString(),
     );
+  }
+
+  AiFeedbackModel copyWithRepositoryId(String repositoryId) {
+    return AiFeedbackModel(
+      id: id,
+      repositoryId: repositoryId,
+      repositoryName: repositoryName,
+      summary: summary,
+      strengthFeedback: strengthFeedback,
+      weaknessFeedback: weaknessFeedback,
+      learningAdvice: learningAdvice,
+      nextSteps: nextSteps,
+      recommendedTopics: recommendedTopics,
+      careerSuggestion: careerSuggestion,
+      portfolioAdvice: portfolioAdvice,
+      generatedAt: generatedAt,
+    );
+  }
+
+  static String _refId(dynamic value) {
+    if (value is Map) return (value['_id'] ?? value['id'] ?? '').toString();
+    return (value ?? '').toString();
+  }
+
+  static String? _refName(dynamic value) {
+    if (value is! Map) return null;
+    return (value['fullName'] ?? value['name'] ?? value['repoName'])?.toString();
   }
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../providers/admin_provider.dart';
 import '../widgets/admin_widgets.dart';
@@ -16,6 +17,7 @@ class AdminUsersScreen extends ConsumerStatefulWidget {
 class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
   final _search = TextEditingController();
   String? _roleFilter;
+  String? _statusFilter;
 
   @override
   void initState() {
@@ -44,7 +46,11 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
         AdminSearchField(
           controller: _search,
           hint: 'Tìm email hoặc tên...',
-          onSubmitted: (q) => ref.read(adminUsersProvider.notifier).load(search: q.trim(), role: _roleFilter),
+          onSubmitted: (q) => ref.read(adminUsersProvider.notifier).load(
+                search: q.trim(),
+                role: _roleFilter,
+                status: _statusFilter,
+              ),
         ),
         const SizedBox(height: 8),
         SingleChildScrollView(
@@ -59,7 +65,35 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                     selected: _roleFilter == role,
                     onSelected: (_) {
                       setState(() => _roleFilter = role);
-                      ref.read(adminUsersProvider.notifier).load(search: _search.text.trim(), role: role);
+                      ref.read(adminUsersProvider.notifier).load(
+                            search: _search.text.trim(),
+                            role: role,
+                            status: _statusFilter,
+                          );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (final status in [null, 'active', 'inactive', 'banned'])
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: FilterChip(
+                    label: Text(status ?? 'Tất cả status'),
+                    selected: _statusFilter == status,
+                    onSelected: (_) {
+                      setState(() => _statusFilter = status);
+                      ref.read(adminUsersProvider.notifier).load(
+                            search: _search.text.trim(),
+                            role: _roleFilter,
+                            status: status,
+                          );
                     },
                   ),
                 ),
@@ -71,23 +105,34 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
           BannerMessage(message: state.error!, isError: true),
         ],
         const SizedBox(height: 12),
-        if (state.isLoading && state.items.isEmpty)
-          const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
-        else if (state.items.isEmpty)
-          const EmptyState(title: 'Không có người dùng', subtitle: 'Thử đổi bộ lọc hoặc từ khóa tìm kiếm.')
-        else
-          ...state.items.map(
-            (u) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: AdminListTileCard(
-                title: u.name,
-                subtitle: u.email.isEmpty ? 'Không có email' : u.email,
-                badges: [adminRoleBadge(u.role), adminStatusLabel(u.status)],
-                trailing: const Icon(Icons.chevron_right, color: AppColors.slate500),
-                onTap: () => context.push('/admin/users/${u.id}'),
+        AsyncListBody(
+          isLoading: state.isLoading,
+          isEmpty: state.items.isEmpty,
+          error: state.error,
+          onRetry: () => ref.read(adminUsersProvider.notifier).load(
+                search: _search.text.trim(),
+                role: _roleFilter,
+                status: _statusFilter,
               ),
-            ),
+          emptyTitle: 'Không có người dùng',
+          emptySubtitle: 'Thử đổi bộ lọc hoặc từ khóa tìm kiếm.',
+          child: Column(
+            children: [
+              ...state.items.map(
+                (u) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: AdminListTileCard(
+                    title: u.name,
+                    subtitle: u.email.isEmpty ? 'Không có email' : u.email,
+                    badges: [adminRoleBadge(u.role), adminStatusLabel(u.status)],
+                    trailing: const Icon(Icons.chevron_right, color: AppColors.slate500),
+                    onTap: () => context.push('/admin/users/${u.id}'),
+                  ),
+                ),
+              ),
+            ],
           ),
+        ),
         const SizedBox(height: 8),
         AdminPaginationBar(
           pagination: state.pagination,

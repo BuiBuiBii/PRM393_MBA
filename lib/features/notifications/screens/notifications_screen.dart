@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app_providers.dart';
+import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
@@ -97,47 +98,53 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   const Text('Chỉ hiện chưa đọc'),
                 ],
               ),
-              if (state.isLoading)
-                const Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())
-              else if (state.items.isEmpty)
-                const EmptyState(title: 'Không có thông báo')
-              else
-                ...state.items.map(
-                  (item) => Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade200),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.notifications, color: AppColors.primary),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(item.title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 4),
-                              Text(item.message, style: const TextStyle(color: AppColors.slate600, fontSize: 13)),
-                            ],
-                          ),
+              AsyncListBody(
+                isLoading: state.isLoading,
+                isEmpty: state.items.isEmpty,
+                error: state.error,
+                onRetry: _load,
+                emptyTitle: 'Không có thông báo',
+                child: Column(
+                  children: [
+                    ...state.items.map(
+                      (item) => Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade200),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        if (!item.read)
-                          IconButton(
-                            icon: const Icon(Icons.check),
-                            onPressed: () => ref.read(notificationProvider.notifier).markRead(item.id),
-                          ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () => ref.read(notificationProvider.notifier).remove(item.id),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.notifications, color: AppColors.primary),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(item.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                  const SizedBox(height: 4),
+                                  Text(item.message, style: const TextStyle(color: AppColors.slate600, fontSize: 13)),
+                                ],
+                              ),
+                            ),
+                            if (!item.read)
+                              IconButton(
+                                icon: const Icon(Icons.check),
+                                onPressed: () => ref.read(notificationProvider.notifier).markRead(item.id),
+                              ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () => ref.read(notificationProvider.notifier).remove(item.id),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
+              ),
             ],
           ),
         ),
