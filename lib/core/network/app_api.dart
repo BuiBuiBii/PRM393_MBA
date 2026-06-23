@@ -94,6 +94,29 @@ class AppApi {
     return normalizeAnalyses(res.data);
   }
 
+  Future<List<RepoAnalysisSnapshotModel>> getSnapshots(String repoId) async {
+    final res = await _dio.get('/repositories/$repoId/snapshots');
+    return normalizeSnapshots(res.data);
+  }
+
+  Future<RepoAnalysisSnapshotModel?> getSnapshot(String snapshotId) async {
+    final res = await _dio.get('/snapshots/$snapshotId');
+    return normalizeSnapshot(res.data);
+  }
+
+  Future<SnapshotCompareResultModel> compareSnapshots(String fromId, String toId) async {
+    final res = await _dio.post('/snapshots/compare', data: {
+      'fromSnapshotId': fromId,
+      'toSnapshotId': toId,
+    });
+    return normalizeSnapshotCompare(res.data);
+  }
+
+  Future<SnapshotCompareResultModel> getProgressComparison(String repoId) async {
+    final res = await _dio.get('/repositories/$repoId/progress-comparison');
+    return normalizeSnapshotCompare(res.data);
+  }
+
   Future<AiFeedbackModel> generateAiFeedback(String repoId) async {
     final res = await _dio.post('/ai-feedback/repositories/$repoId');
     return normalizeAiFeedback(res.data);
