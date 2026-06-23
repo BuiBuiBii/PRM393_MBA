@@ -558,6 +558,11 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Role-matching origin badge
+              if (roadmap.roadmapSource == 'role_matching') ...[
+                const AppBadge(label: '⚡ Được cá nhân hóa từ Role Match', variant: AppBadgeVariant.info),
+                const SizedBox(height: 8),
+              ],
               Text(roadmap.description),
               const SizedBox(height: 12),
               Wrap(
@@ -573,6 +578,57 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
                     AppBadge(label: '${roadmap.sourceRepositoriesCount} repo', variant: AppBadgeVariant.success),
                 ],
               ),
+              // Role match info
+              if (roadmap.roleMatchInfo != null) ...[
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Icon(Icons.work_outline, size: 14, color: AppColors.primary),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '${roadmap.roleMatchInfo!['roleName'] ?? roadmap.roleMatchInfo!['matchedRole'] ?? roadmap.careerOutcome}'
+                        '  •  ${(roadmap.roleMatchInfo!['matchScore'] ?? 0.0).toStringAsFixed(1)}%'
+                        '  •  ${roadmap.roleMatchInfo!['matchLevelLabel'] ?? roadmap.roleMatchInfo!['matchLevel'] ?? ''}',
+                        style: const TextStyle(fontSize: 12, color: AppColors.slate600),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              // Skill gap summary
+              if (roadmap.skillGapSummary != null && roadmap.prioritySkills.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.trending_up, size: 14, color: AppColors.cyan),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Skill cần học (${roadmap.skillGapSummary!['totalGaps'] ?? roadmap.prioritySkills.length} gap)',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.cyan),
+                          ),
+                          const SizedBox(height: 4),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: roadmap.prioritySkills
+                                .take(5)
+                                .map((s) => AppBadge(label: s, variant: AppBadgeVariant.warning))
+                                .toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 16),
               LinearProgressIndicator(
                 value: roadmap.progress / 100,

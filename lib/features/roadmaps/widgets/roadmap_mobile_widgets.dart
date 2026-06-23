@@ -277,13 +277,25 @@ Future<void> showRoadmapFilterSheet(BuildContext context, RoadmapFilters filters
 Future<void> showCreateRoadmapSheet(
   BuildContext context, {
   required List<AnalysisModel> analyses,
+  RoleMatchModel? roleMatch,
   required String selectedRole,
   required bool isGenerating,
   required Future<void> Function(String role) onGenerate,
 }) {
   final primary = recommendRoadmapRole(analyses);
   final secondary = recommendJobReadinessRoadmaps(analyses);
-  var role = selectedRole;
+
+  final dropdownRoles = <String>[];
+  if (roleMatch != null && roleMatch.matches.isNotEmpty) {
+    for (final match in roleMatch.matches) {
+      if (!dropdownRoles.contains(match.role)) dropdownRoles.add(match.role);
+    }
+  }
+  for (final r in AppConfig.targetRoles) {
+    if (!dropdownRoles.contains(r)) dropdownRoles.add(r);
+  }
+
+  var role = dropdownRoles.contains(selectedRole) ? selectedRole : dropdownRoles.first;
 
   return showModalBottomSheet<void>(
     context: context,
@@ -305,44 +317,75 @@ Future<void> showCreateRoadmapSheet(
                     style: TextStyle(color: AppColors.slate500, fontSize: 13),
                   ),
                   const SizedBox(height: 16),
-                  if (primary != null) ...[
-                    _SuggestionTile(
-                      badge: 'Đề xuất chính',
-                      title: primary.role,
-                      subtitle: primary.reason,
-                      loading: isGenerating && role == primary.role,
-                      onTap: isGenerating
-                          ? null
-                          : () async {
-                              setLocal(() => role = primary.role);
-                              await onGenerate(primary.role);
-                              if (context.mounted) Navigator.pop(context);
-                            },
-                    ),
-                    const SizedBox(height: 10),
-                  ],
-                  for (final item in secondary) ...[
-                    _SuggestionTile(
-                      badge: 'Phụ trợ xin việc',
-                      title: item.title,
-                      subtitle: '${item.role} · ${item.reason}',
-                      loading: isGenerating && role == item.role,
-                      onTap: isGenerating
-                          ? null
-                          : () async {
-                              setLocal(() => role = item.role);
-                              await onGenerate(item.role);
-                              if (context.mounted) Navigator.pop(context);
-                            },
-                    ),
-                    const SizedBox(height: 10),
+                  
+                  if (roleMatch != null && roleMatch.matches.isNotEmpty) ...[
+                    const Text('Gợi ý từ Role Match', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                    const SizedBox(height: 8),
+                    for (var i = 0; i < roleMatch.matches.length; i++) ...[
+                      () {
+                        final match = roleMatch.matches[i];
+                        final details = <String>[
+                          'Điểm phù hợp: ${match.matchScore.toStringAsFixed(1)}% ',
+                          if (match.category.isNotEmpty) 'Danh mục: ${match.category}',
+                          if (match.description.isNotEmpty) match.description,
+                        ].join('\n');
+
+                        return _SuggestionTile(
+                          badge: i == 0 ? 'Role phù hợp nhất' : 'Role phù hợp',
+                          title: match.role,
+                          subtitle: details,
+                          loading: isGenerating && role == match.role,
+                          onTap: isGenerating
+                              ? null
+                              : () async {
+                                  setLocal(() => role = match.role);
+                                  await onGenerate(match.role);
+                                  if (context.mounted) Navigator.pop(context);
+                                },
+                        );
+                      }(),
+                      const SizedBox(height: 10),
+                    ],
+                  ] else ...[
+                    if (primary != null) ...[
+                      _SuggestionTile(
+                        badge: 'Đề xuất chính',
+                        title: primary.role,
+                        subtitle: primary.reason,
+                        loading: isGenerating && role == primary.role,
+                        onTap: isGenerating
+                            ? null
+                            : () async {
+                                setLocal(() => role = primary.role);
+                                await onGenerate(primary.role);
+                                if (context.mounted) Navigator.pop(context);
+                              },
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    for (final item in secondary) ...[
+                      _SuggestionTile(
+                        badge: 'Phụ trợ xin việc',
+                        title: item.title,
+                        subtitle: '${item.role} · ${item.reason}',
+                        loading: isGenerating && role == item.role,
+                        onTap: isGenerating
+                            ? null
+                            : () async {
+                                setLocal(() => role = item.role);
+                                await onGenerate(item.role);
+                                if (context.mounted) Navigator.pop(context);
+                              },
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                   ],
                   const Divider(height: 24),
                   DropdownButtonFormField<String>(
                     value: role,
                     isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Vai trò mục tiêu'),
-                    items: AppConfig.targetRoles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                    items: dropdownRoles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
                     onChanged: isGenerating ? null : (v) => setLocal(() => role = v ?? role),
                   ),
                   const SizedBox(height: 12),
@@ -427,14 +470,22 @@ class _SuggestionTile extends StatelessWidget {
   }
 }
 
-Future<void> generateAndOpenRoadmap(BuildContext context, WidgetRef ref, String role) async {
+Future<void> generateAndOpenRoadmap(
+  BuildContext context,
+  WidgetRef ref,
+  String role, {
+  String? repoId,
+}) async {
   final notifier = ref.read(roadmapProvider.notifier);
   notifier.setTargetRole(role);
   try {
     if (ref.read(roadmapProvider).statusFilter != 'active') {
       await notifier.setStatusFilter('active');
     }
-    final roadmap = await notifier.generateAI(targetRole: role);
+    final roadmap = await notifier.generateAI(
+      targetRole: role,
+      repoId: repoId,
+    );
     if (!context.mounted || roadmap == null) return;
     AppSnackbar.show(context, message: 'Đã tạo roadmap cho $role', variant: AppSnackVariant.success);
     context.push('/roadmaps/${roadmap.slug.isNotEmpty ? roadmap.slug : roadmap.id}');

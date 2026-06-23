@@ -19,6 +19,10 @@ import '../../features/admin/screens/admin_user_detail_screen.dart';
 import '../../features/admin/screens/admin_users_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/analysis/screens/analysis_result_screen.dart';
+import '../../features/analysis/screens/snapshot_list_screen.dart';
+import '../../features/analysis/screens/snapshot_detail_screen.dart';
+import '../../features/analysis/screens/snapshot_compare_screen.dart';
+import '../../features/analysis/screens/snapshot_select_repo_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/chat/screens/chat_screen.dart';
@@ -128,6 +132,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          GoRoute(path: '/repositories/:id/snapshots', builder: (_, state) => SnapshotListScreen(repoId: state.pathParameters['id']!)),
+          GoRoute(path: '/repositories/:id/progress', builder: (_, state) => SnapshotCompareScreen(repoId: state.pathParameters['id']!)),
+          GoRoute(path: '/snapshots', builder: (_, __) => const SnapshotSelectRepoScreen()),
+          GoRoute(path: '/snapshots/:id', builder: (_, state) => SnapshotDetailScreen(snapshotId: state.pathParameters['id']!)),
           GoRoute(path: '/analysis/:id', builder: (_, state) => AnalysisResultScreen(repoId: state.pathParameters['id']!)),
           GoRoute(path: '/chat', builder: (_, __) => const ChatScreen()),
           GoRoute(path: '/roadmaps', builder: (_, __) => const RoadmapsScreen()),
