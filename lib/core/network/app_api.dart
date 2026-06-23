@@ -132,8 +132,8 @@ class AppApi {
     return normalizeAiFeedbacks(res.data);
   }
 
-  Future<Map<String, dynamic>> getGitHubOAuthUrl() async {
-    final res = await _dio.get('/github/oauth');
+  Future<Map<String, dynamic>> getGitHubOAuthUrl({required String redirectUrl}) async {
+    final res = await _dio.get('/github/oauth', queryParameters: {'redirectUrl': redirectUrl});
     return Map<String, dynamic>.from(unwrapResponse(res.data) as Map? ?? {});
   }
 
