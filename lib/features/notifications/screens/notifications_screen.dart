@@ -14,9 +14,6 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   bool _unreadOnly = false;
-  final _title = TextEditingController();
-  final _message = TextEditingController();
-  String _createType = 'SYSTEM';
 
   @override
   void initState() {
@@ -25,13 +22,6 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   }
 
   Future<void> _load() => ref.read(notificationProvider.notifier).load(unreadOnly: _unreadOnly);
-
-  @override
-  void dispose() {
-    _title.dispose();
-    _message.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,38 +41,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         ),
         if (state.error != null) ...[const SizedBox(height: 12), BannerMessage(message: state.error!, isError: true)],
         const SizedBox(height: 16),
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Tạo thông báo', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 12),
-              TextField(controller: _title, decoration: const InputDecoration(labelText: 'Tiêu đề')),
-              TextField(controller: _message, decoration: const InputDecoration(labelText: 'Nội dung')),
-              DropdownButtonFormField<String>(
-                initialValue: _createType,
-                items: const [
-                  DropdownMenuItem(value: 'SYSTEM', child: Text('Hệ thống')),
-                  DropdownMenuItem(value: 'GITHUB_ANALYSIS_REMINDER', child: Text('Nhắc phân tích GitHub')),
-                  DropdownMenuItem(value: 'ROADMAP_TASK_REMINDER', child: Text('Nhắc lộ trình')),
-                  DropdownMenuItem(value: 'REPOSITORY_IMPROVEMENT', child: Text('Cải thiện repository')),
-                ],
-                onChanged: (v) => setState(() => _createType = v ?? 'SYSTEM'),
-              ),
-              const SizedBox(height: 8),
-              PrimaryButton(
-                label: 'Tạo',
-                expand: true,
-                onPressed: () async {
-                  await ref.read(notificationProvider.notifier).create(_title.text, _message.text, _createType);
-                  _title.clear();
-                  _message.clear();
-                },
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
+
         AppCard(
           child: Column(
             children: [
