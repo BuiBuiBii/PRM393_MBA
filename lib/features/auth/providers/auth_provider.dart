@@ -7,7 +7,7 @@ import '../../../core/network/dio_client.dart';
 import '../../../shared/models/app_models.dart';
 import '../data/auth_repository.dart';
 import '../../../shared/models/user_model.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/demo/demo_data.dart';
 import '../../../core/demo/demo_service.dart';
@@ -282,16 +282,27 @@ class AuthNotifier extends Notifier<AuthState> {
         return;
       }
       final api = ref.read(appApiProvider);
-      final payload = await safeRequest(api.getGitHubOAuthUrl);
+      final redirectUri = 'gitanalyzer://github/connect';
+      final payload = await safeRequest(() => api.getGitHubOAuthUrl(redirectUrl: redirectUri));
       final url = payload['authorizeUrl'] ?? payload['authorizationUrl'] ?? payload['oauthUrl'] ?? payload['url'];
       if (url == null) throw ApiException('Backend không trả authorizeUrl');
       final absolute = url.toString().startsWith('http')
           ? url.toString()
           : '${Uri.parse(AppConfig.apiBaseUrl).origin}$url';
-      if (!await launchUrl(Uri.parse(absolute), mode: LaunchMode.externalApplication)) {
-        throw ApiException('Không mở được trình duyệt OAuth');
+      
+      final result = await FlutterWebAuth2.authenticate(
+        url: absolute,
+        callbackUrlScheme: Uri.parse(redirectUri).scheme,
+      );
+
+      final callback = Uri.parse(result);
+      final error = callback.queryParameters['error'] ?? Uri.splitQueryString(callback.fragment)['error'];
+      if (error != null && error.isNotEmpty) {
+        throw ApiException(error);
       }
+
       state = state.copyWith(isLoading: false);
+      await refreshGitHubAccount();
     } catch (error) {
       state = state.copyWith(isLoading: false, error: getApiErrorMessage(error));
       rethrow;
