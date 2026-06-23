@@ -368,6 +368,12 @@ class LearningNodeModel {
     required this.skills,
     required this.xp,
     this.bookmarked = false,
+    this.skillName,
+    this.canonicalSkillName,
+    this.targetRole,
+    this.category,
+    this.priority,
+    this.resources = const [],
   });
 
   final String id;
@@ -379,6 +385,13 @@ class LearningNodeModel {
   final List<String> skills;
   final int xp;
   final bool bookmarked;
+  // New fields from role-matching roadmap
+  final String? skillName;
+  final String? canonicalSkillName;
+  final String? targetRole;
+  final String? category;
+  final int? priority;
+  final List<dynamic> resources;
 
   LearningNodeModel copyWith({String? status, bool? bookmarked}) {
     return LearningNodeModel(
@@ -391,6 +404,12 @@ class LearningNodeModel {
       skills: skills,
       xp: xp,
       bookmarked: bookmarked ?? this.bookmarked,
+      skillName: skillName,
+      canonicalSkillName: canonicalSkillName,
+      targetRole: targetRole,
+      category: category,
+      priority: priority,
+      resources: resources,
     );
   }
 }
@@ -460,6 +479,10 @@ class RoadmapModel {
     this.missingSkills = const [],
     this.supportingPaths = const [],
     this.sourceRepositoriesCount = 0,
+    // New metadata fields
+    this.roadmapSource,
+    this.roleMatchInfo,
+    this.skillGapSummary,
   });
 
   final String id;
@@ -485,8 +508,26 @@ class RoadmapModel {
   final List<String> missingSkills;
   final List<SupportingPathModel> supportingPaths;
   final int sourceRepositoriesCount;
+  // New metadata
+  final String? roadmapSource;
+  final Map<String, dynamic>? roleMatchInfo;
+  final Map<String, dynamic>? skillGapSummary;
 
   bool get isArchived => status == 'archived';
+
+  /// Convenience: recommended next skills from skillGapSummary
+  List<String> get recommendedNextSkills {
+    final raw = skillGapSummary?['recommendedNextSkills'];
+    if (raw is List) return raw.map((e) => e.toString()).toList();
+    return const [];
+  }
+
+  /// Convenience: priority skills from skillGapSummary
+  List<String> get prioritySkills {
+    final raw = skillGapSummary?['prioritySkills'];
+    if (raw is List) return raw.map((e) => e.toString()).toList();
+    return const [];
+  }
 }
 
 class SkillProgressModel {
@@ -541,6 +582,96 @@ class LearningStatsModel {
       weeklyGoalHours: weeklyGoalHours,
       weeklyHoursCompleted: weeklyHoursCompleted,
       bookmarkedNodeIds: bookmarkedNodeIds ?? this.bookmarkedNodeIds,
+    );
+  }
+}
+
+class RoleMatchItem {
+  const RoleMatchItem({
+    required this.role,
+    required this.description,
+    required this.category,
+    required this.matchScore,
+    required this.matchLevel,
+    required this.matchLevelLabel,
+    required this.matchedSkills,
+    required this.missingSkills,
+    required this.recommendedNextSkills,
+  });
+
+  final String role;
+  final String description;
+  final String category;
+  final double matchScore;
+  final String matchLevel;
+  final String matchLevelLabel;
+  final List<String> matchedSkills;
+  final List<String> missingSkills;
+  final List<String> recommendedNextSkills;
+
+  factory RoleMatchItem.fromJson(Map<String, dynamic> json) {
+    List<String> strList(dynamic v) =>
+        (v as List? ?? []).map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+    return RoleMatchItem(
+      role: (json['roleName'] ?? json['role'] ?? json['targetRole'] ?? '').toString(),
+      description: (json['description'] ?? '').toString(),
+      category: (json['category'] ?? '').toString(),
+      matchScore: double.tryParse(json['matchScore']?.toString() ?? '') ?? 0.0,
+      matchLevel: (json['matchLevel'] ?? '').toString(),
+      matchLevelLabel: (json['matchLevelLabel'] ?? json['matchLevel'] ?? '').toString(),
+      matchedSkills: strList(json['matchedSkills'] ?? json['topMatchedSkills']),
+      missingSkills: strList(json['missingSkills'] ?? json['topMissingSkills']),
+      recommendedNextSkills: strList(json['recommendedNextSkills']),
+    );
+  }
+}
+
+class RoleMatchModel {
+  const RoleMatchModel({
+    required this.topRole,
+    required this.matches,
+    required this.recommendedNextSkills,
+    required this.topMatchedSkills,
+    required this.topMissingSkills,
+  });
+
+  final String topRole;
+  final List<RoleMatchItem> matches;
+  final List<String> recommendedNextSkills;
+  final List<String> topMatchedSkills;
+  final List<String> topMissingSkills;
+
+  RoleMatchItem? get topMatch => matches.isNotEmpty ? matches.first : null;
+
+  factory RoleMatchModel.fromJson(Map<String, dynamic> json) {
+    List<String> strList(dynamic v) =>
+        (v as List? ?? []).map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+
+    // Parse matches array
+    final matchesList = (json['matches'] as List? ?? [])
+        .whereType<Map>()
+        .map((e) => RoleMatchItem.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+
+    // topRole can be nested or directly a string
+    String topRole = '';
+    final tr = json['topRole'];
+    if (tr is Map) {
+      topRole = (tr['roleName'] ?? tr['role'] ?? tr['targetRole'] ?? '').toString();
+    } else {
+      topRole = (tr ?? '').toString();
+    }
+    
+    if (topRole.isEmpty && matchesList.isNotEmpty) {
+      topRole = matchesList.first.role;
+    }
+
+    return RoleMatchModel(
+      topRole: topRole,
+      matches: matchesList,
+      recommendedNextSkills: strList(json['recommendedNextSkills']),
+      topMatchedSkills: strList(json['topMatchedSkills']),
+      topMissingSkills: strList(json['topMissingSkills']),
     );
   }
 }

@@ -70,6 +70,25 @@ class AppApi {
     return normalizeAnalysis(res.data);
   }
 
+  Future<RoleMatchModel?> getRoleMatches(
+    String repoId, {
+    int? limit,
+    String? targetRole,
+    bool includeDetails = true,
+  }) async {
+    final res = await _dio.get(
+      '/analysis/repositories/$repoId/role-matches',
+      queryParameters: {
+        if (limit != null) 'limit': limit,
+        if (targetRole != null && targetRole.isNotEmpty) 'targetRole': targetRole,
+        'includeDetails': includeDetails,
+      },
+    );
+    final data = unwrapResponse<dynamic>(res.data);
+    if (data == null) return null;
+    return RoleMatchModel.fromJson(Map<String, dynamic>.from(data as Map? ?? {}));
+  }
+
   Future<List<AnalysisModel>> getMyAnalyses() async {
     final res = await _dio.get('/analysis/me');
     return normalizeAnalyses(res.data);
@@ -180,10 +199,18 @@ class AppApi {
 
   Future<RoadmapModel> generateRoadmap({
     required String targetRole,
+    String? repoId,
+    String level = 'beginner',
+    int durationWeeks = 6,
+    String language = 'vi',
     bool forceRegenerate = false,
   }) async {
     final res = await _dio.post('/roadmaps/generate', data: {
       'targetRole': targetRole,
+      if (repoId != null && repoId.isNotEmpty) 'repoId': repoId,
+      'level': level,
+      'durationWeeks': durationWeeks,
+      'language': language,
       'forceRegenerate': forceRegenerate,
     });
     return normalizeRoadmap(res.data);
