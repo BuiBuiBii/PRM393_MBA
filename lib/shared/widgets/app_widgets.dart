@@ -18,6 +18,11 @@ class AppColors {
   static const amber = Color(0xFFD97706);
   static const cyan = Color(0xFF0891B2);
   static const purple = Color(0xFF7C3AED);
+  static const slate200 = Color(0xFFE2E8F0);
+  static const slate300 = Color(0xFFCBD5E1);
+  static const slate400 = Color(0xFF94A3B8);
+  static const rose = Color(0xFFE11D48);
+  static const blue = Color(0xFF2563EB);
 }
 
 class AppGradientBackground extends StatelessWidget {

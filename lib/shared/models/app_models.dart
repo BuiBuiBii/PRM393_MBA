@@ -697,3 +697,99 @@ class AIRecommendationModel {
   final int estimatedCompletionWeeks;
   final RoadmapModel roadmap;
 }
+
+class RepoAnalysisSnapshotModel {
+  const RepoAnalysisSnapshotModel({
+    required this.id,
+    required this.repoId,
+    required this.createdAt,
+    required this.scores,
+    required this.checklist,
+    required this.missingSkills,
+    required this.strengths,
+    required this.weaknesses,
+    required this.recommendations,
+  });
+
+  final String id;
+  final String repoId;
+  final String createdAt;
+  final AnalysisScores scores;
+  final List<String> checklist;
+  final List<String> missingSkills;
+  final List<String> strengths;
+  final List<String> weaknesses;
+  final List<String> recommendations;
+
+  factory RepoAnalysisSnapshotModel.fromJson(Map<String, dynamic> json) {
+    List<String> strList(dynamic v) {
+      Iterable iterable = [];
+      if (v is List) iterable = v;
+      else if (v is Map) iterable = v.values;
+      
+      return iterable.map((e) {
+        if (e is Map) {
+          return (e['title'] ?? e['description'] ?? e['name'] ?? '').toString();
+        }
+        return e.toString();
+      }).where((e) => e.isNotEmpty).toList();
+    }
+
+    return RepoAnalysisSnapshotModel(
+      id: (json['id'] ?? json['_id'] ?? '').toString(),
+      repoId: (json['repositoryId'] ?? json['repoId'] ?? '').toString(),
+      createdAt: (json['createdAt'] ?? DateTime.now().toIso8601String()).toString(),
+      scores: AnalysisScores.fromJson(json['scores'] is Map ? Map<String, dynamic>.from(json['scores'] as Map) : {}),
+      checklist: strList(json['checklist']),
+      missingSkills: strList(json['missingSkills']),
+      strengths: strList(json['strengths']),
+      weaknesses: strList(json['weaknesses']),
+      recommendations: strList(json['recommendations']),
+    );
+  }
+}
+
+class SnapshotCompareResultModel {
+  const SnapshotCompareResultModel({
+    required this.overallBefore,
+    required this.overallAfter,
+    required this.overallChange,
+    required this.resolvedMissingSkills,
+    required this.remainingMissingSkills,
+    required this.newMissingSkills,
+    required this.summary,
+  });
+
+  final double overallBefore;
+  final double overallAfter;
+  final double overallChange;
+  final List<String> resolvedMissingSkills;
+  final List<String> remainingMissingSkills;
+  final List<String> newMissingSkills;
+  final String summary;
+
+  factory SnapshotCompareResultModel.fromJson(Map<String, dynamic> json) {
+    List<String> strList(dynamic v) {
+      Iterable iterable = [];
+      if (v is List) iterable = v;
+      else if (v is Map) iterable = v.values;
+      
+      return iterable.map((e) {
+        if (e is Map) {
+          return (e['title'] ?? e['description'] ?? e['name'] ?? '').toString();
+        }
+        return e.toString();
+      }).where((e) => e.isNotEmpty).toList();
+    }
+
+    return SnapshotCompareResultModel(
+      overallBefore: double.tryParse(json['overallBefore']?.toString() ?? '') ?? 0.0,
+      overallAfter: double.tryParse(json['overallAfter']?.toString() ?? '') ?? 0.0,
+      overallChange: double.tryParse(json['overallChange']?.toString() ?? '') ?? 0.0,
+      resolvedMissingSkills: strList(json['resolvedMissingSkills']),
+      remainingMissingSkills: strList(json['remainingMissingSkills']),
+      newMissingSkills: strList(json['newMissingSkills']),
+      summary: (json['summary'] ?? '').toString(),
+    );
+  }
+}

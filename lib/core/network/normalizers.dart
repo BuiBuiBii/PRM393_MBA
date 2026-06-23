@@ -56,6 +56,20 @@ AnalysisModel normalizeAnalysis(dynamic payload) {
   return AnalysisModel.fromJson(toRecord(map.isNotEmpty ? map : payload));
 }
 
+List<RepoAnalysisSnapshotModel> normalizeSnapshots(dynamic payload) {
+  return asMapList(payload, ['snapshots', 'items', 'results']).map(RepoAnalysisSnapshotModel.fromJson).toList();
+}
+
+RepoAnalysisSnapshotModel normalizeSnapshot(dynamic payload) {
+  final map = extractApiResource<Map<String, dynamic>>(payload, ['snapshot', 'result']);
+  return RepoAnalysisSnapshotModel.fromJson(toRecord(map.isNotEmpty ? map : payload));
+}
+
+SnapshotCompareResultModel normalizeSnapshotCompare(dynamic payload) {
+  final map = extractApiResource<Map<String, dynamic>>(payload, ['comparison', 'result']);
+  return SnapshotCompareResultModel.fromJson(toRecord(map.isNotEmpty ? map : payload));
+}
+
 List<ChatSessionModel> normalizeChatSessions(dynamic payload) {
   return asMapList(payload, ['sessions', 'chatSessions', 'items'])
       .map((item) => normalizeChatSession(item))

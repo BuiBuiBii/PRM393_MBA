@@ -27,6 +27,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     _MenuItem(path: '/profile', label: 'Hồ sơ', icon: Icons.person_outline),
     _MenuItem(path: '/roadmaps', label: 'Lộ trình', icon: Icons.route_outlined),
     _MenuItem(path: '/chat', label: 'AI Mentor', icon: Icons.chat_bubble_outline),
+    _MenuItem(path: '/snapshots', label: 'Snapshots', icon: Icons.history_edu),
     _MenuItem(path: '/progress', label: 'Tiến độ', icon: Icons.trending_up),
     _MenuItem(path: '/github/connect', label: 'GitHub', icon: Icons.code),
     _MenuItem(path: '/notifications', label: 'Thông báo', icon: Icons.notifications_outlined),
