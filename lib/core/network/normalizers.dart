@@ -56,6 +56,20 @@ AnalysisModel normalizeAnalysis(dynamic payload) {
   return AnalysisModel.fromJson(toRecord(map.isNotEmpty ? map : payload));
 }
 
+List<RepoAnalysisSnapshotModel> normalizeSnapshots(dynamic payload) {
+  return asMapList(payload, ['snapshots', 'items', 'results']).map(RepoAnalysisSnapshotModel.fromJson).toList();
+}
+
+RepoAnalysisSnapshotModel normalizeSnapshot(dynamic payload) {
+  final map = extractApiResource<Map<String, dynamic>>(payload, ['snapshot', 'result']);
+  return RepoAnalysisSnapshotModel.fromJson(toRecord(map.isNotEmpty ? map : payload));
+}
+
+SnapshotCompareResultModel normalizeSnapshotCompare(dynamic payload) {
+  final map = extractApiResource<Map<String, dynamic>>(payload, ['comparison', 'result']);
+  return SnapshotCompareResultModel.fromJson(toRecord(map.isNotEmpty ? map : payload));
+}
+
 List<ChatSessionModel> normalizeChatSessions(dynamic payload) {
   return asMapList(payload, ['sessions', 'chatSessions', 'items'])
       .map((item) => normalizeChatSession(item))
@@ -281,39 +295,90 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
   final mainPath = map['mainPath'] is Map ? Map<String, dynamic>.from(map['mainPath'] as Map) : <String, dynamic>{};
   final phases = mainPath['phases'] as List? ?? [];
 
+  // New metadata fields
+  final roadmapSource = map['roadmapSource']?.toString();
+  final roleMatchInfo = map['roleMatch'] is Map
+      ? Map<String, dynamic>.from(map['roleMatch'] as Map)
+      : null;
+  final skillGapSummary = map['skillGapSummary'] is Map
+      ? Map<String, dynamic>.from(map['skillGapSummary'] as Map)
+      : null;
+
   var totalHours = 0;
   var completedTasks = 0;
   var totalTasks = 0;
 
   final modules = <RoadmapModuleModel>[];
-  for (var phaseIndex = 0; phaseIndex < phases.length; phaseIndex++) {
-    final phase = Map<String, dynamic>.from(phases[phaseIndex] as Map);
-    final tasks = phase['tasks'] as List? ?? [];
-    final nodes = <LearningNodeModel>[];
-    for (var taskIndex = 0; taskIndex < tasks.length; taskIndex++) {
-      final task = Map<String, dynamic>.from(tasks[taskIndex] as Map);
-      final hours = int.tryParse(task['estimatedHours']?.toString() ?? '') ?? 4;
-      totalHours += hours;
-      totalTasks++;
-      final status = task['status']?.toString() ?? 'not_started';
-      if (status == 'completed') completedTasks++;
-      nodes.add(LearningNodeModel(
-        id: (task['_id'] ?? task['id'] ?? 'task-$phaseIndex-$taskIndex').toString(),
-        title: (task['title'] ?? 'Task').toString(),
-        description: (task['description'] ?? '').toString(),
-        estimatedHours: hours,
-        difficulty: 'Intermediate',
-        status: mapRoadmapTaskStatus(status),
-        skills: (task['skillTags'] as List? ?? []).map((e) => e.toString()).toList(),
-        xp: hours * 40,
+
+  // Helper to parse a single task map into a LearningNodeModel
+  LearningNodeModel parseTask(Map<String, dynamic> task, String phasePrefix, int taskIndex) {
+    final hours = int.tryParse(task['estimatedHours']?.toString() ?? '') ?? 4;
+    totalHours += hours;
+    totalTasks++;
+    final status = task['status']?.toString() ?? 'not_started';
+    if (status == 'completed') completedTasks++;
+
+    String difficulty = 'Intermediate';
+    final rawDiff = (task['difficulty'] ?? '').toString().toLowerCase();
+    if (rawDiff == 'beginner' || rawDiff == 'easy') difficulty = 'Beginner';
+    if (rawDiff == 'advanced' || rawDiff == 'hard') difficulty = 'Advanced';
+
+    return LearningNodeModel(
+      id: (task['_id'] ?? task['id'] ?? '$phasePrefix-$taskIndex').toString(),
+      title: (task['title'] ?? 'Task').toString(),
+      description: (task['description'] ?? '').toString(),
+      estimatedHours: hours,
+      difficulty: difficulty,
+      status: mapRoadmapTaskStatus(status),
+      skills: (task['skillTags'] as List? ?? []).map((e) => e.toString()).toList(),
+      xp: hours * 40,
+      skillName: task['skillName']?.toString(),
+      canonicalSkillName: task['canonicalSkillName']?.toString(),
+      targetRole: task['targetRole']?.toString(),
+      category: task['category']?.toString(),
+      priority: int.tryParse(task['priority']?.toString() ?? ''),
+      resources: task['resources'] is List ? List<dynamic>.from(task['resources'] as List) : const [],
+    );
+  }
+
+  if (phases.isNotEmpty) {
+    for (var phaseIndex = 0; phaseIndex < phases.length; phaseIndex++) {
+      final phase = Map<String, dynamic>.from(phases[phaseIndex] as Map);
+      final tasks = phase['tasks'] as List? ?? [];
+      final nodes = <LearningNodeModel>[];
+      for (var taskIndex = 0; taskIndex < tasks.length; taskIndex++) {
+        final task = Map<String, dynamic>.from(tasks[taskIndex] as Map);
+        nodes.add(parseTask(task, 'phase-$phaseIndex', taskIndex));
+      }
+      modules.add(RoadmapModuleModel(
+        id: (phase['_id'] ?? phase['id'] ?? 'phase-$phaseIndex').toString(),
+        title: (phase['title'] ?? 'Phase ${phaseIndex + 1}').toString(),
+        description: (phase['goal'] ?? '').toString(),
+        nodes: nodes,
       ));
     }
-    modules.add(RoadmapModuleModel(
-      id: (phase['_id'] ?? phase['id'] ?? 'phase-$phaseIndex').toString(),
-      title: (phase['title'] ?? 'Phase ${phaseIndex + 1}').toString(),
-      description: (phase['goal'] ?? '').toString(),
-      nodes: nodes,
-    ));
+  } else {
+    // Flat tasks array (new role-matching format)
+    final flatTasks = map['tasks'] as List? ?? mainPath['tasks'] as List? ?? [];
+    if (flatTasks.isNotEmpty) {
+      final grouped = <String, List<LearningNodeModel>>{};
+      for (var i = 0; i < flatTasks.length; i++) {
+        final task = Map<String, dynamic>.from(flatTasks[i] as Map);
+        final node = parseTask(task, 'task', i);
+        final groupKey = node.category ?? node.targetRole ?? 'Lo trinh';
+        grouped.putIfAbsent(groupKey, () => []).add(node);
+      }
+      var moduleIndex = 0;
+      for (final entry in grouped.entries) {
+        modules.add(RoadmapModuleModel(
+          id: 'module-$moduleIndex',
+          title: entry.key,
+          description: '',
+          nodes: entry.value,
+        ));
+        moduleIndex++;
+      }
+    }
   }
 
   final supportingRaw = map['supportingPaths'];
@@ -359,7 +424,8 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
   final reqSkillsRaw = map['requiredSkills'] ?? sourceCtx['detectedSkills'] ?? sourceCtx['requiredSkills'];
   final requiredSkills = (reqSkillsRaw is List ? reqSkillsRaw : []).map((e) => e.toString()).toList();
 
-  final missingSkillsRaw = map['missingSkills'] ?? sourceCtx['missingSkills'];
+  final missingSkillsRaw = map['missingSkills'] ?? sourceCtx['missingSkills']
+      ?? (skillGapSummary != null ? skillGapSummary['prioritySkills'] : null);
   final missingSkills = (missingSkillsRaw is List ? missingSkillsRaw : []).map((e) => e.toString()).toList();
 
   final List<dynamic> supportingList = supportingRaw is List ? supportingRaw : [];
@@ -368,10 +434,16 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
   final sourceReposCountRaw = map['sourceRepositoriesCount'] ?? sourceCtx['repositoriesCount'];
   final sourceRepositoriesCount = int.tryParse(sourceReposCountRaw?.toString() ?? '') ?? 0;
 
+  final displayTitle = (mainPath['title'] as String? ?? '').isNotEmpty
+      ? mainPath['title'].toString()
+      : (map['title'] as String? ?? '').isNotEmpty
+          ? map['title'].toString()
+          : targetRole;
+
   return RoadmapModel(
     id: id,
     slug: targetRole.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-'),
-    title: (mainPath['title'] ?? targetRole).toString(),
+    title: displayTitle,
     subtitle: targetRole,
     description: summary.isNotEmpty ? summary : (mainPath['reason'] ?? '').toString(),
     category: categoryFromTargetRole(targetRole),
@@ -392,6 +464,9 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
     missingSkills: missingSkills,
     supportingPaths: supportingPaths,
     sourceRepositoriesCount: sourceRepositoriesCount,
+    roadmapSource: roadmapSource,
+    roleMatchInfo: roleMatchInfo,
+    skillGapSummary: skillGapSummary,
   );
 }
 

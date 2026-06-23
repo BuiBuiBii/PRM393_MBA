@@ -15,6 +15,7 @@ class RepositoryState {
     this.repositories = const [],
     this.analyses = const [],
     this.aiFeedbacks = const {},
+    this.roleMatchByRepoId = const {},
     this.packagesByRepoId = const {},
     this.commitsByRepoId = const {},
     this.selected,
@@ -23,6 +24,7 @@ class RepositoryState {
     this.generatingFeedbackRepoId,
     this.loadingPackagesFor,
     this.loadingCommitsFor,
+    this.loadingRoleMatchFor,
     this.isLoadingMyFeedbacks = false,
     this.error,
   });
@@ -30,6 +32,7 @@ class RepositoryState {
   final List<RepositoryModel> repositories;
   final List<AnalysisModel> analyses;
   final Map<String, AiFeedbackModel> aiFeedbacks;
+  final Map<String, RoleMatchModel> roleMatchByRepoId;
   final Map<String, List<dynamic>> packagesByRepoId;
   final Map<String, List<dynamic>> commitsByRepoId;
   final RepositoryModel? selected;
@@ -38,6 +41,7 @@ class RepositoryState {
   final String? generatingFeedbackRepoId;
   final String? loadingPackagesFor;
   final String? loadingCommitsFor;
+  final String? loadingRoleMatchFor;
   final bool isLoadingMyFeedbacks;
   final String? error;
 
@@ -45,9 +49,13 @@ class RepositoryState {
 
   bool isGeneratingFeedback(String id) => generatingFeedbackRepoId == id;
 
+  bool isLoadingRoleMatch(String id) => loadingRoleMatchFor == id;
+
   bool get isAnalyzing => analyzingRepoId != null;
 
   AiFeedbackModel? feedbackFor(String repoId) => aiFeedbacks[repoId];
+
+  RoleMatchModel? roleMatchFor(String repoId) => roleMatchByRepoId[repoId];
 
   List<dynamic> packagesFor(String repoId) => packagesByRepoId[repoId] ?? const [];
 
@@ -67,6 +75,7 @@ class RepositoryState {
     List<RepositoryModel>? repositories,
     List<AnalysisModel>? analyses,
     Map<String, AiFeedbackModel>? aiFeedbacks,
+    Map<String, RoleMatchModel>? roleMatchByRepoId,
     Map<String, List<dynamic>>? packagesByRepoId,
     Map<String, List<dynamic>>? commitsByRepoId,
     RepositoryModel? selected,
@@ -79,6 +88,8 @@ class RepositoryState {
     bool clearLoadingPackagesFor = false,
     String? loadingCommitsFor,
     bool clearLoadingCommitsFor = false,
+    String? loadingRoleMatchFor,
+    bool clearLoadingRoleMatchFor = false,
     bool? isLoadingMyFeedbacks,
     String? error,
     bool clearError = false,
@@ -87,6 +98,7 @@ class RepositoryState {
       repositories: repositories ?? this.repositories,
       analyses: analyses ?? this.analyses,
       aiFeedbacks: aiFeedbacks ?? this.aiFeedbacks,
+      roleMatchByRepoId: roleMatchByRepoId ?? this.roleMatchByRepoId,
       packagesByRepoId: packagesByRepoId ?? this.packagesByRepoId,
       commitsByRepoId: commitsByRepoId ?? this.commitsByRepoId,
       selected: selected ?? this.selected,
@@ -96,6 +108,7 @@ class RepositoryState {
           clearGeneratingFeedbackRepoId ? null : (generatingFeedbackRepoId ?? this.generatingFeedbackRepoId),
       loadingPackagesFor: clearLoadingPackagesFor ? null : (loadingPackagesFor ?? this.loadingPackagesFor),
       loadingCommitsFor: clearLoadingCommitsFor ? null : (loadingCommitsFor ?? this.loadingCommitsFor),
+      loadingRoleMatchFor: clearLoadingRoleMatchFor ? null : (loadingRoleMatchFor ?? this.loadingRoleMatchFor),
       isLoadingMyFeedbacks: isLoadingMyFeedbacks ?? this.isLoadingMyFeedbacks,
       error: clearError ? null : (error ?? this.error),
     );
@@ -179,6 +192,34 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
     } catch (e) {
       state = state.copyWith(clearAnalyzingRepoId: true, error: getApiErrorMessage(e));
       rethrow;
+    }
+  }
+
+  Future<RoleMatchModel?> fetchRoleMatches(String repoId) async {
+    // avoid refetch if already cached
+    if (state.roleMatchByRepoId.containsKey(repoId)) {
+      return state.roleMatchByRepoId[repoId];
+    }
+    state = state.copyWith(loadingRoleMatchFor: repoId);
+    try {
+      if (AppConfig.demoMode) {
+        await Future<void>.delayed(const Duration(milliseconds: 600));
+        state = state.copyWith(clearLoadingRoleMatchFor: true);
+        return null;
+      }
+      final result = await safeRequest(() => _api.getRoleMatches(repoId, limit: 3, includeDetails: true));
+      if (result == null) {
+        state = state.copyWith(clearLoadingRoleMatchFor: true);
+        return null;
+      }
+      state = state.copyWith(
+        clearLoadingRoleMatchFor: true,
+        roleMatchByRepoId: {...state.roleMatchByRepoId, repoId: result},
+      );
+      return result;
+    } catch (_) {
+      state = state.copyWith(clearLoadingRoleMatchFor: true);
+      return null;
     }
   }
 
@@ -626,7 +667,14 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
     }
   }
 
-  Future<RoadmapModel?> generateAI({String? targetRole, bool forceRegenerate = false}) async {
+  Future<RoadmapModel?> generateAI({
+    String? targetRole,
+    String? repoId,
+    String level = 'beginner',
+    int durationWeeks = 6,
+    String language = 'vi',
+    bool forceRegenerate = false,
+  }) async {
     final role = targetRole ?? state.selectedTargetRole;
     state = state.copyWith(isGenerating: true, clearError: true, selectedTargetRole: role);
     try {
@@ -638,6 +686,10 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
       final roadmap = await safeRequest(
         () => _api.generateRoadmap(
           targetRole: role,
+          repoId: repoId,
+          level: level,
+          durationWeeks: durationWeeks,
+          language: language,
           forceRegenerate: forceRegenerate,
         ),
       );

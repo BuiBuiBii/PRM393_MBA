@@ -99,6 +99,31 @@ class RoadmapTreeWidget extends StatelessWidget {
                                         padding: const EdgeInsets.only(top: 4),
                                         child: Text(node.description, style: const TextStyle(fontSize: 13, color: AppColors.slate500)),
                                       ),
+                                    if (node.canonicalSkillName != null || node.skillName != null || node.category != null || node.priority != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 8),
+                                        child: Wrap(
+                                          spacing: 6,
+                                          runSpacing: 4,
+                                          children: [
+                                            if (node.canonicalSkillName != null || node.skillName != null)
+                                              AppBadge(
+                                                label: node.canonicalSkillName ?? node.skillName!,
+                                                variant: AppBadgeVariant.success,
+                                              ),
+                                            if (node.category != null)
+                                              AppBadge(
+                                                label: node.category!,
+                                                variant: AppBadgeVariant.info,
+                                              ),
+                                            if (node.priority != null)
+                                              AppBadge(
+                                                label: 'P${node.priority}',
+                                                variant: AppBadgeVariant.warning,
+                                              ),
+                                          ],
+                                        ),
+                                      ),
                                     if (onStatusChange != null && node.status != 'completed')
                                       Padding(
                                         padding: const EdgeInsets.only(top: 8),
@@ -328,7 +353,7 @@ class AiFeedbackPanel extends StatelessWidget {
             ],
             if (feedback!.learningAdvice.isNotEmpty) ...[
               const SizedBox(height: 12),
-              Text('Gợi ý học tập', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
+              const Text('Gợi ý học tập', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
               Text(feedback!.learningAdvice, style: const TextStyle(color: AppColors.slate500)),
             ],
             if (feedback!.nextSteps.isNotEmpty) ...[

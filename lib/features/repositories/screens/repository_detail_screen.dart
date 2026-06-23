@@ -122,12 +122,18 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
                     loading: state.loadingCommitsFor == detail.id,
                     onPressed: () => ref.read(repositoryProvider.notifier).fetchCommits(detail.id, sync: true),
                   ),
-                  if (detail.analyzed)
+                  if (detail.analyzed) ...[
                     PrimaryButton(
                       label: 'Xem phân tích',
                       outlined: true,
                       onPressed: () => context.push('/repositories/${detail.id}/analysis'),
                     ),
+                    PrimaryButton(
+                      label: 'Lịch sử tiến độ',
+                      outlined: true,
+                      onPressed: () => context.push('/repositories/${detail.id}/snapshots'),
+                    ),
+                  ],
                 ],
               ),
             ],

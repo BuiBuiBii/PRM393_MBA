@@ -93,13 +93,16 @@ class SocialAuthService {
     final redirectUri = AppConfig.githubAuthRedirectUri;
     final api = Dio(BaseOptions(baseUrl: AppConfig.apiBaseUrl));
 
-    final authorizeResponse = await api.get<Map<String, dynamic>>(
-      '/auth/github/authorize',
-      queryParameters: {'redirectUrl': redirectUri},
+    final authorizeResponse = await api.post<Map<String, dynamic>>(
+      '/auth/github',
+      data: {'redirectUrl': redirectUri},
     );
 
     final payload = unwrapResponse<dynamic>(authorizeResponse.data);
-    final authorizeUrl = payload is Map ? payload['authorizeUrl']?.toString() : null;
+    print('PAYLOAD FROM /auth/github: $payload');
+    final authorizeUrl = payload is Map 
+        ? (payload['authUrl'] ?? payload['authorizeUrl'] ?? payload['authorizationUrl'] ?? payload['oauthUrl'] ?? payload['url'])?.toString() 
+        : null;
     if (authorizeUrl == null || authorizeUrl.isEmpty) {
       throw ApiException('BE không trả về GitHub authorize URL. Kiểm tra GITHUB_CLIENT_ID trên server.');
     }
@@ -110,12 +113,14 @@ class SocialAuthService {
     );
 
     final callback = Uri.parse(result);
-    final error = callback.queryParameters['error'];
+    final fragmentParams = Uri.splitQueryString(callback.fragment);
+
+    final error = fragmentParams['error'] ?? callback.queryParameters['error'];
     if (error != null && error.isNotEmpty) {
       throw ApiException(error);
     }
 
-    final token = callback.queryParameters['token'];
+    final token = fragmentParams['accessToken'] ?? fragmentParams['token'] ?? callback.queryParameters['token'];
     if (token == null || token.isEmpty) {
       throw ApiException('GitHub OAuth không trả về token đăng nhập');
     }

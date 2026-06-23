@@ -70,9 +70,51 @@ class AppApi {
     return normalizeAnalysis(res.data);
   }
 
+  Future<RoleMatchModel?> getRoleMatches(
+    String repoId, {
+    int? limit,
+    String? targetRole,
+    bool includeDetails = true,
+  }) async {
+    final res = await _dio.get(
+      '/analysis/repositories/$repoId/role-matches',
+      queryParameters: {
+        if (limit != null) 'limit': limit,
+        if (targetRole != null && targetRole.isNotEmpty) 'targetRole': targetRole,
+        'includeDetails': includeDetails,
+      },
+    );
+    final data = unwrapResponse<dynamic>(res.data);
+    if (data == null) return null;
+    return RoleMatchModel.fromJson(Map<String, dynamic>.from(data as Map? ?? {}));
+  }
+
   Future<List<AnalysisModel>> getMyAnalyses() async {
     final res = await _dio.get('/analysis/me');
     return normalizeAnalyses(res.data);
+  }
+
+  Future<List<RepoAnalysisSnapshotModel>> getSnapshots(String repoId) async {
+    final res = await _dio.get('/repositories/$repoId/snapshots');
+    return normalizeSnapshots(res.data);
+  }
+
+  Future<RepoAnalysisSnapshotModel?> getSnapshot(String snapshotId) async {
+    final res = await _dio.get('/snapshots/$snapshotId');
+    return normalizeSnapshot(res.data);
+  }
+
+  Future<SnapshotCompareResultModel> compareSnapshots(String fromId, String toId) async {
+    final res = await _dio.post('/snapshots/compare', data: {
+      'fromSnapshotId': fromId,
+      'toSnapshotId': toId,
+    });
+    return normalizeSnapshotCompare(res.data);
+  }
+
+  Future<SnapshotCompareResultModel> getProgressComparison(String repoId) async {
+    final res = await _dio.get('/repositories/$repoId/progress-comparison');
+    return normalizeSnapshotCompare(res.data);
   }
 
   Future<AiFeedbackModel> generateAiFeedback(String repoId) async {
@@ -90,8 +132,8 @@ class AppApi {
     return normalizeAiFeedbacks(res.data);
   }
 
-  Future<Map<String, dynamic>> getGitHubOAuthUrl() async {
-    final res = await _dio.get('/github/oauth');
+  Future<Map<String, dynamic>> getGitHubOAuthUrl({required String redirectUrl}) async {
+    final res = await _dio.get('/github/oauth', queryParameters: {'redirectUrl': redirectUrl});
     return Map<String, dynamic>.from(unwrapResponse(res.data) as Map? ?? {});
   }
 
@@ -180,10 +222,18 @@ class AppApi {
 
   Future<RoadmapModel> generateRoadmap({
     required String targetRole,
+    String? repoId,
+    String level = 'beginner',
+    int durationWeeks = 6,
+    String language = 'vi',
     bool forceRegenerate = false,
   }) async {
     final res = await _dio.post('/roadmaps/generate', data: {
       'targetRole': targetRole,
+      if (repoId != null && repoId.isNotEmpty) 'repoId': repoId,
+      'level': level,
+      'durationWeeks': durationWeeks,
+      'language': language,
       'forceRegenerate': forceRegenerate,
     });
     return normalizeRoadmap(res.data);
