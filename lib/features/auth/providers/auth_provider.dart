@@ -284,7 +284,8 @@ class AuthNotifier extends Notifier<AuthState> {
       final api = ref.read(appApiProvider);
       final redirectUri = 'gitanalyzer://github/connect';
       final payload = await safeRequest(() => api.getGitHubOAuthUrl(redirectUrl: redirectUri));
-      final url = payload['authorizeUrl'] ?? payload['authorizationUrl'] ?? payload['oauthUrl'] ?? payload['url'];
+      print('PAYLOAD FROM getGitHubOAuthUrl: $payload');
+      final url = payload['authUrl'] ?? payload['authorizeUrl'] ?? payload['authorizationUrl'] ?? payload['oauthUrl'] ?? payload['url'];
       if (url == null) throw ApiException('Backend không trả authorizeUrl');
       final absolute = url.toString().startsWith('http')
           ? url.toString()

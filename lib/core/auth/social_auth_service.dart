@@ -99,8 +99,9 @@ class SocialAuthService {
     );
 
     final payload = unwrapResponse<dynamic>(authorizeResponse.data);
+    print('PAYLOAD FROM /auth/github: $payload');
     final authorizeUrl = payload is Map 
-        ? (payload['authorizeUrl'] ?? payload['authorizationUrl'] ?? payload['oauthUrl'] ?? payload['url'])?.toString() 
+        ? (payload['authUrl'] ?? payload['authorizeUrl'] ?? payload['authorizationUrl'] ?? payload['oauthUrl'] ?? payload['url'])?.toString() 
         : null;
     if (authorizeUrl == null || authorizeUrl.isEmpty) {
       throw ApiException('BE không trả về GitHub authorize URL. Kiểm tra GITHUB_CLIENT_ID trên server.');
