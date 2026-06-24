@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/auth/github_oauth_service.dart';
 import '../../../core/auth/social_auth_service.dart';
 import '../../../core/network/app_api.dart';
 import '../../../core/network/api_utils.dart';
@@ -7,7 +8,6 @@ import '../../../core/network/dio_client.dart';
 import '../../../shared/models/app_models.dart';
 import '../data/auth_repository.dart';
 import '../../../shared/models/user_model.dart';
-import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/demo/demo_data.dart';
 import '../../../core/demo/demo_service.dart';
@@ -63,6 +63,8 @@ class AuthNotifier extends Notifier<AuthState> {
     return const AuthState(status: AuthStatus.unknown);
   }
 
+  void clearError() => state = state.copyWith(clearError: true);
+
   Future<void> bootstrap() async {
     try {
       final storage = ref.read(tokenStorageProvider);
@@ -97,10 +99,7 @@ class AuthNotifier extends Notifier<AuthState> {
       state = AuthState(status: AuthStatus.authenticated, user: user);
     } catch (error) {
       await ref.read(tokenStorageProvider).clear();
-      state = AuthState(
-        status: AuthStatus.unauthenticated,
-        error: getApiErrorMessage(error),
-      );
+      state = const AuthState(status: AuthStatus.unauthenticated);
     }
   }
 
@@ -281,27 +280,8 @@ class AuthNotifier extends Notifier<AuthState> {
         await ref.read(tokenStorageProvider).saveUser(user.toJson());
         return;
       }
-      final api = ref.read(appApiProvider);
-      final redirectUri = 'gitanalyzer://github/connect';
-      final payload = await safeRequest(() => api.getGitHubOAuthUrl(redirectUrl: redirectUri));
-      print('PAYLOAD FROM getGitHubOAuthUrl: $payload');
-      final url = payload['authUrl'] ?? payload['authorizeUrl'] ?? payload['authorizationUrl'] ?? payload['oauthUrl'] ?? payload['url'];
-      if (url == null) throw ApiException('Backend không trả authorizeUrl');
-      final absolute = url.toString().startsWith('http')
-          ? url.toString()
-          : '${Uri.parse(AppConfig.apiBaseUrl).origin}$url';
-      
-      final result = await FlutterWebAuth2.authenticate(
-        url: absolute,
-        callbackUrlScheme: Uri.parse(redirectUri).scheme,
-      );
 
-      final callback = Uri.parse(result);
-      final error = callback.queryParameters['error'] ?? Uri.splitQueryString(callback.fragment)['error'];
-      if (error != null && error.isNotEmpty) {
-        throw ApiException(error);
-      }
-
+      await ref.read(githubOAuthServiceProvider).connectWithJwt(ref.read(dioProvider));
       state = state.copyWith(isLoading: false);
       await refreshGitHubAccount();
     } catch (error) {
@@ -381,6 +361,8 @@ final authApiProvider = Provider<AuthApi>((ref) {
 });
 
 final socialAuthServiceProvider = Provider<SocialAuthService>((ref) => SocialAuthService());
+
+final githubOAuthServiceProvider = Provider<GithubOAuthService>((ref) => GithubOAuthService());
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final storage = ref.watch(tokenStorageProvider);

@@ -7,7 +7,7 @@ import '../../features/auth/providers/auth_provider.dart';
 import 'app_image_assets.dart';
 import 'app_widgets.dart';
 
-/// Google + GitHub login — khớp Web `SocialLoginPanel` + BE `/auth/google`, `/auth/github/authorize`.
+/// Google + GitHub login — khớp Web: `/auth/google`, `POST /auth/github` + redirectUrl.
 class SocialLoginPanel extends ConsumerStatefulWidget {
   const SocialLoginPanel({
     super.key,
@@ -40,7 +40,10 @@ class _SocialLoginPanelState extends ConsumerState<SocialLoginPanel> {
       await ref.read(authProvider.notifier).loginWithGoogle();
       if (mounted) widget.onSuccess();
     } catch (error) {
-      if (mounted) setState(() => _notice = getApiErrorMessage(error));
+      if (mounted) {
+        ref.read(authProvider.notifier).clearError();
+        setState(() => _notice = getApiErrorMessage(error));
+      }
     }
   }
 
@@ -49,20 +52,15 @@ class _SocialLoginPanelState extends ConsumerState<SocialLoginPanel> {
       setState(() => _notice = 'Demo mode không hỗ trợ đăng nhập GitHub.');
       return;
     }
-    if (!AppConfig.isGithubLoginConfigured) {
-      setState(() {
-        _notice =
-            'Không thể đăng nhập GitHub. Kiểm tra API_BASE_URL và cấu hình GITHUB_* trên BE.';
-      });
-      return;
-    }
-
     setState(() => _notice = '');
     try {
       await ref.read(authProvider.notifier).loginWithGithub();
       if (mounted) widget.onSuccess();
     } catch (error) {
-      if (mounted) setState(() => _notice = getApiErrorMessage(error));
+      if (mounted) {
+        ref.read(authProvider.notifier).clearError();
+        setState(() => _notice = getApiErrorMessage(error));
+      }
     }
   }
 

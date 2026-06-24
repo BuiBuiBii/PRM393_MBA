@@ -60,7 +60,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isGitHubCallback =
           loc.startsWith('/github/oauth/callback') ||
           loc.startsWith('/github/callback') ||
-          loc.startsWith('/github/auth/callback');
+          loc.startsWith('/github/auth/callback') ||
+          loc.startsWith('/auth/github/callback');
       final isPublicRoute = isAuthRoute || isGitHubCallback;
       final isAdminRoute = loc.startsWith('/admin');
       final isAdminDenied = loc == '/admin/denied';
@@ -78,6 +79,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/github/oauth/callback', builder: (_, __) => const GitHubCallbackScreen()),
       GoRoute(path: '/github/callback', builder: (_, __) => const GitHubCallbackScreen()),
       GoRoute(path: '/github/auth/callback', builder: (_, __) => const GitHubAuthCallbackScreen()),
+      GoRoute(path: '/auth/github/callback', builder: (_, __) => const GitHubAuthCallbackScreen()),
       GoRoute(path: '/admin/denied', builder: (_, __) => const AdminAccessDeniedScreen()),
       ShellRoute(
         builder: (_, __, child) => AdminShell(child: child),

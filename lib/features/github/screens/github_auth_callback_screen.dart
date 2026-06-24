@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/auth/oauth_callback_utils.dart';
 import '../../../core/router/auth_navigation.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../shared/widgets/app_image_assets.dart';
@@ -28,16 +29,15 @@ class _GitHubAuthCallbackScreenState extends ConsumerState<GitHubAuthCallbackScr
   }
 
   Future<void> _handleCallback(Uri uri) async {
-    final params = uri.queryParameters;
-    final error = params['error'];
-    final token = params['token'];
+    final error = oauthErrorFromUri(uri);
+    final token = appAccessTokenFromFragment(uri);
 
     try {
-      if (error != null && error.isNotEmpty) {
+      if (error != null) {
         throw Exception(error);
       }
       if (token == null || token.isEmpty) {
-        throw Exception('Thiếu token đăng nhập GitHub');
+        throw Exception('Thiếu #accessToken trong callback GitHub');
       }
 
       await ref.read(authProvider.notifier).completeGithubLoginWithToken(token);
