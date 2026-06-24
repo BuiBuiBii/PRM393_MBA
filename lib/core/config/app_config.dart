@@ -39,22 +39,20 @@ class AppConfig {
     defaultValue: '970437677508-k1jc855q10hnl3sktcop9job68hgkd0r.apps.googleusercontent.com',
   );
 
-  /// GitHub OAuth App — cần cho nút đăng nhập GitHub (khác OAuth kết nối repo trên BE).
+  /// Chỉ dùng nếu tự triển khai PKCE (không bắt buộc — login mặc định qua BE OAuth).
   static const String githubClientId = String.fromEnvironment('GITHUB_CLIENT_ID');
-  static const String githubClientSecret = String.fromEnvironment('GITHUB_CLIENT_SECRET');
   static const String githubAuthRedirectUri = String.fromEnvironment(
     'GITHUB_AUTH_REDIRECT_URI',
-    defaultValue: 'gitanalyzer://github/auth/callback',
+    defaultValue: 'gitanalyzer://auth/github/callback',
+  );
+
+  static const String githubConnectRedirectUri = String.fromEnvironment(
+    'GITHUB_CONNECT_REDIRECT_URI',
+    defaultValue: 'gitanalyzer://github/connect',
   );
 
   static bool get isGoogleLoginConfigured => googleClientId.isNotEmpty;
 
-  /// Mặc định đăng nhập GitHub qua BE (`GET /auth/github/authorize`) — không cần secret trong app.
-  static const bool useBackendGithubLogin = bool.fromEnvironment(
-    'USE_BACKEND_GITHUB_LOGIN',
-    defaultValue: true,
-  );
-
-  static bool get isGithubLoginConfigured =>
-      useBackendGithubLogin || (githubClientId.isNotEmpty && githubClientSecret.isNotEmpty);
+  /// Login GitHub qua BE OAuth — không cần GITHUB_CLIENT_ID trong app.
+  static bool get isGithubLoginConfigured => !demoMode;
 }

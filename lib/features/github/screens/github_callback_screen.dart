@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/auth/oauth_callback_utils.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../shared/widgets/app_image_assets.dart';
 import '../../../shared/widgets/app_widgets.dart';
@@ -27,10 +28,15 @@ class _GitHubCallbackScreenState extends ConsumerState<GitHubCallbackScreen> {
   }
 
   Future<void> _handleCallback(Uri uri) async {
-    final params = uri.queryParameters;
+    final error = oauthErrorFromUri(uri);
+    final params = mergeOAuthCallbackParams(uri);
 
     try {
-      if (params.containsKey('code')) {
+      if (error != null) {
+        throw Exception(error);
+      }
+
+      if (params['code']?.isNotEmpty == true) {
         final api = ref.read(appApiProvider);
         await api.completeGitHubOAuthCallback(params);
       }
