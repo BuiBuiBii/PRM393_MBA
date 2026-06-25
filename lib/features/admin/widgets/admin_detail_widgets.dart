@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
 class AdminBreadcrumbItem {
@@ -75,10 +76,10 @@ class AdminBreadcrumb extends StatelessWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         spacing: 4,
         children: [
-          const Icon(Icons.admin_panel_settings_outlined, size: 14, color: AppColors.slate500),
+          Icon(Icons.admin_panel_settings_outlined, size: 14, color: context.appTextSecondary),
           for (var i = 0; i < items.length; i++) ...[
             if (i > 0)
-              const Icon(Icons.chevron_right, size: 14, color: AppColors.slate500),
+              Icon(Icons.chevron_right, size: 14, color: context.appTextSecondary),
             if (items[i].path != null && i < items.length - 1)
               InkWell(
                 onTap: () => context.go(items[i].path!),
@@ -92,7 +93,7 @@ class AdminBreadcrumb extends StatelessWidget {
                 items[i].label,
                 style: TextStyle(
                   fontSize: 12,
-                  color: i == items.length - 1 ? AppColors.slate900 : AppColors.slate500,
+                  color: i == items.length - 1 ? context.appTextPrimary : context.appTextSecondary,
                   fontWeight: i == items.length - 1 ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),
@@ -121,10 +122,10 @@ class AdminTextListCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          Text(title, style: context.appSectionTitleStyle.copyWith(fontSize: 15)),
           const SizedBox(height: 10),
           if (items.isEmpty)
-            const Text('Chưa có nội dung.', style: TextStyle(color: AppColors.slate500, fontSize: 13))
+            Text('Chưa có nội dung.', style: context.appCaptionStyle)
           else
             ...items.map(
               (item) => Padding(
@@ -134,7 +135,7 @@ class AdminTextListCard extends StatelessWidget {
                   children: [
                     AppBadge(label: 'Mục', variant: variant),
                     const SizedBox(width: 8),
-                    Expanded(child: Text(item, style: const TextStyle(height: 1.4))),
+                    Expanded(child: Text(item, style: context.appBodyStyle)),
                   ],
                 ),
               ),
@@ -166,9 +167,9 @@ class AdminDetailStatGrid extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(item.$1, style: const TextStyle(color: AppColors.slate500, fontSize: 12)),
+                Text(item.$1, style: context.appLabelStyle),
                 const SizedBox(height: 6),
-                Text(item.$2, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+                Text(item.$2, style: context.appHeadingStyle.copyWith(fontSize: 20)),
               ],
             ),
           ),
@@ -177,14 +178,14 @@ class AdminDetailStatGrid extends StatelessWidget {
   }
 }
 
-Widget adminDetailRow(String label, String value) {
+Widget adminDetailRow(BuildContext context, String label, String value) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 6),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(width: 120, child: Text(label, style: const TextStyle(color: AppColors.slate500, fontSize: 13))),
-        Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
+        SizedBox(width: 120, child: Text(label, style: context.appLabelStyle)),
+        Expanded(child: Text(value, style: context.appBodyStyle.copyWith(fontSize: 13))),
       ],
     ),
   );

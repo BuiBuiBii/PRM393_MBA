@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
+
 EdgeInsets appScreenPadding(BuildContext context) {
   final width = MediaQuery.sizeOf(context).width;
   final bottom = MediaQuery.paddingOf(context).bottom;
@@ -32,12 +34,15 @@ class AppGradientBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFF8FAFC), Color(0xFFEEF2FF), Color(0xFFF8FAFC)],
+          colors: isDark
+              ? const [Color(0xFF0F172A), Color(0xFF1E1B4B), Color(0xFF0F172A)]
+              : const [Color(0xFFF8FAFC), Color(0xFFEEF2FF), Color(0xFFF8FAFC)],
         ),
       ),
       child: child,
@@ -54,25 +59,28 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final cardColor = Theme.of(context).cardTheme.color ?? cs.surface;
+    final borderColor = context.appBorderColor;
     final content = Container(
       padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: borderColor),
       ),
       child: child,
     );
 
     if (onTap == null) {
       return Material(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
         child: content,
       );
     }
 
     return Material(
-      color: Colors.white,
+      color: cardColor,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
@@ -148,21 +156,22 @@ class AppBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
     Color bg;
     Color fg;
     switch (variant) {
       case AppBadgeVariant.info:
-        bg = const Color(0xFFCFFAFE);
-        fg = const Color(0xFF0E7490);
+        bg = isDark ? const Color(0xFF164E63) : const Color(0xFFCFFAFE);
+        fg = isDark ? const Color(0xFF67E8F9) : const Color(0xFF0E7490);
       case AppBadgeVariant.success:
-        bg = const Color(0xFFD1FAE5);
-        fg = AppColors.emerald;
+        bg = isDark ? const Color(0xFF064E3B) : const Color(0xFFD1FAE5);
+        fg = isDark ? const Color(0xFF6EE7B7) : AppColors.emerald;
       case AppBadgeVariant.warning:
-        bg = const Color(0xFFFEF3C7);
-        fg = AppColors.amber;
+        bg = isDark ? const Color(0xFF78350F) : const Color(0xFFFEF3C7);
+        fg = isDark ? const Color(0xFFFCD34D) : AppColors.amber;
       case AppBadgeVariant.neutral:
-        bg = Colors.grey.shade100;
-        fg = AppColors.slate600;
+        bg = isDark ? AppTheme.darkBorder : Colors.grey.shade100;
+        fg = isDark ? AppTheme.darkTextSecondary : AppColors.slate600;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -194,6 +203,7 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bg = context.isDarkMode ? iconColor.withValues(alpha: 0.18) : iconBg;
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,7 +217,7 @@ class StatCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(label, style: const TextStyle(color: AppColors.slate500, fontSize: 13)),
+                    Text(label, style: TextStyle(color: context.appTextSecondary, fontSize: 13)),
                     const SizedBox(height: 6),
                     Text(
                       value,
@@ -217,7 +227,7 @@ class StatCard extends StatelessWidget {
                         fontSize: isCompactPhone(context) ? 22 : 26,
                         fontWeight: FontWeight.bold,
                         height: 1.15,
-                        color: valueColor ?? AppColors.slate900,
+                        color: valueColor ?? context.appTextPrimary,
                       ),
                     ),
                   ],
@@ -226,14 +236,14 @@ class StatCard extends StatelessWidget {
               Container(
                 width: 48,
                 height: 48,
-                decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
                 child: Icon(icon, color: iconColor),
               ),
             ],
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 8),
-            Text(subtitle!, style: const TextStyle(color: AppColors.slate500, fontSize: 12)),
+            Text(subtitle!, style: TextStyle(color: context.appTextSecondary, fontSize: 12)),
           ],
         ],
       ),
@@ -252,7 +262,9 @@ class PageHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final titleStyle = Theme.of(context).textTheme.headlineSmall?.copyWith(
           fontWeight: FontWeight.bold,
-          fontSize: isCompactPhone(context) ? 22 : null,
+          fontSize: isCompactPhone(context) ? 24 : 26,
+          color: context.appTextPrimary,
+          letterSpacing: -0.3,
         );
     final titleBlock = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -260,7 +272,7 @@ class PageHeader extends StatelessWidget {
         Text(title, style: titleStyle),
         if (subtitle != null) ...[
           const SizedBox(height: 4),
-          Text(subtitle!, style: const TextStyle(color: AppColors.slate500, height: 1.4)),
+          Text(subtitle!, style: TextStyle(color: context.appTextSecondary, height: 1.4)),
         ],
       ],
     );
@@ -303,10 +315,10 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: context.appTextPrimary)),
             if (subtitle != null) ...[
               const SizedBox(height: 8),
-              Text(subtitle!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.slate500)),
+              Text(subtitle!, textAlign: TextAlign.center, style: TextStyle(color: context.appTextSecondary)),
             ],
             if (action != null) ...[const SizedBox(height: 16), action!],
           ],
@@ -325,21 +337,22 @@ class BannerMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
     Color bg;
     Color border;
     Color text;
     if (isError) {
-      bg = const Color(0xFFFEF2F2);
-      border = const Color(0xFFFECACA);
-      text = const Color(0xFFB91C1C);
+      bg = isDark ? const Color(0xFF450A0A) : const Color(0xFFFEF2F2);
+      border = isDark ? const Color(0xFF991B1B) : const Color(0xFFFECACA);
+      text = isDark ? const Color(0xFFFECACA) : const Color(0xFFB91C1C);
     } else if (isWarning) {
-      bg = const Color(0xFFFFFBEB);
-      border = const Color(0xFFFDE68A);
-      text = const Color(0xFFB45309);
+      bg = isDark ? const Color(0xFF451A03) : const Color(0xFFFFFBEB);
+      border = isDark ? const Color(0xFF92400E) : const Color(0xFFFDE68A);
+      text = isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309);
     } else {
-      bg = const Color(0xFFECFEFF);
-      border = const Color(0xFFA5F3FC);
-      text = const Color(0xFF0E7490);
+      bg = isDark ? const Color(0xFF164E63) : const Color(0xFFECFEFF);
+      border = isDark ? const Color(0xFF0E7490) : const Color(0xFFA5F3FC);
+      text = isDark ? const Color(0xFF67E8F9) : const Color(0xFF0E7490);
     }
     return Container(
       width: double.infinity,
@@ -357,18 +370,21 @@ class AuthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.95),
+        color: isDark ? AppTheme.darkCard.withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0).withValues(alpha: 0.8)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1A64748B),
-            blurRadius: 24,
-            offset: Offset(0, 8),
-          ),
-        ],
+        border: Border.all(color: context.appBorderColor),
+        boxShadow: isDark
+            ? null
+            : const [
+                BoxShadow(
+                  color: Color(0x1A64748B),
+                  blurRadius: 24,
+                  offset: Offset(0, 8),
+                ),
+              ],
       ),
       child: child,
     );
@@ -402,10 +418,10 @@ class LabeledInput extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: Color(0xFF334155),
+            color: context.appTextPrimary,
           ),
         ),
         const SizedBox(height: 6),
@@ -414,16 +430,17 @@ class LabeledInput extends StatelessWidget {
           obscureText: obscureText,
           keyboardType: keyboardType,
           validator: validator,
+          style: TextStyle(color: context.appTextPrimary),
           decoration: InputDecoration(
             hintText: placeholder,
-            prefixIcon: icon != null ? Icon(icon, size: 18, color: AppColors.slate500) : null,
+            prefixIcon: icon != null ? Icon(icon, size: 18, color: context.appTextSecondary) : null,
             filled: true,
-            fillColor: Colors.white,
+            fillColor: Theme.of(context).inputDecorationTheme.fillColor,
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+              borderSide: BorderSide(color: context.appBorderColor),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -445,12 +462,12 @@ class AuthDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+        Expanded(child: Divider(color: context.appBorderColor)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Text(label, style: const TextStyle(fontSize: 14, color: AppColors.slate500)),
+          child: Text(label, style: context.appCaptionStyle),
         ),
-        const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+        Expanded(child: Divider(color: context.appBorderColor)),
       ],
     );
   }

@@ -166,18 +166,3 @@ final mockAIRecommendation = AIRecommendationModel(
   estimatedCompletionWeeks: 10,
   roadmap: mockRoadmaps.first,
 );
-
-final mockProgressChartData = [
-  {'date': 'T1', 'overall': 52},
-  {'date': 'T2', 'overall': 58},
-  {'date': 'T3', 'overall': 63},
-  {'date': 'T4', 'overall': 71},
-  {'date': 'T5', 'overall': 78},
-];
-
-final mockHomeAnalysis = {
-  'repositoryName': 'ecommerce-platform',
-  'overall': 78,
-  'projectType': 'Full-Stack Web App',
-  'techStack': ['React', 'Node.js', 'PostgreSQL'],
-};

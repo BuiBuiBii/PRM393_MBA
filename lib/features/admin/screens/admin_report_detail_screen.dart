@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_feedback.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
@@ -80,11 +81,11 @@ class _AdminReportDetailScreenState extends ConsumerState<AdminReportDetailScree
                 adminStatusLabel(report.status),
                 const SizedBox(height: 12),
                 if (report.description != null && report.description!.isNotEmpty)
-                  Text(report.description!, style: const TextStyle(height: 1.45)),
+                  Text(report.description!, style: context.appBodyStyle),
                 const SizedBox(height: 12),
-                _row('Người báo cáo', report.reporterName ?? report.reporterEmail ?? '—'),
-                _row('Target ID', report.targetId ?? '—'),
-                _row('Tạo lúc', report.createdAt ?? '—'),
+                _row(context, 'Người báo cáo', report.reporterName ?? report.reporterEmail ?? '—'),
+                _row(context, 'Target ID', report.targetId ?? '—'),
+                _row(context, 'Tạo lúc', report.createdAt ?? '—'),
               ],
             ),
           ),
@@ -93,7 +94,7 @@ class _AdminReportDetailScreenState extends ConsumerState<AdminReportDetailScree
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Ghi chú admin', style: TextStyle(fontWeight: FontWeight.w600)),
+                Text('Ghi chú admin', style: context.appSectionTitleStyle),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _note,
@@ -123,14 +124,14 @@ class _AdminReportDetailScreenState extends ConsumerState<AdminReportDetailScree
     );
   }
 
-  Widget _row(String label, String value) {
+  Widget _row(BuildContext context, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 110, child: Text(label, style: const TextStyle(color: AppColors.slate500, fontSize: 13))),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
+          SizedBox(width: 110, child: Text(label, style: context.appLabelStyle)),
+          Expanded(child: Text(value, style: context.appBodyStyle.copyWith(fontSize: 13))),
         ],
       ),
     );

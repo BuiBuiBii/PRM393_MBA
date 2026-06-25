@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
 import 'app_widgets.dart';
 
 class ErrorState extends StatelessWidget {
@@ -37,12 +38,12 @@ class ErrorState extends StatelessWidget {
               child: Icon(icon, color: iconColor, size: 28),
             ),
             const SizedBox(height: 16),
-            Text(title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+            Text(title, textAlign: TextAlign.center, style: context.appSectionTitleStyle),
             const SizedBox(height: 8),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.slate500, height: 1.4),
+              style: context.appCaptionStyle,
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 20),

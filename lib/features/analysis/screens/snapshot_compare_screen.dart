@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../providers/snapshot_provider.dart';
 
@@ -29,33 +30,21 @@ class _SnapshotCompareScreenState extends ConsumerState<SnapshotCompareScreen> {
     final isComparing = state.comparingSnapshots;
     final error = state.error;
 
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        titleSpacing: 16,
-        title: const Text('Tiến bộ của Repository'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.slate900,
-        elevation: 0,
-      ),
-      backgroundColor: const Color(0xFFF1F5F9),
-      body: isComparing
-          ? const Center(child: CircularProgressIndicator())
-          : error != null && comparison == null
-              ? Center(child: Text(error, style: const TextStyle(color: AppColors.rose)))
-              : comparison == null
-                  ? const Center(child: Text('Không đủ dữ liệu để so sánh.'))
-                  : _buildComparison(comparison),
-    );
+    return isComparing
+        ? const Center(child: CircularProgressIndicator())
+        : error != null && comparison == null
+            ? Center(child: Text(error, style: const TextStyle(color: AppColors.rose)))
+            : comparison == null
+                ? const Center(child: Text('Không đủ dữ liệu để so sánh.'))
+                : _buildComparison(context, comparison);
   }
 
-  Widget _buildComparison(dynamic comparison) {
-    // using dynamic to avoid strict typing issue if model missing, but it is SnapshotCompareResultModel
-    final comp = comparison; 
-    
-    final changeColor = comp.overallChange > 0 
-        ? AppColors.emerald 
-        : (comp.overallChange < 0 ? AppColors.rose : AppColors.slate500);
+  Widget _buildComparison(BuildContext context, dynamic comparison) {
+    final comp = comparison;
+
+    final changeColor = comp.overallChange > 0
+        ? AppColors.emerald
+        : (comp.overallChange < 0 ? AppColors.rose : context.appTextSecondary);
         
     final changeIcon = comp.overallChange > 0 
         ? Icons.arrow_upward
@@ -76,14 +65,14 @@ class _SnapshotCompareScreenState extends ConsumerState<SnapshotCompareScreen> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  const Text('Tổng quan điểm số', style: TextStyle(fontSize: 14, color: AppColors.slate500)),
+                  Text('Tổng quan điểm số', style: context.appCaptionStyle.copyWith(fontSize: 14)),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _scoreWidget('Điểm trước', comp.overallBefore),
-                      Icon(Icons.arrow_forward_rounded, color: AppColors.slate300, size: 24),
-                      _scoreWidget('Điểm sau', comp.overallAfter),
+                      _scoreWidget(context, 'Điểm trước', comp.overallBefore),
+                      Icon(Icons.arrow_forward_rounded, color: context.appTextSecondary.withValues(alpha: 0.5), size: 24),
+                      _scoreWidget(context, 'Điểm sau', comp.overallAfter),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -142,6 +131,7 @@ class _SnapshotCompareScreenState extends ConsumerState<SnapshotCompareScreen> {
 
           if (comp.resolvedMissingSkills.isNotEmpty) ...[
             _buildSectionCard(
+              context: context,
               title: 'Kỹ năng đã khắc phục',
               icon: Icons.check_circle,
               iconColor: AppColors.emerald,
@@ -154,6 +144,7 @@ class _SnapshotCompareScreenState extends ConsumerState<SnapshotCompareScreen> {
           
           if (comp.remainingMissingSkills.isNotEmpty) ...[
             _buildSectionCard(
+              context: context,
               title: 'Kỹ năng vẫn còn thiếu',
               icon: Icons.warning_rounded,
               iconColor: AppColors.amber,
@@ -166,6 +157,7 @@ class _SnapshotCompareScreenState extends ConsumerState<SnapshotCompareScreen> {
           
           if (comp.newMissingSkills.isNotEmpty) ...[
              _buildSectionCard(
+              context: context,
               title: 'Vấn đề/Kỹ năng thiếu mới phát sinh',
               icon: Icons.error_outline,
               iconColor: AppColors.rose,
@@ -179,17 +171,18 @@ class _SnapshotCompareScreenState extends ConsumerState<SnapshotCompareScreen> {
     );
   }
 
-  Widget _scoreWidget(String label, double score) {
+  Widget _scoreWidget(BuildContext context, String label, double score) {
     return Column(
       children: [
-        Text(score.toStringAsFixed(1), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.slate900)),
+        Text(score.toStringAsFixed(1), style: context.appHeadingStyle.copyWith(fontSize: 28, fontWeight: FontWeight.w800)),
         const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.slate500)),
+        Text(label, style: context.appLabelStyle),
       ],
     );
   }
 
   Widget _buildSectionCard({
+    required BuildContext context,
     required String title,
     required IconData icon,
     required Color iconColor,
@@ -209,7 +202,7 @@ class _SnapshotCompareScreenState extends ConsumerState<SnapshotCompareScreen> {
               children: [
                 Icon(icon, color: iconColor, size: 20),
                 const SizedBox(width: 8),
-                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Text(title, style: context.appSectionTitleStyle),
               ],
             ),
             const SizedBox(height: 16),

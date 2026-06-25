@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../app_providers.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../shared/widgets/app_image_assets.dart';
@@ -52,7 +53,9 @@ class _GitHubConnectScreenState extends ConsumerState<GitHubConnectScreen> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: connected ? const Color(0xFFD1FAE5) : const Color(0xFFE0E7FF),
+                      color: connected
+                          ? (context.isDarkMode ? AppColors.emerald.withValues(alpha: 0.2) : const Color(0xFFD1FAE5))
+                          : (context.isDarkMode ? AppColors.primary.withValues(alpha: 0.2) : const Color(0xFFE0E7FF)),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: connected
@@ -67,7 +70,7 @@ class _GitHubConnectScreenState extends ConsumerState<GitHubConnectScreen> {
                         Wrap(
                           spacing: 8,
                           children: [
-                            const Text('GitHub OAuth', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                            Text('GitHub OAuth', style: context.appHeadingStyle.copyWith(fontSize: 18)),
                             AppBadge(
                               label: connected ? 'Đã kết nối' : 'Chưa kết nối',
                               variant: connected ? AppBadgeVariant.success : AppBadgeVariant.neutral,
@@ -79,7 +82,7 @@ class _GitHubConnectScreenState extends ConsumerState<GitHubConnectScreen> {
                           connected
                               ? 'Đang kết nối với @${user?.githubUsername ?? 'GitHub'}'
                               : 'Đăng nhập GitHub để cấp quyền đọc repository.',
-                          style: const TextStyle(color: AppColors.slate500, fontSize: 13),
+                          style: context.appCaptionStyle,
                         ),
                       ],
                     ),
@@ -127,7 +130,7 @@ class _GitHubConnectScreenState extends ConsumerState<GitHubConnectScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Repositories đã cache: ${repos.repositories.length}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text('Repositories đã cache: ${repos.repositories.length}', style: context.appSectionTitleStyle.copyWith(fontSize: 14)),
                 const SizedBox(height: 12),
                 PrimaryButton(
                   label: 'Tải cache',

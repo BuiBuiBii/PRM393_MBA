@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_providers.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/utils/format_utils.dart';
 import '../../../shared/widgets/app_feedback.dart';
@@ -83,7 +84,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).cardTheme.color,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (ctx) => DraggableScrollableSheet(
         expand: false,
@@ -150,8 +151,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         Container(
           padding: EdgeInsets.fromLTRB(12, 10, 12, 10 + bottomInset),
           decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(top: BorderSide(color: Colors.grey.shade200)),
+            color: context.appCardColor,
+            border: Border(top: BorderSide(color: context.appBorderColor)),
           ),
           child: Row(
             children: [
@@ -159,18 +160,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 child: TextField(
                   controller: _controller,
                   enabled: !chat.isLoading,
+                  style: TextStyle(color: context.appTextPrimary),
                   decoration: InputDecoration(
                     hintText: 'Nhập câu hỏi...',
                     filled: true,
-                    fillColor: const Color(0xFFF8FAFC),
+                    fillColor: context.isDarkMode ? AppTheme.darkSurface : const Color(0xFFF8FAFC),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                      borderSide: BorderSide(color: context.appBorderColor),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                      borderSide: BorderSide(color: context.appBorderColor),
                     ),
                   ),
                   textInputAction: TextInputAction.send,
@@ -215,8 +217,8 @@ class _ChatHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        color: context.appCardColor,
+        border: Border(bottom: BorderSide(color: context.appBorderColor)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,14 +234,14 @@ class _ChatHeader extends StatelessWidget {
                       session?.title ?? 'AI Mentor',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                      style: context.appSectionTitleStyle,
                     ),
                     const SizedBox(height: 2),
-                    const Text(
+                    Text(
                       'Chat dựa trên repository, phân tích và ngữ cảnh GitHub của bạn.',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 11, color: AppColors.slate500, height: 1.3),
+                      style: context.appLabelStyle.copyWith(height: 1.3),
                     ),
                   ],
                 ),
@@ -272,9 +274,11 @@ class _ChatHeader extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: selected ? const Color(0xFFEEF2FF) : Colors.white,
+                        color: selected
+                            ? AppColors.primary.withValues(alpha: context.isDarkMode ? 0.22 : 0.1)
+                            : context.appCardColor,
                         borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: selected ? AppColors.primary : const Color(0xFFE2E8F0)),
+                        border: Border.all(color: selected ? AppColors.primary : context.appBorderColor),
                       ),
                       child: Text(
                         item.title,
@@ -282,7 +286,7 @@ class _ChatHeader extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 12,
-                          color: selected ? AppColors.primary : AppColors.slate600,
+                          color: selected ? AppColors.primary : context.appTextSecondary,
                           fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                         ),
                       ),
@@ -318,7 +322,7 @@ class _MessageBubble extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: isUser ? AppColors.primary : const Color(0xFFF1F5F9),
+                color: isUser ? AppColors.primary : context.appBubbleAiBg,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Column(
@@ -327,7 +331,7 @@ class _MessageBubble extends StatelessWidget {
                   Text(
                     message.content,
                     style: TextStyle(
-                      color: isUser ? Colors.white : AppColors.slate900,
+                      color: isUser ? Colors.white : context.appTextPrimary,
                       height: 1.45,
                       fontSize: 14,
                     ),
@@ -337,7 +341,7 @@ class _MessageBubble extends StatelessWidget {
                     formatRelativeTime(message.timestamp),
                     style: TextStyle(
                       fontSize: 11,
-                      color: isUser ? Colors.white70 : AppColors.slate500,
+                      color: isUser ? Colors.white70 : context.appTextSecondary,
                     ),
                   ),
                 ],
@@ -383,7 +387,7 @@ class _TypingIndicator extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: context.appBubbleAiBg,
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Row(
@@ -437,7 +441,7 @@ class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
       child: Container(
         width: 8,
         height: 8,
-        decoration: const BoxDecoration(color: AppColors.slate500, shape: BoxShape.circle),
+        decoration: BoxDecoration(color: context.appTextSecondary, shape: BoxShape.circle),
       ),
     );
   }
@@ -458,12 +462,12 @@ class _NoSessionEmpty extends StatelessWidget {
           children: [
             const _MentorAvatar(size: 64),
             const SizedBox(height: 16),
-            const Text('Hỏi AI Mentor', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+            Text('Hỏi AI Mentor', style: context.appHeadingStyle),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Bạn có thể nhập câu hỏi ngay. Hệ thống sẽ tự tạo cuộc trò chuyện và lưu lại nội dung cho bạn.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.slate500, height: 1.4),
+              style: context.appBodyStyle,
             ),
             const SizedBox(height: 16),
             PrimaryButton(label: 'Tạo cuộc trò chuyện', icon: Icons.add, onPressed: onCreateSession),
@@ -489,14 +493,14 @@ class _PromptEmpty extends StatelessWidget {
           children: [
             const _MentorAvatar(size: 64),
             const SizedBox(height: 16),
-            const Text('Bắt đầu hỏi AI Mentor', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            Text('Bắt đầu hỏi AI Mentor', style: context.appSectionTitleStyle),
             const SizedBox(height: 16),
             ...prompts.map(
               (p) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: AppCard(
                   onTap: () => onPrompt(p),
-                  child: Text(p, style: const TextStyle(fontSize: 13, height: 1.4)),
+                  child: Text(p, style: context.appBodyStyle.copyWith(fontSize: 13)),
                 ),
               ),
             ),
@@ -523,12 +527,12 @@ class _SessionsPanel extends ConsumerWidget {
     return Column(
       children: [
         const SizedBox(height: 8),
-        Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(99))),
-        const Padding(
-          padding: EdgeInsets.all(16),
+        Container(width: 40, height: 4, decoration: BoxDecoration(color: context.appBorderColor, borderRadius: BorderRadius.circular(99))),
+        Padding(
+          padding: const EdgeInsets.all(16),
           child: Align(
             alignment: Alignment.centerLeft,
-            child: Text('Cuộc trò chuyện', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            child: Text('Cuộc trò chuyện', style: context.appSectionTitleStyle),
           ),
         ),
         Padding(
@@ -580,7 +584,7 @@ class _SessionsPanel extends ConsumerWidget {
         ),
         Expanded(
           child: chat.sessions.isEmpty
-              ? const Center(child: Text('Chưa có cuộc trò chuyện.', style: TextStyle(color: AppColors.slate500)))
+              ? Center(child: Text('Chưa có cuộc trò chuyện.', style: context.appCaptionStyle))
               : ListView.builder(
                   controller: scrollController,
                   itemCount: chat.sessions.length,
@@ -588,7 +592,7 @@ class _SessionsPanel extends ConsumerWidget {
                     final s = chat.sessions[index];
                     return ListTile(
                       selected: chat.current?.id == s.id,
-                      selectedTileColor: const Color(0xFFEEF2FF),
+                      selectedTileColor: AppColors.primary.withValues(alpha: context.isDarkMode ? 0.22 : 0.1),
                       title: Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
                       subtitle: Text(formatRelativeTime(s.createdAt)),
                       onTap: () {

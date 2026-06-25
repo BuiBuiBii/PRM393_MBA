@@ -54,12 +54,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(user?.name ?? 'Người dùng', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                    const Text('Xem và chỉnh sửa hồ sơ sinh viên', style: TextStyle(color: AppColors.slate500, fontSize: 13)),
+                    Text(user?.name ?? 'Người dùng', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      'Xem và chỉnh sửa hồ sơ sinh viên',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: AppColors.slate500),
+              Icon(Icons.chevron_right, color: Theme.of(context).colorScheme.onSurfaceVariant),
             ],
           ),
         ),
@@ -68,11 +71,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.palette_outlined, size: 18),
-                  SizedBox(width: 8),
-                  Text('Giao diện', style: TextStyle(fontWeight: FontWeight.w600)),
+                  Icon(Icons.palette_outlined, size: 18, color: Theme.of(context).colorScheme.onSurface),
+                  const SizedBox(width: 8),
+                  Text('Giao diện', style: Theme.of(context).textTheme.titleMedium),
                 ],
               ),
               const SizedBox(height: 12),
@@ -103,7 +106,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Đổi mật khẩu', style: TextStyle(fontWeight: FontWeight.w600)),
+              Text('Đổi mật khẩu', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
               TextField(controller: _currentPassword, obscureText: true, decoration: const InputDecoration(labelText: 'Mật khẩu hiện tại')),
               TextField(controller: _newPassword, obscureText: true, decoration: const InputDecoration(labelText: 'Mật khẩu mới')),
@@ -132,8 +135,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        PrimaryButton(label: 'Tiến độ học tập', outlined: true, expand: true, onPressed: () => context.go('/progress')),
-        const SizedBox(height: 8),
         PrimaryButton(label: 'Kết nối GitHub', outlined: true, expand: true, onPressed: () => context.go('/github/connect')),
         const SizedBox(height: 8),
         PrimaryButton(

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../providers/snapshot_provider.dart';
 
@@ -30,43 +31,43 @@ class _SnapshotListScreenState extends ConsumerState<SnapshotListScreen> {
     final snapshots = state.getSnapshots(widget.repoId);
     final isLoading = state.isLoadingSnapshots(widget.repoId);
 
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        titleSpacing: 16,
-        title: const Text('Lịch sử phân tích'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.slate900,
-        elevation: 0,
-        actions: [
-          if (snapshots.length > 1)
-            TextButton.icon(
-              onPressed: () {
-                context.push('/repositories/${widget.repoId}/progress');
-              },
-              icon: const Icon(Icons.compare_arrows, size: 18),
-              label: const Text('So sánh tiến độ'),
+    if (isLoading && snapshots.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (snapshots.isEmpty) {
+      return _buildEmptyState(context);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (snapshots.length > 1)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => context.push('/repositories/${widget.repoId}/progress'),
+                icon: const Icon(Icons.compare_arrows, size: 18),
+                label: const Text('So sánh tiến độ'),
+              ),
             ),
-        ],
-      ),
-      body: isLoading && snapshots.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : snapshots.isEmpty
-              ? _buildEmptyState()
-              : _buildList(snapshots),
+          ),
+        Expanded(child: _buildList(snapshots)),
+      ],
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.history, size: 64, color: AppColors.slate300),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Chưa có lịch sử phân tích nào.',
-            style: TextStyle(color: AppColors.slate500),
+            style: context.appCaptionStyle,
           ),
         ],
       ),
@@ -87,7 +88,7 @@ class _SnapshotListScreenState extends ConsumerState<SnapshotListScreen> {
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: AppColors.slate200),
+            side: BorderSide(color: context.appBorderColor),
           ),
           child: InkWell(
             onTap: () {
@@ -104,10 +105,7 @@ class _SnapshotListScreenState extends ConsumerState<SnapshotListScreen> {
                     children: [
                       Text(
                         'Lần phân tích ngày $formattedDate',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
+                        style: context.appSectionTitleStyle.copyWith(fontSize: 15),
                       ),
                       const Icon(Icons.chevron_right, color: AppColors.slate400),
                     ],
@@ -124,9 +122,9 @@ class _SnapshotListScreenState extends ConsumerState<SnapshotListScreen> {
                   ),
                   if (snap.missingSkills.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    const Text(
+                    Text(
                       'Skill còn thiếu:',
-                      style: TextStyle(fontSize: 13, color: AppColors.slate500),
+                      style: context.appCaptionStyle,
                     ),
                     const SizedBox(height: 4),
                     Wrap(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/utils/format_utils.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
@@ -69,7 +70,7 @@ class _AdminRepositoryDetailScreenState extends ConsumerState<AdminRepositoryDet
                           Expanded(
                             child: Text(
                               repo.description?.isNotEmpty == true ? repo.description! : 'Repository chưa có mô tả.',
-                              style: const TextStyle(color: AppColors.slate600, height: 1.45),
+                              style: context.appBodyStyle,
                             ),
                           ),
                         ],
@@ -85,14 +86,14 @@ class _AdminRepositoryDetailScreenState extends ConsumerState<AdminRepositoryDet
                         ],
                       ),
                       const SizedBox(height: 12),
-                      adminDetailRow('Người sở hữu', repo.ownerName),
-                      if (repo.ownerEmail != null) adminDetailRow('Email', repo.ownerEmail!),
-                      adminDetailRow('Ngôn ngữ', repo.language),
-                      adminDetailRow('Nhánh chính', repo.defaultBranch ?? 'Chưa rõ'),
-                      adminDetailRow('GitHub Repo ID', '${repo.githubRepoId ?? 'Chưa có'}'),
-                      adminDetailRow('Đồng bộ gần nhất', formatDate(repo.lastSyncedAt)),
-                      adminDetailRow('Cập nhật GitHub', formatDate(repo.updatedAt ?? repo.pushedAt)),
-                      adminDetailRow('Tạo bản ghi', formatDate(repo.createdAt)),
+                      adminDetailRow(context, 'Người sở hữu', repo.ownerName),
+                      if (repo.ownerEmail != null) adminDetailRow(context, 'Email', repo.ownerEmail!),
+                      adminDetailRow(context, 'Ngôn ngữ', repo.language),
+                      adminDetailRow(context, 'Nhánh chính', repo.defaultBranch ?? 'Chưa rõ'),
+                      adminDetailRow(context, 'GitHub Repo ID', '${repo.githubRepoId ?? 'Chưa có'}'),
+                      adminDetailRow(context, 'Đồng bộ gần nhất', formatDate(repo.lastSyncedAt)),
+                      adminDetailRow(context, 'Cập nhật GitHub', formatDate(repo.updatedAt ?? repo.pushedAt)),
+                      adminDetailRow(context, 'Tạo bản ghi', formatDate(repo.createdAt)),
                     ],
                   ),
                 ),
@@ -101,11 +102,11 @@ class _AdminRepositoryDetailScreenState extends ConsumerState<AdminRepositoryDet
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Liên kết', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text('Liên kết', style: context.appSectionTitleStyle),
                       const SizedBox(height: 10),
-                      adminDetailRow('Trang GitHub', repo.htmlUrl ?? 'Chưa có'),
-                      adminDetailRow('Clone HTTPS', repo.cloneUrl ?? 'Chưa có'),
-                      adminDetailRow('Homepage', repo.homepage ?? 'Chưa có'),
+                      adminDetailRow(context, 'Trang GitHub', repo.htmlUrl ?? 'Chưa có'),
+                      adminDetailRow(context, 'Clone HTTPS', repo.cloneUrl ?? 'Chưa có'),
+                      adminDetailRow(context, 'Homepage', repo.homepage ?? 'Chưa có'),
                       if (repo.htmlUrl != null && repo.htmlUrl!.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         PrimaryButton(
@@ -123,10 +124,10 @@ class _AdminRepositoryDetailScreenState extends ConsumerState<AdminRepositoryDet
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Topics', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text('Topics', style: context.appSectionTitleStyle),
                       const SizedBox(height: 10),
                       if (repo.topics.isEmpty)
-                        const Text('Chưa có topic.', style: TextStyle(color: AppColors.slate500))
+                        Text('Chưa có topic.', style: context.appCaptionStyle)
                       else
                         Wrap(
                           spacing: 8,
@@ -141,7 +142,7 @@ class _AdminRepositoryDetailScreenState extends ConsumerState<AdminRepositoryDet
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Tính năng GitHub', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text('Tính năng GitHub', style: context.appSectionTitleStyle),
                       const SizedBox(height: 10),
                       for (final entry in [
                         ('Issues', 'has_issues'),

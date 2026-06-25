@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
 class NotFoundScreen extends StatelessWidget {
@@ -14,11 +15,11 @@ class NotFoundScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.search_off, size: 64, color: AppColors.slate500),
+            Icon(Icons.search_off, size: 64, color: context.appTextSecondary),
             const SizedBox(height: 16),
-            const Text('404 - Không tìm thấy trang', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text('404 - Không tìm thấy trang', style: context.appHeadingStyle),
             const SizedBox(height: 8),
-            const Text('Đường dẫn không tồn tại hoặc đã bị di chuyển.', textAlign: TextAlign.center),
+            Text('Đường dẫn không tồn tại hoặc đã bị di chuyển.', textAlign: TextAlign.center, style: context.appBodyStyle),
             const SizedBox(height: 20),
             PrimaryButton(label: 'Về Dashboard', onPressed: () => context.go('/dashboard')),
           ],

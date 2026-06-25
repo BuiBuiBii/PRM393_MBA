@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../shared/models/app_models.dart';
 import 'app_widgets.dart';
 
@@ -55,15 +56,15 @@ class RoadmapTreeWidget extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(roadmap.modules[i].title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      Text(roadmap.modules[i].title, style: context.appSectionTitleStyle),
                       if (roadmap.modules[i].description.isNotEmpty)
-                        Text(roadmap.modules[i].description, style: const TextStyle(color: AppColors.slate500, fontSize: 13)),
+                        Text(roadmap.modules[i].description, style: context.appCaptionStyle),
                       const SizedBox(height: 8),
                       Container(
                         margin: const EdgeInsets.only(left: 8),
                         padding: const EdgeInsets.only(left: 12),
                         decoration: BoxDecoration(
-                          border: Border(left: BorderSide(color: Colors.grey.shade300, width: 2, style: BorderStyle.solid)),
+                          border: Border(left: BorderSide(color: context.appBorderColor, width: 2, style: BorderStyle.solid)),
                         ),
                         child: Column(
                           children: [
@@ -73,7 +74,7 @@ class RoadmapTreeWidget extends StatelessWidget {
                                 margin: const EdgeInsets.only(bottom: 8),
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey.shade200),
+                                  border: Border.all(color: context.appBorderColor),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Column(
@@ -81,7 +82,7 @@ class RoadmapTreeWidget extends StatelessWidget {
                                   children: [
                                     Row(
                                       children: [
-                                        Expanded(child: Text(node.title, style: const TextStyle(fontWeight: FontWeight.w600))),
+                                        Expanded(child: Text(node.title, style: context.appSectionTitleStyle.copyWith(fontSize: 14))),
                                         AppBadge(label: node.status),
                                         if (onBookmarkToggle != null)
                                           IconButton(
@@ -97,7 +98,7 @@ class RoadmapTreeWidget extends StatelessWidget {
                                     if (node.description.isNotEmpty)
                                       Padding(
                                         padding: const EdgeInsets.only(top: 4),
-                                        child: Text(node.description, style: const TextStyle(fontSize: 13, color: AppColors.slate500)),
+                                        child: Text(node.description, style: context.appCaptionStyle),
                                       ),
                                     if (node.canonicalSkillName != null || node.skillName != null || node.category != null || node.priority != null)
                                       Padding(
@@ -176,8 +177,8 @@ class LearningTimelineWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Dòng thời gian học tập', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-          const Text('Cột mốc đồng bộ với tiến độ roadmap', style: TextStyle(color: AppColors.slate500, fontSize: 13)),
+          Text('Dòng thời gian học tập', style: context.appSectionTitleStyle),
+          Text('Cột mốc đồng bộ với tiến độ roadmap', style: context.appCaptionStyle),
           const SizedBox(height: 12),
           ...milestones.map(
             (m) => Padding(
@@ -197,12 +198,12 @@ class LearningTimelineWidget extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Expanded(child: Text(m.title, style: const TextStyle(fontWeight: FontWeight.w500))),
+                            Expanded(child: Text(m.title, style: context.appBodyStyle.copyWith(fontWeight: FontWeight.w500))),
                             AppBadge(label: 'Tuần ${m.week} • ${m.xp} XP', variant: AppBadgeVariant.neutral),
                           ],
                         ),
                         if (m.description.isNotEmpty)
-                          Text(m.description, style: const TextStyle(color: AppColors.slate500, fontSize: 13)),
+                          Text(m.description, style: context.appCaptionStyle),
                       ],
                     ),
                   ),
@@ -212,6 +213,64 @@ class LearningTimelineWidget extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class RoadmapProgressBar extends StatelessWidget {
+  const RoadmapProgressBar({
+    super.key,
+    required this.percent,
+    this.height = 20,
+    this.showCaption = true,
+    this.caption,
+  });
+
+  final int percent;
+  final double height;
+  final bool showCaption;
+  final String? caption;
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = percent.clamp(0, 100);
+    final value = clamped / 100.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            height: height,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ColoredBox(color: context.isDarkMode ? AppTheme.darkBorder : const Color(0xFFE2E8F0)),
+                FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: value,
+                  child: const ColoredBox(color: AppColors.primary),
+                ),
+                Center(
+                  child: Text(
+                    '$clamped%',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: clamped >= 45 ? Colors.white : context.appTextPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (showCaption && caption != null) ...[
+          const SizedBox(height: 4),
+          Text(caption!, style: context.appCaptionStyle),
+        ],
+      ],
     );
   }
 }
@@ -227,32 +286,31 @@ class XPCardWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('XP & Level', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+          Text('XP & Level', style: context.appSectionTitleStyle),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _metric('Level', '${stats.level}')),
-              Expanded(child: _metric('XP', '${stats.totalXp}')),
-              Expanded(child: _metric('Streak', '${stats.currentStreak} ngày')),
+              Expanded(child: _metric(context, 'Level', '${stats.level}')),
+              Expanded(child: _metric(context, 'XP', '${stats.totalXp}')),
+              Expanded(child: _metric(context, 'Streak', '${stats.currentStreak} ngày')),
             ],
           ),
           const SizedBox(height: 12),
-          LinearProgressIndicator(
-            value: stats.totalNodes == 0 ? 0 : stats.completedNodes / stats.totalNodes,
-            color: AppColors.primary,
+          RoadmapProgressBar(
+            percent: stats.totalNodes == 0 ? 0 : ((stats.completedNodes / stats.totalNodes) * 100).round(),
+            showCaption: true,
+            caption: '${stats.completedNodes}/${stats.totalNodes} node hoàn thành',
           ),
-          const SizedBox(height: 6),
-          Text('${stats.completedNodes}/${stats.totalNodes} node hoàn thành'),
         ],
       ),
     );
   }
 
-  Widget _metric(String label, String value) => Column(
+  Widget _metric(BuildContext context, String label, String value) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: AppColors.slate500, fontSize: 12)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          Text(label, style: context.appLabelStyle),
+          Text(value, style: context.appHeadingStyle.copyWith(fontSize: 18)),
         ],
       );
 }
@@ -273,7 +331,7 @@ class SkillRadarChartWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Radar kỹ năng', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+          Text('Radar kỹ năng', style: context.appSectionTitleStyle),
           const SizedBox(height: 12),
           SizedBox(
             height: 220,
@@ -281,7 +339,7 @@ class SkillRadarChartWidget extends StatelessWidget {
               RadarChartData(
                 radarShape: RadarShape.polygon,
                 tickCount: 4,
-                ticksTextStyle: const TextStyle(fontSize: 10, color: AppColors.slate500),
+                ticksTextStyle: context.appLabelStyle.copyWith(fontSize: 10),
                 getTitle: (index, angle) {
                   if (index >= entries.length) return RadarChartTitle(text: '');
                   final label = entries[index].skill;
@@ -328,7 +386,7 @@ class AiFeedbackPanel extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(child: Text('AI Feedback', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16))),
+              Expanded(child: Text('AI Feedback', style: context.appSectionTitleStyle)),
               PrimaryButton(label: 'Tải lại', outlined: true, onPressed: onRefresh),
               const SizedBox(width: 8),
               PrimaryButton(
@@ -340,9 +398,9 @@ class AiFeedbackPanel extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           if (feedback == null)
-            const Text('Chưa có feedback. Cần phân tích repository trước.', style: TextStyle(color: AppColors.slate500))
+            Text('Chưa có feedback. Cần phân tích repository trước.', style: context.appCaptionStyle)
           else ...[
-            if (feedback!.summary.isNotEmpty) Text(feedback!.summary),
+            if (feedback!.summary.isNotEmpty) Text(feedback!.summary, style: context.appBodyStyle),
             if (feedback!.strengthFeedback.isNotEmpty) ...[
               const SizedBox(height: 12),
               _section('Điểm mạnh', feedback!.strengthFeedback, AppColors.emerald),
@@ -353,8 +411,8 @@ class AiFeedbackPanel extends StatelessWidget {
             ],
             if (feedback!.learningAdvice.isNotEmpty) ...[
               const SizedBox(height: 12),
-              const Text('Gợi ý học tập', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
-              Text(feedback!.learningAdvice, style: const TextStyle(color: AppColors.slate500)),
+              Text('Gợi ý học tập', style: context.appSectionTitleStyle.copyWith(color: AppColors.primary)),
+              Text(feedback!.learningAdvice, style: context.appCaptionStyle),
             ],
             if (feedback!.nextSteps.isNotEmpty) ...[
               const SizedBox(height: 12),

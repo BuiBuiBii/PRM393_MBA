@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/config/app_config.dart';
 import '../core/demo/demo_service.dart';
+import '../core/storage/roadmap_progress_storage.dart';
 import '../core/network/api_utils.dart';
 import '../core/network/app_api.dart';
 import '../core/network/dio_client.dart';
@@ -9,6 +10,7 @@ import 'auth/providers/auth_provider.dart';
 import '../shared/models/app_models.dart';
 import '../core/network/normalizers.dart';
 import 'roadmaps/data/roadmap_mock_data.dart';
+import 'roadmaps/utils/roadmap_progress_utils.dart';
 
 class RepositoryState {
   const RepositoryState({
@@ -610,6 +612,36 @@ class RoadmapState {
 
 class RoadmapNotifier extends Notifier<RoadmapState> {
   late AppApi _api;
+  RoadmapProgressStorage? _progressStorage;
+
+  Future<RoadmapProgressStorage> _storage() async {
+    return _progressStorage ??= await RoadmapProgressStorage.create();
+  }
+
+  Future<String> _userScope() async {
+    final user = await ref.read(tokenStorageProvider).getUser();
+    return (user?['id'] ?? user?['_id'] ?? 'guest').toString();
+  }
+
+  Future<List<RoadmapModel>> _mergeLocalProgress(List<RoadmapModel> roadmaps) async {
+    if (AppConfig.demoMode) return roadmaps;
+    final storage = await _storage();
+    final scope = await _userScope();
+    final statuses = await storage.loadNodeStatuses(scope);
+    final bookmarks = await storage.loadBookmarks(scope);
+    return applyStoredNodeProgress(roadmaps, statuses, bookmarkIds: bookmarks);
+  }
+
+  Future<void> _persistRoadmapsState(List<RoadmapModel> roadmaps, {Set<String>? bookmarks}) async {
+    final bookmarkIds = bookmarks ?? state.bookmarkedNodeIds;
+    final stats = computeLearningStats(roadmaps);
+    state = state.copyWith(
+      roadmaps: roadmaps,
+      learningStats: stats.copyWith(bookmarkedNodeIds: bookmarkIds.toList()),
+      skillProgress: computeSkillProgress(roadmaps),
+      bookmarkedNodeIds: bookmarkIds,
+    );
+  }
 
   @override
   RoadmapState build() {
@@ -653,13 +685,18 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
         );
         return;
       }
-      final roadmaps = await safeRequest(() => _api.getMyRoadmaps(status: effectiveStatus));
+      final roadmaps = await _mergeLocalProgress(
+        await safeRequest(() => _api.getMyRoadmaps(status: effectiveStatus)),
+      );
+      final storage = await _storage();
+      final scope = await _userScope();
+      final bookmarks = await storage.loadBookmarks(scope);
       final stats = computeLearningStats(roadmaps);
-      final skills = computeSkillProgress(roadmaps);
       state = state.copyWith(
         roadmaps: roadmaps,
-        learningStats: stats,
-        skillProgress: skills,
+        learningStats: stats.copyWith(bookmarkedNodeIds: bookmarks.toList()),
+        skillProgress: computeSkillProgress(roadmaps),
+        bookmarkedNodeIds: bookmarks,
         isLoading: false,
       );
     } catch (e) {
@@ -693,22 +730,60 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
           forceRegenerate: forceRegenerate,
         ),
       );
-      final recommendation = normalizeAiRecommendation(roadmap);
-      final roadmaps = [
-        roadmap,
-        ...state.roadmaps.where((r) => r.id != roadmap.id),
-      ];
-      state = state.copyWith(
-        roadmaps: roadmaps,
-        aiRecommendation: recommendation,
-        learningStats: computeLearningStats(roadmaps),
-        skillProgress: computeSkillProgress(roadmaps),
-        isGenerating: false,
-      );
+      _applyGeneratedRoadmap(roadmap);
       return roadmap;
     } catch (e) {
-      state = state.copyWith(isGenerating: false, error: getApiErrorMessage(e));
+      final message = getApiErrorMessage(e);
+      // BE có thể đã lưu roadmap nhưng lỗi khi gọi createAutomaticNotification (chưa deploy).
+      if (_isRoadmapNotificationBackendBug(message)) {
+        final recovered = await _recoverAfterGenerateFailure(role);
+        if (recovered != null) {
+          _applyGeneratedRoadmap(recovered);
+          return recovered;
+        }
+      }
+      state = state.copyWith(isGenerating: false, error: message);
       rethrow;
+    }
+  }
+
+  void _applyGeneratedRoadmap(RoadmapModel roadmap) {
+    final roadmaps = [
+      roadmap,
+      ...state.roadmaps.where((r) => r.id != roadmap.id),
+    ];
+    final stats = computeLearningStats(roadmaps);
+    state = state.copyWith(
+      roadmaps: roadmaps,
+      aiRecommendation: normalizeAiRecommendation(roadmap),
+      learningStats: stats.copyWith(bookmarkedNodeIds: state.bookmarkedNodeIds.toList()),
+      skillProgress: computeSkillProgress(roadmaps),
+      isGenerating: false,
+    );
+  }
+
+  bool _isRoadmapNotificationBackendBug(String message) {
+    final m = message.toLowerCase();
+    return m.contains('createautomaticnotification') ||
+        (m.contains('automaticnotification') && m.contains('not defined'));
+  }
+
+  Future<RoadmapModel?> _recoverAfterGenerateFailure(String targetRole) async {
+    try {
+      var roadmaps = await safeRequest(
+        () => _api.getMyRoadmaps(status: 'active', targetRole: targetRole),
+      );
+      if (roadmaps.isEmpty) {
+        roadmaps = await safeRequest(() => _api.getMyRoadmaps(status: 'active'));
+      }
+      for (final r in roadmaps) {
+        if (r.careerOutcome == targetRole || r.tags.contains(targetRole)) {
+          return r;
+        }
+      }
+      return roadmaps.isNotEmpty ? roadmaps.first : null;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -718,13 +793,13 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
     if (AppConfig.demoMode) return null;
     try {
       final roadmap = await safeRequest(() => _api.getRoadmap(id));
-      state = state.copyWith(
-        roadmaps: [
-          roadmap,
-          ...state.roadmaps.where((r) => r.id != roadmap.id),
-        ],
-      );
-      return roadmap;
+      final merged = await _mergeLocalProgress([roadmap]);
+      final withProgress = merged.first;
+      await _persistRoadmapsState([
+        withProgress,
+        ...state.roadmaps.where((r) => r.id != withProgress.id),
+      ]);
+      return withProgress;
     } catch (_) {
       return null;
     }
@@ -783,48 +858,45 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
       next.add(nodeId);
     }
     state = state.copyWith(bookmarkedNodeIds: next);
+    if (!AppConfig.demoMode) {
+      Future.microtask(() async {
+        final storage = await _storage();
+        await storage.saveBookmarks(await _userScope(), next);
+      });
+    }
   }
 
   bool isBookmarked(String nodeId) => state.bookmarkedNodeIds.contains(nodeId);
 
-  void updateNodeStatus(String roadmapId, String nodeId, String status) {
+  Future<void> updateNodeStatus(String roadmapId, String nodeId, String status) async {
     final roadmaps = state.roadmaps.map((roadmap) {
       if (roadmap.id != roadmapId && roadmap.slug != roadmapId) return roadmap;
+
       final modules = roadmap.modules.map((module) {
         final nodes = module.nodes.map((node) {
           if (node.id != nodeId) return node;
           return node.copyWith(status: status);
         }).toList();
-        return RoadmapModuleModel(id: module.id, title: module.title, description: module.description, nodes: nodes);
+        return RoadmapModuleModel(
+          id: module.id,
+          title: module.title,
+          description: module.description,
+          nodes: nodes,
+        );
       }).toList();
-      return RoadmapModel(
-        id: roadmap.id,
-        slug: roadmap.slug,
-        title: roadmap.title,
-        subtitle: roadmap.subtitle,
-        description: roadmap.description,
-        category: roadmap.category,
-        difficulty: roadmap.difficulty,
-        estimatedWeeks: roadmap.estimatedWeeks,
-        estimatedHours: roadmap.estimatedHours,
-        tags: roadmap.tags,
-        isFeatured: roadmap.isFeatured,
-        isAIRecommended: roadmap.isAIRecommended,
-        progress: roadmap.progress,
+
+      return roadmap.copyWith(
         modules: modules,
-        careerOutcome: roadmap.careerOutcome,
-        status: roadmap.status,
+        progress: roadmapProgressPercent(roadmap.copyWith(modules: modules)),
       );
     }).toList();
-    final delta = status == 'completed' ? 120 : -120;
-    final stats = state.learningStats ?? computeLearningStats(state.roadmaps);
-    state = state.copyWith(
-      roadmaps: roadmaps,
-      learningStats: stats.copyWith(
-        completedNodes: status == 'completed' ? stats.completedNodes + 1 : stats.completedNodes,
-        totalXp: stats.totalXp + delta,
-      ),
-    );
+
+    await _persistRoadmapsState(roadmaps);
+
+    if (!AppConfig.demoMode) {
+      final storage = await _storage();
+      await storage.saveNodeStatus(await _userScope(), roadmapId, nodeId, status);
+    }
   }
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'app_image_assets.dart';
 import 'app_widgets.dart';
+import '../../core/theme/app_theme.dart';
 
 class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
   const AppAppBar({
@@ -32,8 +33,9 @@ class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = foregroundColor ?? AppColors.slate900;
-    final bg = backgroundColor ?? Colors.white.withValues(alpha: 0.95);
+    final theme = Theme.of(context);
+    final fg = foregroundColor ?? context.appTextPrimary;
+    final bg = backgroundColor ?? theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface;
 
     Widget? titleWidget;
     if (showBrand) {
@@ -56,7 +58,7 @@ class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
                 Text(
                   title,
-                  style: TextStyle(fontSize: 11, color: fg.withValues(alpha: 0.6)),
+                  style: TextStyle(fontSize: 11, color: context.appTextSecondary),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -72,7 +74,7 @@ class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
           Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: fg)),
           Text(
             subtitle!,
-            style: TextStyle(fontSize: 11, color: fg.withValues(alpha: 0.6)),
+            style: TextStyle(fontSize: 11, color: context.appTextSecondary),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

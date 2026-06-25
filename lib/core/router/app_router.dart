@@ -31,10 +31,8 @@ import '../../features/feedback/screens/ai_feedback_dashboard_screen.dart';
 import '../../features/github/screens/github_auth_callback_screen.dart';
 import '../../features/github/screens/github_callback_screen.dart';
 import '../../features/github/screens/github_connect_screen.dart';
-import '../../features/home/screens/home_screen.dart';
 import '../../features/misc/screens/not_found_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
-import '../../features/progress/screens/progress_screen.dart';
 import '../../features/repositories/screens/repositories_screen.dart';
 import '../../features/repositories/screens/repository_detail_screen.dart';
 import '../../features/roadmaps/screens/roadmaps_screen.dart';
@@ -120,7 +118,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (_, __, child) => MainShell(child: child),
         routes: [
-          GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
           GoRoute(path: '/dashboard', builder: (_, __) => const DashboardScreen()),
           GoRoute(path: '/repositories', builder: (_, __) => const RepositoriesScreen()),
           GoRoute(path: '/ai-feedback', builder: (_, __) => const AiFeedbackDashboardScreen()),
@@ -141,7 +138,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/analysis/:id', builder: (_, state) => AnalysisResultScreen(repoId: state.pathParameters['id']!)),
           GoRoute(path: '/chat', builder: (_, __) => const ChatScreen()),
           GoRoute(path: '/roadmaps', builder: (_, __) => const RoadmapsScreen()),
-          GoRoute(path: '/roadmaps/ai', builder: (_, __) => const AIRoadmapScreen()),
           GoRoute(
             path: '/roadmaps/:id',
             builder: (_, state) => RoadmapDetailScreen(roadmapId: state.pathParameters['id']!),
@@ -149,7 +145,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
           GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
-          GoRoute(path: '/progress', builder: (_, __) => const ProgressScreen()),
           GoRoute(path: '/github/connect', builder: (_, __) => const GitHubConnectScreen()),
         ],
       ),

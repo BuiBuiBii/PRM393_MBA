@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../providers/admin_provider.dart';
@@ -91,9 +92,9 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
             children: [
               Wrap(spacing: 8, runSpacing: 8, children: [adminRoleBadge(user.role), adminStatusLabel(user.status)]),
               const SizedBox(height: 16),
-              _row('Provider', user.provider),
-              _row('GitHub', user.githubUsername ?? '—'),
-              _row('Tạo lúc', user.createdAt ?? '—'),
+              _row(context, 'Provider', user.provider),
+              _row(context, 'GitHub', user.githubUsername ?? '—'),
+              _row(context, 'Tạo lúc', user.createdAt ?? '—'),
             ],
           ),
         ),
@@ -102,7 +103,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Thao tác quản trị', style: TextStyle(fontWeight: FontWeight.w600)),
+              Text('Thao tác quản trị', style: context.appSectionTitleStyle),
               const SizedBox(height: 12),
               PrimaryButton(
                 label: 'Đổi trạng thái: ${user.status}',
@@ -127,14 +128,14 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     );
   }
 
-  Widget _row(String label, String value) {
+  Widget _row(BuildContext context, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 110, child: Text(label, style: const TextStyle(color: AppColors.slate500))),
-          Expanded(child: Text(value)),
+          SizedBox(width: 110, child: Text(label, style: context.appLabelStyle)),
+          Expanded(child: Text(value, style: TextStyle(color: context.appTextPrimary))),
         ],
       ),
     );

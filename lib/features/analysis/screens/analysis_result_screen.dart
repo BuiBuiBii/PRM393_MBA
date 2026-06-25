@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../app_providers.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/utils/format_utils.dart';
@@ -44,12 +45,6 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
       return ListView(
         padding: appScreenPadding(context),
         children: [
-          TextButton.icon(
-            onPressed: () => context.go('/repositories'),
-            icon: const Icon(Icons.arrow_back),
-            label: const Text('Repositories'),
-          ),
-          const SizedBox(height: 24),
           AppCard(
             child: Column(
               children: [
@@ -88,11 +83,6 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
     return ListView(
       padding: appScreenPadding(context),
       children: [
-        TextButton.icon(
-          onPressed: () => context.go('/repositories'),
-          icon: const Icon(Icons.arrow_back),
-          label: const Text('Repositories'),
-        ),
         PageHeader(title: analysis.repositoryName, subtitle: '${analysis.projectType} • ${scoreLabel(analysis.scores.overall)}'),
         const SizedBox(height: 8),
         Center(
@@ -102,7 +92,7 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
                 '${analysis.scores.overall}',
                 style: TextStyle(fontSize: 56, fontWeight: FontWeight.bold, color: scoreColor(analysis.scores.overall)),
               ),
-              const Text('Điểm tổng quan'),
+              Text('Điểm tổng quan', style: context.appCaptionStyle),
             ],
           ),
         ),
@@ -117,7 +107,7 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Chi tiết điểm', style: TextStyle(fontWeight: FontWeight.w600)),
+              Text('Chi tiết điểm', style: context.appSectionTitleStyle),
               const SizedBox(height: 12),
               ...scores.map(
                 (s) => Padding(
@@ -128,7 +118,7 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(s.$1),
+                          Text(s.$1, style: context.appBodyStyle),
                           Text('${s.$2}', style: TextStyle(fontWeight: FontWeight.bold, color: scoreColor(s.$2))),
                         ],
                       ),
@@ -191,16 +181,16 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
                 Text(feedback.summary),
                 if (feedback.learningAdvice.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text(feedback.learningAdvice, style: const TextStyle(color: AppColors.slate500)),
+                  Text(feedback.learningAdvice, style: context.appCaptionStyle),
                 ],
                 if (feedback.nextSteps.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   ...feedback.nextSteps.map((step) => Text('• $step')),
                 ],
               ] else
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Text('Chưa có AI feedback cho repository này.', style: TextStyle(color: AppColors.slate500)),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text('Chưa có AI feedback cho repository này.', style: context.appCaptionStyle),
                 ),
             ],
           ),
@@ -244,12 +234,12 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
             children: [
               Icon(icon, color: color, size: 18),
               const SizedBox(width: 8),
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(title, style: context.appSectionTitleStyle.copyWith(fontSize: 14)),
             ],
           ),
           const SizedBox(height: 8),
           if (items.isEmpty)
-            const Text('Không có dữ liệu', style: TextStyle(color: AppColors.slate500))
+            Text('Không có dữ liệu', style: context.appCaptionStyle)
           else
             ...items.map((e) => Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $e'))),
         ],
@@ -276,7 +266,7 @@ class _RoleMatchCard extends StatelessWidget {
   final VoidCallback onCreateRoadmap;
   final VoidCallback onRetry;
 
-  Color _matchLevelColor(String level) {
+  Color _matchLevelColor(BuildContext context, String level) {
     switch (level.toLowerCase()) {
       case 'strong':
       case 'high':
@@ -288,7 +278,7 @@ class _RoleMatchCard extends StatelessWidget {
       case 'weak':
         return AppColors.amber;
       default:
-        return AppColors.slate500;
+        return context.appTextSecondary;
     }
   }
 
@@ -346,14 +336,14 @@ class _RoleMatchCard extends StatelessWidget {
 
           // Loading state
           if (isLoading) ...[
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Column(
                   children: [
-                    CircularProgressIndicator(strokeWidth: 2),
-                    SizedBox(height: 8),
-                    Text('Đang phân tích role phù hợp...', style: TextStyle(color: AppColors.slate500, fontSize: 13)),
+                    const CircularProgressIndicator(strokeWidth: 2),
+                    const SizedBox(height: 8),
+                    Text('Đang phân tích role phù hợp...', style: context.appCaptionStyle),
                   ],
                 ),
               ),
@@ -374,10 +364,10 @@ class _RoleMatchCard extends StatelessWidget {
           else ...[
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Chưa có dữ liệu Role Match. Nhấn để phân tích lại.',
-                    style: TextStyle(color: AppColors.slate500, fontSize: 13),
+                    style: context.appCaptionStyle,
                   ),
                 ),
                 TextButton(onPressed: onRetry, child: const Text('Thử lại')),
@@ -394,7 +384,7 @@ class _RoleMatchCard extends StatelessWidget {
     final matchScore = top?.matchScore ?? 0.0;
     final matchLevel = top?.matchLevel ?? '';
     final matchLevelLabel = top?.matchLevelLabel ?? matchLevel;
-    final levelColor = _matchLevelColor(matchLevel);
+    final levelColor = _matchLevelColor(context, matchLevel);
     final levelVariant = _matchLevelVariant(matchLevel);
 
     // Gather skill lists preferring top-level lists, fallback to first match's lists
@@ -413,7 +403,7 @@ class _RoleMatchCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Bạn phù hợp nhất với', style: TextStyle(fontSize: 12, color: AppColors.slate500)),
+                  Text('Bạn phù hợp nhất với', style: context.appLabelStyle),
                   const SizedBox(height: 4),
                   Text(
                     rm.topRole,
@@ -475,18 +465,18 @@ class _OtherRoleChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: context.appBubbleAiBg,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: context.appBorderColor),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(item.role, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          Text(item.role, style: context.appLabelStyle.copyWith(fontWeight: FontWeight.w500)),
           const SizedBox(width: 6),
           Text(
             '${item.matchScore.toStringAsFixed(0)}%',
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.slate600),
+            style: context.appLabelStyle.copyWith(fontWeight: FontWeight.w700),
           ),
         ],
       ),

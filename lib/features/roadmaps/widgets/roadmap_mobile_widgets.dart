@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/widgets/app_feedback.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../app_providers.dart';
 import '../data/roadmap_mock_data.dart';
 import '../utils/roadmap_recommendation.dart';
+import '../utils/roadmap_progress_utils.dart';
 import '../utils/roadmap_utils.dart';
 
 class RoadmapStatChip extends StatelessWidget {
@@ -32,9 +34,9 @@ class RoadmapStatChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.appCardColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: context.appBorderColor),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -43,7 +45,7 @@ class RoadmapStatChip extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               value,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, height: 1),
+              style: context.appHeadingStyle.copyWith(fontSize: 22, height: 1),
             ),
           ],
         ),
@@ -68,7 +70,8 @@ class RoadmapCompactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progress = roadmap.progress.clamp(0, 100) / 100;
+    final percent = roadmapProgressPercent(roadmap);
+    final progress = percent.clamp(0, 100) / 100;
 
     return AppCard(
       onTap: onTap,
@@ -88,7 +91,7 @@ class RoadmapCompactCard extends StatelessWidget {
                   backgroundColor: Colors.grey.shade200,
                   color: AppColors.primary,
                 ),
-                Text('${roadmap.progress}%', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                Text('$percent%', style: context.appLabelStyle.copyWith(fontWeight: FontWeight.w700)),
               ],
             ),
           ),
@@ -101,7 +104,7 @@ class RoadmapCompactCard extends StatelessWidget {
                   roadmap.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                  style: context.appSectionTitleStyle.copyWith(fontSize: 15),
                 ),
                 const SizedBox(height: 6),
                 Wrap(
@@ -120,12 +123,12 @@ class RoadmapCompactCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _meta(Icons.schedule, '${roadmap.estimatedWeeks} tuần'),
+                    _meta(context, Icons.schedule, '${roadmap.estimatedWeeks} tuần'),
                     const SizedBox(width: 12),
-                    _meta(Icons.checklist, '$taskCount nhiệm vụ'),
+                    _meta(context, Icons.checklist, '$taskCount nhiệm vụ'),
                     if (roadmap.sourceRepositoriesCount > 0) ...[
                       const SizedBox(width: 12),
-                      _meta(Icons.folder_outlined, '${roadmap.sourceRepositoriesCount} repo'),
+                      _meta(context, Icons.folder_outlined, '${roadmap.sourceRepositoriesCount} repo'),
                     ],
                   ],
                 ),
@@ -143,13 +146,13 @@ class RoadmapCompactCard extends StatelessWidget {
     );
   }
 
-  Widget _meta(IconData icon, String label) {
+  Widget _meta(BuildContext context, IconData icon, String label) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 13, color: AppColors.slate500),
+        Icon(icon, size: 13, color: context.appTextSecondary),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.slate500)),
+        Text(label, style: context.appLabelStyle),
       ],
     );
   }
@@ -171,7 +174,7 @@ class SkillInsightExpansion extends StatelessWidget {
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           leading: const Icon(Icons.insights_outlined, color: AppColors.cyan, size: 20),
           title: const Text('Tín hiệu từ phân tích repo', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-          subtitle: const Text('Vuốt xem điểm mạnh & kỹ năng nên bổ sung', style: TextStyle(fontSize: 12)),
+          subtitle: Text('Vuốt xem điểm mạnh & kỹ năng nên bổ sung', style: context.appLabelStyle),
           children: [
             if (insight.strongSignals.isNotEmpty) ...[
               const Text('Kỹ năng mạnh', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.emerald)),
@@ -312,9 +315,9 @@ Future<void> showCreateRoadmapSheet(
                 children: [
                   const Text('Tạo roadmap mới', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Chọn vai trò hoặc dùng đề xuất AI từ repository đã phân tích.',
-                    style: TextStyle(color: AppColors.slate500, fontSize: 13),
+                    style: context.appCaptionStyle,
                   ),
                   const SizedBox(height: 16),
                   
@@ -436,7 +439,7 @@ class _SuggestionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFFF8FAFC),
+      color: context.appBubbleAiBg,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -452,16 +455,16 @@ class _SuggestionTile extends StatelessWidget {
                   children: [
                     AppBadge(label: badge, variant: AppBadgeVariant.info),
                     const SizedBox(height: 6),
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(title, style: context.appSectionTitleStyle.copyWith(fontSize: 14)),
                     const SizedBox(height: 4),
-                    Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.slate500)),
+                    Text(subtitle, style: context.appLabelStyle),
                   ],
                 ),
               ),
               if (loading)
                 const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
               else
-                const Icon(Icons.chevron_right, color: AppColors.slate500),
+                Icon(Icons.chevron_right, color: context.appTextSecondary),
             ],
           ),
         ),
