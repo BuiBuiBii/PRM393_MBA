@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../auth/providers/auth_provider.dart';
 import '../../app_providers.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/utils/format_utils.dart';
 import '../../../shared/widgets/app_image_assets.dart';
 import '../../../shared/widgets/app_widgets.dart';
@@ -61,7 +62,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       subtitle: 'Chạm để xem hồ sơ • Tổng quan GitHub và phân tích.',
                     ),
                   ),
-                    const Icon(Icons.chevron_right, color: AppColors.slate500),
+                    Icon(Icons.chevron_right, color: context.appTextSecondary),
                   ],
                 ),
               ),
@@ -98,9 +99,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Định hướng nghề nghiệp', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Text('Định hướng nghề nghiệp', style: context.appSectionTitleStyle),
                 const SizedBox(height: 8),
-                Text(suggestedCareer, style: const TextStyle(color: AppColors.slate600, height: 1.45)),
+                Text(suggestedCareer, style: context.appBodyStyle),
               ],
             ),
           ),
@@ -111,7 +112,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Kỹ năng (từ phân tích mới nhất)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Text('Kỹ năng (từ phân tích mới nhất)', style: context.appSectionTitleStyle),
                 if (strongSkills.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   const Text('Điểm mạnh', style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.emerald)),
@@ -143,7 +144,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             children: [
               Row(
                 children: [
-                  const Expanded(child: Text('Phân tích gần đây', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600))),
+                  Expanded(child: Text('Phân tích gần đây', style: context.appSectionTitleStyle)),
                   TextButton(onPressed: () => context.go('/repositories'), child: const Text('Repositories')),
                 ],
               ),
@@ -158,7 +159,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade200),
+                            border: Border.all(color: context.appBorderColor),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -167,8 +168,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(a.repositoryName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                                    Text(formatRelativeTime(a.createdAt), style: const TextStyle(color: AppColors.slate500, fontSize: 12)),
+                                    Text(a.repositoryName, style: TextStyle(fontWeight: FontWeight.w600, color: context.appTextPrimary)),
+                                    Text(formatRelativeTime(a.createdAt), style: context.appLabelStyle),
                                   ],
                                 ),
                               ),
@@ -186,7 +187,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Thao tác nhanh', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              Text('Thao tác nhanh', style: context.appSectionTitleStyle),
               const SizedBox(height: 12),
               PrimaryButton(
                 label: 'Kết nối GitHub',

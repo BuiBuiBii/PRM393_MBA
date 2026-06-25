@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -48,26 +49,16 @@ class _SnapshotDetailScreenState extends ConsumerState<SnapshotDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        titleSpacing: 16,
-        title: const Text('Chi tiết Snapshot'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.slate900,
-        elevation: 0,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: AppColors.rose)))
-              : _snapshot == null
-                  ? const Center(child: Text('Không tìm thấy snapshot'))
-                  : _buildBody(_snapshot!),
-    );
+    return _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : _error != null
+            ? Center(child: Text(_error!, style: const TextStyle(color: AppColors.rose)))
+            : _snapshot == null
+                ? const Center(child: Text('Không tìm thấy snapshot'))
+                : _buildBody(context, _snapshot!);
   }
 
-  Widget _buildBody(RepoAnalysisSnapshotModel snap) {
+  Widget _buildBody(BuildContext context, RepoAnalysisSnapshotModel snap) {
     final date = DateTime.tryParse(snap.createdAt) ?? DateTime.now();
     final formattedDate = DateFormat('dd/MM/yyyy HH:mm').format(date);
 
@@ -98,36 +89,36 @@ class _SnapshotDetailScreenState extends ConsumerState<SnapshotDetailScreen> {
           ),
           const SizedBox(height: 20),
           
-          const Text('Điểm số', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text('Điểm số', style: context.appHeadingStyle.copyWith(fontSize: 18)),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _buildScoreCard('Overall', snap.scores.overall, AppColors.primary)),
+              Expanded(child: _buildScoreCard(context, 'Overall', snap.scores.overall, AppColors.primary)),
               const SizedBox(width: 8),
-              Expanded(child: _buildScoreCard('Architecture', snap.scores.architecture, AppColors.emerald)),
+              Expanded(child: _buildScoreCard(context, 'Architecture', snap.scores.architecture, AppColors.emerald)),
               const SizedBox(width: 8),
-              Expanded(child: _buildScoreCard('Completeness', snap.scores.completeness, AppColors.amber)),
+              Expanded(child: _buildScoreCard(context, 'Completeness', snap.scores.completeness, AppColors.amber)),
             ],
           ),
           const SizedBox(height: 24),
           
           if (snap.strengths.isNotEmpty)
-            _buildListSection('Điểm mạnh', Icons.thumb_up, AppColors.emerald, snap.strengths),
+            _buildListSection(context, 'Điểm mạnh', Icons.thumb_up, AppColors.emerald, snap.strengths),
             
           if (snap.weaknesses.isNotEmpty)
-            _buildListSection('Điểm yếu', Icons.thumb_down, AppColors.rose, snap.weaknesses),
+            _buildListSection(context, 'Điểm yếu', Icons.thumb_down, AppColors.rose, snap.weaknesses),
             
           if (snap.missingSkills.isNotEmpty)
-            _buildListSection('Skill còn thiếu', Icons.remove_circle_outline, AppColors.amber, snap.missingSkills),
+            _buildListSection(context, 'Skill còn thiếu', Icons.remove_circle_outline, AppColors.amber, snap.missingSkills),
             
           if (snap.recommendations.isNotEmpty)
-            _buildListSection('Khuyến nghị', Icons.lightbulb_outline, Colors.blue, snap.recommendations),
+            _buildListSection(context, 'Khuyến nghị', Icons.lightbulb_outline, Colors.blue, snap.recommendations),
         ],
       ),
     );
   }
 
-  Widget _buildScoreCard(String title, int score, Color color) {
+  Widget _buildScoreCard(BuildContext context, String title, int score, Color color) {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -141,14 +132,14 @@ class _SnapshotDetailScreenState extends ConsumerState<SnapshotDetailScreen> {
           children: [
             Text(score.toString(), style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
             const SizedBox(height: 4),
-            Text(title, style: const TextStyle(fontSize: 12, color: AppColors.slate600)),
+            Text(title, style: context.appLabelStyle),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildListSection(String title, IconData icon, Color color, List<String> items) {
+  Widget _buildListSection(BuildContext context, String title, IconData icon, Color color, List<String> items) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Column(
@@ -158,7 +149,7 @@ class _SnapshotDetailScreenState extends ConsumerState<SnapshotDetailScreen> {
             children: [
               Icon(icon, color: color, size: 20),
               const SizedBox(width: 8),
-              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              Text(title, style: context.appSectionTitleStyle),
             ],
           ),
           const SizedBox(height: 12),
@@ -168,7 +159,7 @@ class _SnapshotDetailScreenState extends ConsumerState<SnapshotDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('• ', style: TextStyle(fontSize: 16, height: 1.2)),
-                Expanded(child: Text(e, style: const TextStyle(height: 1.4))),
+                Expanded(child: Text(e, style: context.appBodyStyle)),
               ],
             ),
           )),

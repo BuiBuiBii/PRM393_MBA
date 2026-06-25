@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/utils/format_utils.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
@@ -56,20 +57,20 @@ class _AdminAiFeedbackDetailScreenState extends ConsumerState<AdminAiFeedbackDet
                     children: [
                       Row(
                         children: [
-                          const Expanded(child: Text('Tổng quan', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16))),
+                          Expanded(child: Text('Tổng quan', style: context.appSectionTitleStyle)),
                           AppBadge(label: feedback.careerDirection, variant: AppBadgeVariant.info),
                         ],
                       ),
                       const SizedBox(height: 10),
                       Text(
                         feedback.summary.isNotEmpty ? feedback.summary : 'Chưa có tóm tắt.',
-                        style: const TextStyle(color: AppColors.slate600, height: 1.45),
+                        style: context.appBodyStyle,
                       ),
                       const SizedBox(height: 12),
-                      adminDetailRow('Người dùng', feedback.ownerName),
-                      if (feedback.ownerEmail != null) adminDetailRow('Email', feedback.ownerEmail!),
-                      adminDetailRow('Loại dự án', feedback.projectType ?? 'Chưa rõ'),
-                      adminDetailRow('Ngày tạo', formatDate(feedback.createdAt ?? feedback.generatedAt)),
+                      adminDetailRow(context, 'Người dùng', feedback.ownerName),
+                      if (feedback.ownerEmail != null) adminDetailRow(context, 'Email', feedback.ownerEmail!),
+                      adminDetailRow(context, 'Loại dự án', feedback.projectType ?? 'Chưa rõ'),
+                      adminDetailRow(context, 'Ngày tạo', formatDate(feedback.createdAt ?? feedback.generatedAt)),
                     ],
                   ),
                 ),
@@ -86,11 +87,11 @@ class _AdminAiFeedbackDetailScreenState extends ConsumerState<AdminAiFeedbackDet
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Lời khuyên học tập', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text('Lời khuyên học tập', style: context.appSectionTitleStyle),
                       const SizedBox(height: 8),
                       Text(
                         feedback.learningAdvice ?? 'Chưa có lời khuyên học tập.',
-                        style: const TextStyle(color: AppColors.slate600, height: 1.45),
+                        style: context.appBodyStyle,
                       ),
                     ],
                   ),
@@ -100,9 +101,9 @@ class _AdminAiFeedbackDetailScreenState extends ConsumerState<AdminAiFeedbackDet
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Gợi ý nghề nghiệp', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text('Gợi ý nghề nghiệp', style: context.appSectionTitleStyle),
                       const SizedBox(height: 8),
-                      Text(feedback.careerSuggestion ?? 'Chưa có gợi ý nghề nghiệp.', style: const TextStyle(color: AppColors.slate600, height: 1.45)),
+                      Text(feedback.careerSuggestion ?? 'Chưa có gợi ý nghề nghiệp.', style: context.appBodyStyle),
                     ],
                   ),
                 ),
@@ -111,9 +112,9 @@ class _AdminAiFeedbackDetailScreenState extends ConsumerState<AdminAiFeedbackDet
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Gợi ý portfolio', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text('Gợi ý portfolio', style: context.appSectionTitleStyle),
                       const SizedBox(height: 8),
-                      Text(feedback.portfolioAdvice ?? 'Chưa có gợi ý portfolio.', style: const TextStyle(color: AppColors.slate600, height: 1.45)),
+                      Text(feedback.portfolioAdvice ?? 'Chưa có gợi ý portfolio.', style: context.appBodyStyle),
                     ],
                   ),
                 ),

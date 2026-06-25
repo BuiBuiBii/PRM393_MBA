@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
+import '../../../core/theme/app_theme.dart';
 import '../providers/admin_provider.dart';
 import '../widgets/admin_widgets.dart';
 
@@ -125,7 +126,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                     title: u.name,
                     subtitle: u.email.isEmpty ? 'Không có email' : u.email,
                     badges: [adminRoleBadge(u.role), adminStatusLabel(u.status)],
-                    trailing: const Icon(Icons.chevron_right, color: AppColors.slate500),
+                    trailing: Icon(Icons.chevron_right, color: context.appTextSecondary),
                     onTap: () => context.push('/admin/users/${u.id}'),
                   ),
                 ),

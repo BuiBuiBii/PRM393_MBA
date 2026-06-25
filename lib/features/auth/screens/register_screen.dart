@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/router/auth_navigation.dart';
 import '../../../shared/widgets/app_image_assets.dart';
 import '../../../shared/widgets/app_feedback.dart';
@@ -86,14 +87,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: AppColors.slate900,
+                  color: context.appTextPrimary,
                 ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Bắt đầu phân tích repository với GitAnalyzer AI',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.slate500),
+            style: context.appCaptionStyle,
           ),
           const SizedBox(height: 24),
           AuthCard(
@@ -169,7 +170,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         Expanded(
                           child: Text.rich(
                             TextSpan(
-                              style: const TextStyle(fontSize: 14, color: AppColors.slate600),
+                              style: TextStyle(fontSize: 14, color: context.appTextSecondary),
                               children: [
                                 const TextSpan(text: 'Tôi đồng ý với '),
                                 TextSpan(
@@ -214,7 +215,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('Đã có tài khoản? ', style: TextStyle(color: AppColors.slate500, fontSize: 14)),
+              Text('Đã có tài khoản? ', style: context.appCaptionStyle),
               TextButton(
                 onPressed: () => context.go('/login'),
                 style: TextButton.styleFrom(
@@ -227,10 +228,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ),
             ],
           ),
-          if (MediaQuery.sizeOf(context).height > 720) ...[
-            const SizedBox(height: 24),
-            const AuthShowcasePanel(),
-          ],
         ],
       ),
     );

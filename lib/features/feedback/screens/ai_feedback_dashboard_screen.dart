@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../app_providers.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/utils/format_utils.dart';
@@ -72,7 +73,7 @@ class _AiFeedbackDashboardScreenState extends ConsumerState<AiFeedbackDashboardS
             alignment: Alignment.centerLeft,
             child: Text(
               '${feedbacks.length} feedback',
-              style: const TextStyle(color: AppColors.slate500, fontSize: 13),
+              style: context.appCaptionStyle,
             ),
           ),
           const SizedBox(height: 12),
@@ -135,13 +136,13 @@ class _FeedbackCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         formatRelativeTime(feedback.generatedAt),
-                        style: const TextStyle(color: AppColors.slate500, fontSize: 12),
+                        style: context.appLabelStyle,
                       ),
                     ],
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: AppColors.slate500),
+              Icon(Icons.chevron_right, color: context.appTextSecondary),
             ],
           ),
           if (feedback.summary.isNotEmpty) ...[
@@ -150,7 +151,7 @@ class _FeedbackCard extends StatelessWidget {
               feedback.summary,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppColors.slate600, height: 1.45),
+              style: context.appBodyStyle,
             ),
           ],
           const SizedBox(height: 10),

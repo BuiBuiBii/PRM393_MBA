@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app_providers.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/utils/format_utils.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
@@ -63,7 +64,7 @@ class _RepositoriesScreenState extends ConsumerState<RepositoriesScreen> {
               const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerLeft,
-                child: Text('${repos.length} repository', style: const TextStyle(color: AppColors.slate500)),
+                child: Text('${repos.length} repository', style: context.appCaptionStyle),
               ),
             ],
           ),
@@ -102,7 +103,7 @@ class _RepositoriesScreenState extends ConsumerState<RepositoriesScreen> {
                                     repo.description!,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(color: AppColors.slate500, fontSize: 13),
+                                    style: context.appCaptionStyle,
                                   ),
                               ],
                             ),
@@ -123,7 +124,7 @@ class _RepositoriesScreenState extends ConsumerState<RepositoriesScreen> {
                           label: hasAnalysis ? 'Đã phân tích' : 'Chưa phân tích',
                           variant: hasAnalysis ? AppBadgeVariant.success : AppBadgeVariant.neutral,
                         ),
-                        Text(formatRelativeTime(repo.updatedAt), style: const TextStyle(color: AppColors.slate500, fontSize: 12)),
+                        Text(formatRelativeTime(repo.updatedAt), style: context.appLabelStyle),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -169,9 +170,9 @@ class _RepositoriesScreenState extends ConsumerState<RepositoriesScreen> {
   Widget _chip(IconData icon, String text) => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.slate500),
+          Icon(icon, size: 14, color: context.appTextSecondary),
           const SizedBox(width: 4),
-          Text(text, style: const TextStyle(fontSize: 13)),
+          Text(text, style: TextStyle(fontSize: 13, color: context.appTextPrimary)),
         ],
       );
 }

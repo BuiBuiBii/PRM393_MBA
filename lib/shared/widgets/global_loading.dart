@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_theme.dart';
+
 class GlobalLoadingNotifier extends Notifier<int> {
   @override
   int build() => 0;
@@ -51,14 +53,12 @@ class GlobalLoadingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Material(
       color: Colors.transparent,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          color: context.appCardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: const [
             BoxShadow(color: Color(0x26000000), blurRadius: 24, offset: Offset(0, 8)),
@@ -74,7 +74,7 @@ class GlobalLoadingIndicator extends StatelessWidget {
             ),
             if (message != null) ...[
               const SizedBox(height: 12),
-              Text(message!, style: const TextStyle(fontSize: 13)),
+              Text(message!, style: context.appCaptionStyle),
             ],
           ],
         ),

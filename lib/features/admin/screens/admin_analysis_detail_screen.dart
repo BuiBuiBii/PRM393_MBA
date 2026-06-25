@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/utils/format_utils.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
@@ -79,7 +80,7 @@ class _AdminAnalysisDetailScreenState extends ConsumerState<AdminAnalysisDetailS
                       Row(
                         children: [
                           Expanded(
-                            child: Text(analysis.projectType, style: const TextStyle(fontWeight: FontWeight.w600)),
+                            child: Text(analysis.projectType, style: context.appSectionTitleStyle),
                           ),
                           AppBadge(
                             label: 'Tổng thể ${analysis.overallScore ?? 0}/100',
@@ -92,16 +93,16 @@ class _AdminAnalysisDetailScreenState extends ConsumerState<AdminAnalysisDetailS
                         ],
                       ),
                       const SizedBox(height: 12),
-                      adminDetailRow('Người dùng', analysis.ownerName),
-                      if (analysis.ownerEmail != null) adminDetailRow('Email', analysis.ownerEmail!),
-                      adminDetailRow('Định hướng', analysis.careerDirection),
-                      adminDetailRow('Ngày phân tích', formatDate(analysis.analyzedAt)),
+                      adminDetailRow(context,'Người dùng', analysis.ownerName),
+                      if (analysis.ownerEmail != null) adminDetailRow(context,'Email', analysis.ownerEmail!),
+                      adminDetailRow(context,'Định hướng', analysis.careerDirection),
+                      adminDetailRow(context,'Ngày phân tích', formatDate(analysis.analyzedAt)),
                     ],
                   ),
                 ),
                 const SizedBox(height: 12),
                 if (analysis.scores.isNotEmpty) ...[
-                  const Text('Điểm số', style: TextStyle(fontWeight: FontWeight.w600)),
+                  Text('Điểm số', style: context.appSectionTitleStyle),
                   const SizedBox(height: 8),
                   GridView.count(
                     crossAxisCount: 2,
@@ -117,8 +118,8 @@ class _AdminAnalysisDetailScreenState extends ConsumerState<AdminAnalysisDetailS
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(_scoreLabels[entry.key] ?? entry.key, style: const TextStyle(fontSize: 12, color: AppColors.slate500)),
-                              Text('${entry.value}/100', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                              Text(_scoreLabels[entry.key] ?? entry.key, style: context.appLabelStyle),
+                              Text('${entry.value}/100', style: context.appHeadingStyle.copyWith(fontSize: 18)),
                             ],
                           ),
                         ),
@@ -130,11 +131,11 @@ class _AdminAnalysisDetailScreenState extends ConsumerState<AdminAnalysisDetailS
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Công nghệ phát hiện', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text('Công nghệ phát hiện', style: context.appSectionTitleStyle),
                       const SizedBox(height: 10),
-                      _badgeSection('Ngôn ngữ', analysis.languages, AppBadgeVariant.info),
-                      _badgeSection('Framework', analysis.frameworks, AppBadgeVariant.neutral),
-                      _badgeSection('Package', analysis.packages.take(24).toList(), AppBadgeVariant.neutral),
+                      _badgeSection(context, 'Ngôn ngữ', analysis.languages, AppBadgeVariant.info),
+                      _badgeSection(context, 'Framework', analysis.frameworks, AppBadgeVariant.neutral),
+                      _badgeSection(context, 'Package', analysis.packages.take(24).toList(), AppBadgeVariant.neutral),
                     ],
                   ),
                 ),
@@ -144,7 +145,7 @@ class _AdminAnalysisDetailScreenState extends ConsumerState<AdminAnalysisDetailS
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Checklist repository', style: TextStyle(fontWeight: FontWeight.w600)),
+                        Text('Checklist repository', style: context.appSectionTitleStyle),
                         const SizedBox(height: 10),
                         for (final entry in analysis.checklist.entries)
                           Padding(
@@ -169,20 +170,20 @@ class _AdminAnalysisDetailScreenState extends ConsumerState<AdminAnalysisDetailS
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Hoạt động commit', style: TextStyle(fontWeight: FontWeight.w600)),
+                        Text('Hoạt động commit', style: context.appSectionTitleStyle),
                         const SizedBox(height: 10),
-                        adminDetailRow('Tổng commit', '${analysis.commitSummary['totalCommits'] ?? 0}'),
-                        adminDetailRow('Số ngày hoạt động', '${analysis.commitSummary['activeDays'] ?? 0}'),
-                        adminDetailRow(
+                        adminDetailRow(context,'Tổng commit', '${analysis.commitSummary['totalCommits'] ?? 0}'),
+                        adminDetailRow(context,'Số ngày hoạt động', '${analysis.commitSummary['activeDays'] ?? 0}'),
+                        adminDetailRow(context,
                           'Commit mơ hồ',
                           '${((analysis.commitSummary['vagueCommitRatio'] as num? ?? 0) * 100).round()}%',
                         ),
-                        adminDetailRow(
+                        adminDetailRow(context,
                           'Conventional commit',
                           '${((analysis.commitSummary['conventionalCommitRatio'] as num? ?? 0) * 100).round()}%',
                         ),
-                        adminDetailRow('Commit đầu', formatDate(analysis.commitSummary['firstCommitDate']?.toString())),
-                        adminDetailRow('Commit gần nhất', formatDate(analysis.commitSummary['lastCommitDate']?.toString())),
+                        adminDetailRow(context,'Commit đầu', formatDate(analysis.commitSummary['firstCommitDate']?.toString())),
+                        adminDetailRow(context,'Commit gần nhất', formatDate(analysis.commitSummary['lastCommitDate']?.toString())),
                       ],
                     ),
                   ),
@@ -202,16 +203,16 @@ class _AdminAnalysisDetailScreenState extends ConsumerState<AdminAnalysisDetailS
     );
   }
 
-  Widget _badgeSection(String title, List<String> items, AppBadgeVariant variant) {
+  Widget _badgeSection(BuildContext context, String title, List<String> items, AppBadgeVariant variant) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+          Text(title, style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: context.appTextPrimary)),
           const SizedBox(height: 6),
           if (items.isEmpty)
-            const Text('Chưa có', style: TextStyle(color: AppColors.slate500, fontSize: 12))
+            Text('Chưa có', style: context.appLabelStyle)
           else
             Wrap(spacing: 6, runSpacing: 6, children: items.map((e) => AppBadge(label: e, variant: variant)).toList()),
         ],

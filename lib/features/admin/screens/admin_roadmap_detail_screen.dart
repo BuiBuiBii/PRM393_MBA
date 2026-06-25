@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/utils/format_utils.dart';
 import '../../../shared/widgets/app_feedback.dart';
 import '../../../shared/widgets/async_content.dart';
@@ -93,8 +94,8 @@ class _AdminRoadmapDetailScreenState extends ConsumerState<AdminRoadmapDetailScr
                     children: [
                       Row(
                         children: [
-                          const Expanded(
-                            child: Text('Tổng quan', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                          Expanded(
+                            child: Text('Tổng quan', style: context.appSectionTitleStyle),
                           ),
                           adminStatusLabel(roadmap.status),
                         ],
@@ -104,13 +105,13 @@ class _AdminRoadmapDetailScreenState extends ConsumerState<AdminRoadmapDetailScr
                         roadmap.summary?.isNotEmpty == true
                             ? roadmap.summary!
                             : 'Roadmap này chưa có phần tóm tắt.',
-                        style: const TextStyle(color: AppColors.slate600, height: 1.45),
+                        style: context.appBodyStyle,
                       ),
                       const SizedBox(height: 16),
-                      _row('Người tạo', roadmap.ownerName),
-                      if (roadmap.ownerEmail != null) _row('Email', roadmap.ownerEmail!),
-                      _row('Tạo lúc', formatDate(roadmap.createdAt)),
-                      _row('Cập nhật', formatDate(roadmap.updatedAt)),
+                      _row(context, 'Người tạo', roadmap.ownerName),
+                      if (roadmap.ownerEmail != null) _row(context, 'Email', roadmap.ownerEmail!),
+                      _row(context, 'Tạo lúc', formatDate(roadmap.createdAt)),
+                      _row(context, 'Cập nhật', formatDate(roadmap.updatedAt)),
                     ],
                   ),
                 ),
@@ -120,9 +121,9 @@ class _AdminRoadmapDetailScreenState extends ConsumerState<AdminRoadmapDetailScr
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Định hướng GitHub hiện tại', style: TextStyle(fontWeight: FontWeight.w600)),
+                        Text('Định hướng GitHub hiện tại', style: context.appSectionTitleStyle),
                         const SizedBox(height: 8),
-                        Text(roadmap.currentGithubDirection!, style: const TextStyle(color: AppColors.slate600, height: 1.45)),
+                        Text(roadmap.currentGithubDirection!, style: context.appBodyStyle),
                       ],
                     ),
                   ),
@@ -133,15 +134,15 @@ class _AdminRoadmapDetailScreenState extends ConsumerState<AdminRoadmapDetailScr
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Ngữ cảnh GitHub', style: TextStyle(fontWeight: FontWeight.w600)),
+                        Text('Ngữ cảnh GitHub', style: context.appSectionTitleStyle),
                         const SizedBox(height: 12),
                         const Text('Kỹ năng phát hiện', style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.emerald)),
                         const SizedBox(height: 6),
-                        _skillWrap(roadmap.sourceContextSummary!.detectedSkills),
+                        _skillWrap(context, roadmap.sourceContextSummary!.detectedSkills),
                         const SizedBox(height: 12),
                         const Text('Kỹ năng thiếu', style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.amber)),
                         const SizedBox(height: 6),
-                        _skillWrap(roadmap.sourceContextSummary!.missingSkills),
+                        _skillWrap(context, roadmap.sourceContextSummary!.missingSkills),
                       ],
                     ),
                   ),
@@ -149,16 +150,16 @@ class _AdminRoadmapDetailScreenState extends ConsumerState<AdminRoadmapDetailScr
                 const SizedBox(height: 16),
                 Text(
                   roadmap.mainPath?.title ?? 'Lộ trình chính',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: context.appSectionTitleStyle,
                 ),
                 if (roadmap.mainPath?.reason?.isNotEmpty == true) ...[
                   const SizedBox(height: 4),
-                  Text(roadmap.mainPath!.reason!, style: const TextStyle(color: AppColors.slate500)),
+                  Text(roadmap.mainPath!.reason!, style: context.appCaptionStyle),
                 ],
                 const SizedBox(height: 12),
                 if (roadmap.mainPath?.phases.isEmpty ?? true)
-                  const AppCard(
-                    child: Text('Chưa có giai đoạn học.', style: TextStyle(color: AppColors.slate500)),
+                  AppCard(
+                    child: Text('Chưa có giai đoạn học.', style: context.appCaptionStyle),
                   )
                 else
                   ...roadmap.mainPath!.phases.asMap().entries.map(
@@ -169,7 +170,7 @@ class _AdminRoadmapDetailScreenState extends ConsumerState<AdminRoadmapDetailScr
                       ),
                 if (roadmap.supportingPaths.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  const Text('Lộ trình bổ trợ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  Text('Lộ trình bổ trợ', style: context.appSectionTitleStyle),
                   const SizedBox(height: 12),
                   ...roadmap.supportingPaths.map(
                     (path) => Padding(
@@ -178,13 +179,13 @@ class _AdminRoadmapDetailScreenState extends ConsumerState<AdminRoadmapDetailScr
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(path.title ?? 'Lộ trình phụ', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            Text(path.title ?? 'Lộ trình phụ', style: context.appSectionTitleStyle),
                             if (path.reason?.isNotEmpty == true) ...[
                               const SizedBox(height: 6),
-                              Text(path.reason!, style: const TextStyle(color: AppColors.slate500)),
+                              Text(path.reason!, style: context.appCaptionStyle),
                             ],
                             const SizedBox(height: 8),
-                            Text('${path.phases.length} giai đoạn', style: const TextStyle(color: AppColors.slate500, fontSize: 12)),
+                            Text('${path.phases.length} giai đoạn', style: context.appLabelStyle),
                           ],
                         ),
                       ),
@@ -196,22 +197,22 @@ class _AdminRoadmapDetailScreenState extends ConsumerState<AdminRoadmapDetailScr
     );
   }
 
-  Widget _row(String label, String value) {
+  Widget _row(BuildContext context, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 110, child: Text(label, style: const TextStyle(color: AppColors.slate500, fontSize: 13))),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
+          SizedBox(width: 110, child: Text(label, style: context.appLabelStyle)),
+          Expanded(child: Text(value, style: context.appBodyStyle.copyWith(fontSize: 13))),
         ],
       ),
     );
   }
 
-  Widget _skillWrap(List<String> skills) {
+  Widget _skillWrap(BuildContext context, List<String> skills) {
     if (skills.isEmpty) {
-      return const Text('Không có dữ liệu', style: TextStyle(color: AppColors.slate500, fontSize: 13));
+      return Text('Không có dữ liệu', style: context.appCaptionStyle);
     }
     return Wrap(
       spacing: 8,
@@ -234,9 +235,9 @@ class _StatCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(label, style: const TextStyle(color: AppColors.slate500, fontSize: 12)),
+          Text(label, style: context.appLabelStyle),
           const SizedBox(height: 6),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
+          Text(value, style: context.appHeadingStyle.copyWith(fontSize: 22)),
         ],
       ),
     );
@@ -259,19 +260,19 @@ class _PhaseCard extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 14,
-                backgroundColor: const Color(0xFFE0E7FF),
+                backgroundColor: context.isDarkMode ? AppColors.primary.withValues(alpha: 0.2) : const Color(0xFFE0E7FF),
                 child: Text('$index', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(phase.title ?? 'Giai đoạn $index', style: const TextStyle(fontWeight: FontWeight.w600)),
+                child: Text(phase.title ?? 'Giai đoạn $index', style: context.appSectionTitleStyle),
               ),
               if (phase.status != null) AppBadge(label: phase.status!, variant: AppBadgeVariant.neutral),
             ],
           ),
           if (phase.goal?.isNotEmpty == true) ...[
             const SizedBox(height: 8),
-            Text(phase.goal!, style: const TextStyle(color: AppColors.slate600, height: 1.4)),
+            Text(phase.goal!, style: context.appBodyStyle),
           ],
           if (phase.skills.isNotEmpty) ...[
             const SizedBox(height: 10),
@@ -283,7 +284,7 @@ class _PhaseCard extends StatelessWidget {
           ],
           if (phase.tasks.isNotEmpty) ...[
             const SizedBox(height: 12),
-            const Text('Việc học', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+            Text('Việc học', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: context.appTextPrimary)),
             const SizedBox(height: 6),
             ...phase.tasks.map(
               (task) => Container(
@@ -291,21 +292,21 @@ class _PhaseCard extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
+                  color: context.appBubbleAiBg,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey.shade200),
+                  border: Border.all(color: context.appBorderColor),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(task.title ?? 'Nhiệm vụ', style: const TextStyle(fontWeight: FontWeight.w500)),
+                    Text(task.title ?? 'Nhiệm vụ', style: TextStyle(fontWeight: FontWeight.w500, color: context.appTextPrimary)),
                     if (task.description?.isNotEmpty == true) ...[
                       const SizedBox(height: 4),
-                      Text(task.description!, style: const TextStyle(color: AppColors.slate500, fontSize: 13)),
+                      Text(task.description!, style: context.appCaptionStyle),
                     ],
                     if (task.estimatedHours > 0) ...[
                       const SizedBox(height: 4),
-                      Text('${task.estimatedHours} giờ', style: const TextStyle(color: AppColors.slate500, fontSize: 12)),
+                      Text('${task.estimatedHours} giờ', style: context.appLabelStyle),
                     ],
                   ],
                 ),

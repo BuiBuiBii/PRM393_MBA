@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../models/admin_models.dart';
 
@@ -36,7 +37,7 @@ class AdminPaginationBar extends StatelessWidget {
           Expanded(
             child: Text(
               'Trang ${pagination.page}/${pagination.totalPages == 0 ? 1 : pagination.totalPages} • ${pagination.total} mục',
-              style: const TextStyle(color: AppColors.slate500, fontSize: 13),
+              style: context.appCaptionStyle,
             ),
           ),
           IconButton(
@@ -64,13 +65,14 @@ class AdminSearchField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      style: TextStyle(color: context.appTextPrimary),
       decoration: InputDecoration(
         hintText: hint,
-        prefixIcon: const Icon(Icons.search, size: 20),
+        prefixIcon: Icon(Icons.search, size: 20, color: context.appTextSecondary),
         filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+        fillColor: Theme.of(context).inputDecorationTheme.fillColor,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: context.appBorderColor)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: context.appBorderColor)),
       ),
       textInputAction: TextInputAction.search,
       onSubmitted: onSubmitted,
@@ -105,10 +107,10 @@ class AdminListTileCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                Text(title, style: context.appSectionTitleStyle.copyWith(fontSize: 15)),
                 if (subtitle != null) ...[
                   const SizedBox(height: 4),
-                  Text(subtitle!, style: const TextStyle(color: AppColors.slate500, fontSize: 13)),
+                  Text(subtitle!, style: context.appCaptionStyle),
                 ],
                 if (badges.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -191,7 +193,7 @@ class AdminQuickNavCard extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
+              color: color.withValues(alpha: context.isDarkMode ? 0.2 : 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color),
@@ -201,8 +203,8 @@ class AdminQuickNavCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text(subtitle, style: const TextStyle(color: AppColors.slate500, fontSize: 12)),
+                Text(title, style: context.appSectionTitleStyle),
+                Text(subtitle, style: context.appLabelStyle),
               ],
             ),
           ),
@@ -210,7 +212,7 @@ class AdminQuickNavCard extends StatelessWidget {
             Text(count!, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 18)),
             const SizedBox(width: 4),
           ],
-          const Icon(Icons.chevron_right, color: AppColors.slate500),
+          Icon(Icons.chevron_right, color: context.appTextSecondary),
         ],
       ),
     );

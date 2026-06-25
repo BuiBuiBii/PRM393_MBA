@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../app_providers.dart';
 import '../../../shared/utils/format_utils.dart';
 import '../../../shared/widgets/async_content.dart';
@@ -49,11 +50,6 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
           : ListView(
         padding: appScreenPadding(context),
         children: [
-          TextButton.icon(
-            onPressed: () => context.go('/repositories'),
-          icon: const Icon(Icons.arrow_back),
-          label: const Text('Repositories'),
-        ),
         PageHeader(title: detail.name, subtitle: detail.fullName),
         if (detail.description != null) ...[const SizedBox(height: 8), Text(detail.description!)],
         const SizedBox(height: 16),
@@ -63,9 +59,9 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
             runSpacing: 8,
             children: [
               AppBadge(label: detail.language),
-              _meta(Icons.star, '${detail.stars} stars'),
-              _meta(Icons.call_split, '${detail.forks} forks'),
-              _meta(Icons.schedule, formatRelativeTime(detail.updatedAt)),
+              _meta(context, Icons.star, '${detail.stars} stars'),
+              _meta(context, Icons.call_split, '${detail.forks} forks'),
+              _meta(context, Icons.schedule, formatRelativeTime(detail.updatedAt)),
               AppBadge(
                 label: detail.hasReadme ? 'Có README' : 'Thiếu README',
                 variant: detail.hasReadme ? AppBadgeVariant.success : AppBadgeVariant.warning,
@@ -86,11 +82,11 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Phân tích repository này', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+              Text('Phân tích repository này', style: context.appSectionTitleStyle),
               const SizedBox(height: 8),
               Text(
                 'Đồng bộ packages, commits, chạy phân tích và lấy AI feedback cho ${detail.fullName}.',
-                style: const TextStyle(color: AppColors.slate500, fontSize: 13),
+                style: context.appCaptionStyle,
               ),
               const SizedBox(height: 12),
               Wrap(
@@ -144,10 +140,10 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Packages / file cấu hình', style: TextStyle(fontWeight: FontWeight.w600)),
+              Text('Packages / file cấu hình', style: context.appSectionTitleStyle.copyWith(fontSize: 14)),
               const SizedBox(height: 12),
               if (packages.isEmpty)
-                const Text('Chưa có packages cached. Bấm Tải packages để đồng bộ.', style: TextStyle(color: AppColors.slate500))
+                Text('Chưa có packages cached. Bấm Tải packages để đồng bộ.', style: context.appCaptionStyle)
               else
                 ...packages.take(8).map(
                       (item) => Container(
@@ -175,10 +171,10 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Lịch sử commit', style: TextStyle(fontWeight: FontWeight.w600)),
+              Text('Lịch sử commit', style: context.appSectionTitleStyle.copyWith(fontSize: 14)),
               const SizedBox(height: 12),
               if (commits.isEmpty)
-                const Text('Chưa có commits cached. Bấm Tải commits để đồng bộ.', style: TextStyle(color: AppColors.slate500))
+                Text('Chưa có commits cached. Bấm Tải commits để đồng bộ.', style: context.appCaptionStyle)
               else
                 ...commits.take(12).map(
                       (item) => Container(
@@ -186,10 +182,10 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: context.appBubbleAiBg,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text(previewPayload(item), style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                        child: Text(previewPayload(item), style: context.appLabelStyle.copyWith(fontSize: 11, fontFamily: 'monospace', color: context.appTextPrimary)),
                       ),
                     ),
             ],
@@ -219,12 +215,12 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
     );
   }
 
-  Widget _meta(IconData icon, String text) => Row(
+  Widget _meta(BuildContext context, IconData icon, String text) => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: AppColors.slate500),
+          Icon(icon, size: 16, color: context.appTextSecondary),
           const SizedBox(width: 4),
-          Text(text),
+          Text(text, style: context.appBodyStyle),
         ],
       );
 }

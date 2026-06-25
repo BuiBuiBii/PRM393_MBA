@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/providers/auth_provider.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/utils/format_utils.dart';
@@ -121,7 +122,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Chỉnh sửa hồ sơ', style: TextStyle(fontWeight: FontWeight.w600)),
+                Text('Chỉnh sửa hồ sơ', style: context.appSectionTitleStyle),
                 const SizedBox(height: 12),
                 TextField(controller: _fullName, decoration: const InputDecoration(labelText: 'Họ tên')),
                 TextField(controller: _university, decoration: const InputDecoration(labelText: 'Trường')),
@@ -155,11 +156,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 const SizedBox(height: 12),
                 Text(
                   profile?.fullName ?? user?.name ?? 'Người dùng',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: context.appHeadingStyle,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 4),
-                Text(user?.email ?? '', style: const TextStyle(color: AppColors.slate500)),
+                Text(user?.email ?? '', style: context.appCaptionStyle),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
@@ -189,10 +190,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Kỹ năng hiện có', style: TextStyle(fontWeight: FontWeight.w600)),
+                Text('Kỹ năng hiện có', style: context.appSectionTitleStyle),
                 const SizedBox(height: 10),
                 if (profile?.currentSkills.isEmpty ?? true)
-                  const Text('Chưa cập nhật kỹ năng', style: TextStyle(color: AppColors.slate500))
+                  Text('Chưa cập nhật kỹ năng', style: context.appCaptionStyle)
                 else
                   Wrap(
                     spacing: 8,
@@ -218,7 +219,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text(title, style: context.appSectionTitleStyle),
           const SizedBox(height: 10),
           ...rows,
         ],
@@ -232,11 +233,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 130, child: Text(label, style: const TextStyle(color: AppColors.slate500))),
+          SizedBox(width: 130, child: Text(label, style: context.appLabelStyle)),
           Expanded(
             child: Text(
               (value == null || value.isEmpty) ? '—' : value,
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              style: TextStyle(fontWeight: FontWeight.w500, color: context.appTextPrimary),
             ),
           ),
         ],

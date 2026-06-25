@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../app_providers.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
@@ -70,7 +71,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade200),
+                          border: Border.all(color: context.appBorderColor),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
@@ -82,9 +83,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(item.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                  Text(item.title, style: context.appSectionTitleStyle.copyWith(fontSize: 14)),
                                   const SizedBox(height: 4),
-                                  Text(item.message, style: const TextStyle(color: AppColors.slate600, fontSize: 13)),
+                                  Text(item.message, style: context.appCaptionStyle),
                                 ],
                               ),
                             ),

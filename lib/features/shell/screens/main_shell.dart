@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_app_bar.dart';
 import '../../../shared/widgets/app_image_assets.dart';
 import '../../../shared/widgets/app_widgets.dart';
@@ -23,19 +24,33 @@ class _MainShellState extends ConsumerState<MainShell> {
   static const _navItems = [
     _MenuItem(path: '/dashboard', label: 'Tổng quan', icon: Icons.dashboard_outlined),
     _MenuItem(path: '/repositories', label: 'Repositories', icon: Icons.folder_outlined),
+    _MenuItem(path: '/snapshots', label: 'Snapshots', icon: Icons.history_edu),
     _MenuItem(path: '/ai-feedback', label: 'AI Feedback', icon: Icons.auto_awesome_outlined),
     _MenuItem(path: '/profile', label: 'Hồ sơ', icon: Icons.person_outline),
     _MenuItem(path: '/roadmaps', label: 'Lộ trình', icon: Icons.route_outlined),
     _MenuItem(path: '/chat', label: 'AI Mentor', icon: Icons.chat_bubble_outline),
-    _MenuItem(path: '/snapshots', label: 'Snapshots', icon: Icons.history_edu),
-    _MenuItem(path: '/progress', label: 'Tiến độ', icon: Icons.trending_up),
     _MenuItem(path: '/github/connect', label: 'GitHub', icon: Icons.code),
-    _MenuItem(path: '/notifications', label: 'Thông báo', icon: Icons.notifications_outlined),
     _MenuItem(path: '/settings', label: 'Cài đặt', icon: Icons.settings_outlined),
-    _MenuItem(path: '/home', label: 'Giới thiệu', icon: Icons.info_outline),
   ];
 
+  static const _rootPaths = {
+    '/dashboard',
+    '/repositories',
+    '/snapshots',
+    '/ai-feedback',
+    '/profile',
+    '/roadmaps',
+    '/chat',
+    '/github/connect',
+    '/settings',
+    '/notifications',
+  };
+
   String get _location => GoRouterState.of(context).matchedLocation;
+
+  bool get _isRootRoute => _rootPaths.contains(_location);
+
+  bool get _showBackButton => !_isRootRoute;
 
   bool _routeActive(String path) {
     if (path == '/dashboard') return _location == '/dashboard';
@@ -43,10 +58,68 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 
   String _title() {
+    final segments = GoRouterState.of(context).uri.pathSegments;
+    if (segments.isNotEmpty) {
+      switch (segments[0]) {
+        case 'repositories':
+          if (segments.length >= 3) {
+            return switch (segments[2]) {
+              'snapshots' => 'Lịch sử phân tích',
+              'progress' => 'Tiến bộ Repository',
+              'analysis' => 'Kết quả phân tích',
+              _ => 'Repository',
+            };
+          }
+          if (segments.length >= 2) return 'Repository';
+          return 'Repositories';
+        case 'snapshots':
+          return segments.length >= 2 ? 'Chi tiết Snapshot' : 'Snapshots';
+        case 'roadmaps':
+          return segments.length >= 2 ? 'Chi tiết lộ trình' : 'Lộ trình';
+        case 'analysis':
+          return 'Kết quả phân tích';
+      }
+    }
+
     for (final item in _navItems) {
       if (_routeActive(item.path)) return item.label;
     }
     return 'GitAnalyzer';
+  }
+
+  String? _fallbackParentRoute() {
+    final segments = GoRouterState.of(context).uri.pathSegments;
+    if (segments.isEmpty) return '/dashboard';
+
+    switch (segments[0]) {
+      case 'repositories':
+        if (segments.length >= 3) return '/repositories/${segments[1]}';
+        if (segments.length >= 2) return '/repositories';
+        return null;
+      case 'snapshots':
+        if (segments.length >= 2) return '/snapshots';
+        return null;
+      case 'roadmaps':
+        if (segments.length >= 2) return '/roadmaps';
+        return null;
+      case 'analysis':
+        return '/repositories';
+      default:
+        return null;
+    }
+  }
+
+  void _handleBack() {
+    final router = GoRouter.of(context);
+    if (router.canPop()) {
+      router.pop();
+      return;
+    }
+
+    final parent = _fallbackParentRoute();
+    if (parent != null) {
+      router.go(parent);
+    }
   }
 
   void _navigateTo(String path) {
@@ -57,7 +130,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
     final user = auth.user;
-    final canPop = GoRouter.of(context).canPop();
+    final cs = Theme.of(context).colorScheme;
 
     return AppGradientBackground(
       child: Scaffold(
@@ -65,10 +138,10 @@ class _MainShellState extends ConsumerState<MainShell> {
         backgroundColor: Colors.transparent,
         appBar: AppAppBar(
           title: _title(),
-          leading: canPop
+          leading: _showBackButton
               ? IconButton(
                   tooltip: 'Quay lại',
-                  onPressed: () => context.pop(),
+                  onPressed: _handleBack,
                   icon: const Icon(Icons.arrow_back),
                 )
               : IconButton(
@@ -88,7 +161,7 @@ class _MainShellState extends ConsumerState<MainShell> {
               onPressed: () => _navigateTo('/notifications'),
               icon: Icon(
                 Icons.notifications_outlined,
-                color: _routeActive('/notifications') ? AppColors.primary : AppColors.slate600,
+                color: _routeActive('/notifications') ? AppColors.primary : context.appTextSecondary,
               ),
             ),
             Padding(
@@ -141,17 +214,16 @@ class _MainShellState extends ConsumerState<MainShell> {
                       ListTile(
                         leading: Icon(
                           item.icon,
-                          color: _routeActive(item.path) ? AppColors.primary : AppColors.slate600,
+                          color: _routeActive(item.path) ? AppColors.primary : cs.onSurfaceVariant,
                         ),
                         title: Text(
                           item.label,
                           style: TextStyle(
                             fontWeight: FontWeight.w500,
-                            color: _routeActive(item.path) ? AppColors.primary : AppColors.slate900,
+                            color: _routeActive(item.path) ? AppColors.primary : cs.onSurface,
                           ),
                         ),
                         selected: _routeActive(item.path),
-                        selectedTileColor: const Color(0xFFEEF2FF),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         onTap: () {
                           Navigator.pop(context);
@@ -176,8 +248,8 @@ class _MainShellState extends ConsumerState<MainShell> {
               ),
               const Divider(height: 1),
               ListTile(
-                leading: const Icon(Icons.logout, color: AppColors.slate600),
-                title: const Text('Đăng xuất'),
+                leading: Icon(Icons.logout, color: cs.onSurfaceVariant),
+                title: Text('Đăng xuất', style: TextStyle(color: cs.onSurface)),
                 onTap: () async {
                   Navigator.pop(context);
                   await ref.read(authProvider.notifier).logout();
@@ -198,9 +270,15 @@ class _MainShellState extends ConsumerState<MainShell> {
                 ),
               ),
             Expanded(
-              child: KeyedSubtree(
-                key: ValueKey(_location),
-                child: widget.child,
+              child: PopScope(
+                canPop: !_showBackButton,
+                onPopInvokedWithResult: (didPop, _) {
+                  if (!didPop && _showBackButton) _handleBack();
+                },
+                child: KeyedSubtree(
+                  key: ValueKey(_location),
+                  child: widget.child,
+                ),
               ),
             ),
           ],

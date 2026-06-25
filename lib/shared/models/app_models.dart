@@ -528,6 +528,41 @@ class RoadmapModel {
     if (raw is List) return raw.map((e) => e.toString()).toList();
     return const [];
   }
+
+  RoadmapModel copyWith({
+    List<RoadmapModuleModel>? modules,
+    int? progress,
+    String? status,
+  }) {
+    return RoadmapModel(
+      id: id,
+      slug: slug,
+      title: title,
+      subtitle: subtitle,
+      description: description,
+      category: category,
+      difficulty: difficulty,
+      estimatedWeeks: estimatedWeeks,
+      estimatedHours: estimatedHours,
+      tags: tags,
+      isFeatured: isFeatured,
+      isAIRecommended: isAIRecommended,
+      progress: progress ?? this.progress,
+      modules: modules ?? this.modules,
+      careerOutcome: careerOutcome,
+      status: status ?? this.status,
+      detectedSkills: detectedSkills,
+      repositoriesCount: repositoriesCount,
+      objectives: objectives,
+      requiredSkills: requiredSkills,
+      missingSkills: missingSkills,
+      supportingPaths: supportingPaths,
+      sourceRepositoriesCount: sourceRepositoriesCount,
+      roadmapSource: roadmapSource,
+      roleMatchInfo: roleMatchInfo,
+      skillGapSummary: skillGapSummary,
+    );
+  }
 }
 
 class SkillProgressModel {

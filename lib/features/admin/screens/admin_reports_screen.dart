@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
+import '../../../core/theme/app_theme.dart';
 import '../providers/admin_provider.dart';
 import '../widgets/admin_widgets.dart';
 
@@ -75,7 +76,7 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
                     title: r.reason,
                     subtitle: '${r.targetType}${r.reporterName != null ? ' • ${r.reporterName}' : ''}',
                     badges: [adminStatusLabel(r.status), AppBadge(label: r.targetType, variant: AppBadgeVariant.neutral)],
-                    trailing: const Icon(Icons.chevron_right, color: AppColors.slate500),
+                    trailing: Icon(Icons.chevron_right, color: context.appTextSecondary),
                     onTap: () => context.push('/admin/reports/${r.id}'),
                   ),
                 ),

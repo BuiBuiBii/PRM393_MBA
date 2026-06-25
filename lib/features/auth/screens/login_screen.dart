@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/router/auth_navigation.dart';
 import '../../../shared/widgets/app_image_assets.dart';
 import '../../../shared/widgets/app_feedback.dart';
@@ -75,14 +76,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: AppColors.slate900,
+                  color: context.appTextPrimary,
                 ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Tiếp tục vào workspace phân tích repository của bạn',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.slate500),
+            style: context.appCaptionStyle,
           ),
           const SizedBox(height: 24),
           if (AppConfig.demoMode)
@@ -140,8 +141,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text('Ghi nhớ đăng nhập', style: TextStyle(fontSize: 14, color: AppColors.slate600)),
+                        Expanded(
+                          child: Text('Ghi nhớ đăng nhập', style: TextStyle(fontSize: 14, color: context.appTextSecondary)),
                         ),
                         TextButton(
                           onPressed: () {
@@ -194,7 +195,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('Chưa có tài khoản? ', style: TextStyle(color: AppColors.slate500, fontSize: 14)),
+              Text('Chưa có tài khoản? ', style: context.appCaptionStyle),
               TextButton(
                 onPressed: () => context.go('/register'),
                 style: TextButton.styleFrom(
@@ -207,10 +208,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ],
           ),
-          if (MediaQuery.sizeOf(context).height > 720) ...[
-            const SizedBox(height: 24),
-            const AuthShowcasePanel(),
-          ],
         ],
       ),
     );

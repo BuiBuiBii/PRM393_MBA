@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../app_providers.dart';
 
@@ -27,20 +28,11 @@ class _SnapshotSelectRepoScreenState extends ConsumerState<SnapshotSelectRepoScr
     final repos = state.repositories;
     final isLoading = state.isLoading;
 
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        titleSpacing: 16,
-        title: const Text('Chọn Repository'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.slate900,
-        elevation: 0,
-      ),
-      body: isLoading && repos.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : repos.isEmpty
-              ? _buildEmptyState()
-              : ListView.separated(
+    return isLoading && repos.isEmpty
+        ? const Center(child: CircularProgressIndicator())
+        : repos.isEmpty
+            ? _buildEmptyState(context)
+            : ListView.separated(
                   padding: const EdgeInsets.all(16),
                   itemCount: repos.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -50,12 +42,10 @@ class _SnapshotSelectRepoScreenState extends ConsumerState<SnapshotSelectRepoScr
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(color: AppColors.slate200),
+                        side: BorderSide(color: context.appBorderColor),
                       ),
                       child: InkWell(
-                        onTap: () {
-                          context.push('/repositories/${repo.id}/snapshots');
-                        },
+                        onTap: () => context.push('/repositories/${repo.id}/snapshots'),
                         borderRadius: BorderRadius.circular(12),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
@@ -74,15 +64,12 @@ class _SnapshotSelectRepoScreenState extends ConsumerState<SnapshotSelectRepoScr
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      repo.name,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                    ),
+                                    Text(repo.name, style: context.appSectionTitleStyle),
                                     if (repo.description != null && repo.description!.isNotEmpty) ...[
                                       const SizedBox(height: 4),
                                       Text(
                                         repo.description!,
-                                        style: const TextStyle(color: AppColors.slate500, fontSize: 13),
+                                        style: context.appCaptionStyle,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -90,28 +77,27 @@ class _SnapshotSelectRepoScreenState extends ConsumerState<SnapshotSelectRepoScr
                                   ],
                                 ),
                               ),
-                              const Icon(Icons.chevron_right, color: AppColors.slate400),
+                              Icon(Icons.chevron_right, color: context.appTextSecondary),
                             ],
                           ),
                         ),
                       ),
                     );
                   },
-                ),
-    );
+                );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.folder_off_outlined, size: 64, color: AppColors.slate300),
+          Icon(Icons.folder_off_outlined, size: 64, color: context.appTextSecondary),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Chưa có repository nào.\nHãy đồng bộ repository của bạn trước.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.slate500),
+            style: context.appCaptionStyle,
           ),
           const SizedBox(height: 24),
           PrimaryButton(

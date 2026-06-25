@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/config/app_config.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/roadmap_widgets.dart';
 import '../../app_providers.dart';
 import '../../../shared/widgets/async_content.dart';
@@ -110,16 +110,11 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
                     children: [
                       const AppBadge(label: 'Roadmap cá nhân', variant: AppBadgeVariant.info),
                       const SizedBox(height: 8),
-                      const Text('Lộ trình của tôi', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+                      Text('Lộ trình của tôi', style: context.appHeadingStyle.copyWith(fontSize: 24, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 4),
-                      const Text(
+                      Text(
                         'Theo dõi tiến độ học và tạo lộ trình mới từ phân tích GitHub.',
-                        style: TextStyle(color: AppColors.slate500, fontSize: 13),
-                      ),
-                      TextButton.icon(
-                        onPressed: () => context.push('/roadmaps/ai'),
-                        icon: const Icon(Icons.psychology_outlined, size: 18),
-                        label: const Text('Mở Studio AI'),
+                        style: context.appCaptionStyle,
                       ),
                       const SizedBox(height: 16),
                       SingleChildScrollView(
@@ -213,7 +208,7 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
                         children: [
                           Text(
                             isArchivedTab ? 'Kho lưu trữ' : 'Đang học',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                            style: context.appSectionTitleStyle,
                           ),
                           AppBadge(label: '${filtered.length} lộ trình'),
                         ],
@@ -282,158 +277,6 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
   }
 }
 
-class AIRoadmapScreen extends ConsumerStatefulWidget {
-  const AIRoadmapScreen({super.key});
-
-  @override
-  ConsumerState<AIRoadmapScreen> createState() => _AIRoadmapScreenState();
-}
-
-class _AIRoadmapScreenState extends ConsumerState<AIRoadmapScreen> {
-  @override
-  void initState() {
-    super.initState();
-    Future.microtask(() {
-      ref.read(repositoryProvider.notifier).fetchMyAnalyses();
-      ref.read(roadmapProvider.notifier).loadRoadmaps();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final state = ref.watch(roadmapProvider);
-    final analyses = ref.watch(repositoryProvider).analyses;
-    final primary = recommendRoadmapRole(analyses);
-    final secondary = recommendJobReadinessRoadmaps(analyses);
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Studio AI')),
-      body: ListView(
-        padding: appScreenPadding(context),
-        children: [
-          const Text(
-            'Đề xuất theo repository',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Vuốt qua các gợi ý và chạm để tạo roadmap — khác với web, màn này tập trung vào hành động nhanh.',
-            style: TextStyle(color: AppColors.slate500, fontSize: 13),
-          ),
-          const SizedBox(height: 16),
-          if (primary == null)
-            const EmptyState(
-              title: 'Chưa có phân tích',
-              subtitle: 'Phân tích ít nhất một repository để nhận đề xuất AI chính xác hơn.',
-            )
-          else ...[
-            _AiSuggestionCard(
-              badge: 'Đề xuất chính',
-              role: primary.role,
-              reason: primary.reason,
-              focus: primary.focus,
-              loading: state.isGenerating,
-              onCreate: () => generateAndOpenRoadmap(context, ref, primary.role),
-            ),
-            const SizedBox(height: 12),
-            for (final item in secondary)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _AiSuggestionCard(
-                  badge: 'Phụ trợ xin việc',
-                  role: item.role,
-                  reason: item.reason,
-                  focus: item.focus,
-                  title: item.title,
-                  loading: state.isGenerating,
-                  onCreate: () => generateAndOpenRoadmap(context, ref, item.role),
-                ),
-              ),
-          ],
-          const SizedBox(height: 16),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Tùy chọn vai trò', style: TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: state.selectedTargetRole,
-                  isExpanded: true,
-                  items: AppConfig.targetRoles.map((role) => DropdownMenuItem(value: role, child: Text(role))).toList(),
-                  onChanged: state.isGenerating ? null : (v) {
-                    if (v != null) ref.read(roadmapProvider.notifier).setTargetRole(v);
-                  },
-                ),
-                const SizedBox(height: 12),
-                PrimaryButton(
-                  label: 'Tạo roadmap tùy chỉnh',
-                  icon: Icons.psychology,
-                  expand: true,
-                  loading: state.isGenerating,
-                  onPressed: state.isGenerating
-                      ? null
-                      : () => generateAndOpenRoadmap(context, ref, state.selectedTargetRole),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AiSuggestionCard extends StatelessWidget {
-  const _AiSuggestionCard({
-    required this.badge,
-    required this.role,
-    required this.reason,
-    required this.focus,
-    required this.loading,
-    required this.onCreate,
-    this.title,
-  });
-
-  final String badge;
-  final String role;
-  final String reason;
-  final String focus;
-  final bool loading;
-  final VoidCallback onCreate;
-  final String? title;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AppBadge(label: badge, variant: AppBadgeVariant.info),
-          const SizedBox(height: 8),
-          Text(title ?? role, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-          if (title != null) ...[
-            const SizedBox(height: 4),
-            Text(role, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
-          ],
-          const SizedBox(height: 8),
-          Text(reason, style: const TextStyle(color: AppColors.slate600, fontSize: 13)),
-          const SizedBox(height: 8),
-          Text('Trọng tâm: $focus', style: const TextStyle(fontSize: 12, color: AppColors.slate500)),
-          const SizedBox(height: 12),
-          PrimaryButton(
-            label: 'Tạo lộ trình',
-            icon: Icons.auto_awesome,
-            expand: true,
-            loading: loading,
-            onPressed: loading ? null : onCreate,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class RoadmapDetailScreen extends ConsumerStatefulWidget {
   const RoadmapDetailScreen({super.key, required this.roadmapId});
 
@@ -456,7 +299,7 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
     });
   }
 
-  Widget _tabButton(int index, String label, IconData icon) {
+  Widget _tabButton(BuildContext context, int index, String label, IconData icon) {
     final isSelected = _selectedTab == index;
     return Expanded(
       child: GestureDetector(
@@ -464,7 +307,7 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
+            color: isSelected ? context.appCardColor : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
             boxShadow: isSelected
                 ? [
@@ -482,7 +325,7 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
               Icon(
                 icon,
                 size: 16,
-                color: isSelected ? AppColors.primary : AppColors.slate500,
+                color: isSelected ? AppColors.primary : context.appTextSecondary,
               ),
               const SizedBox(width: 4),
               Text(
@@ -490,7 +333,7 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected ? AppColors.slate900 : AppColors.slate600,
+                  color: isSelected ? context.appTextPrimary : context.appTextSecondary,
                 ),
               ),
             ],
@@ -500,12 +343,12 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
     );
   }
 
-  Widget _sectionHeader(String title, IconData icon, Color color) {
+  Widget _sectionHeader(BuildContext context, String title, IconData icon, Color color) {
     return Row(
       children: [
         Icon(icon, color: color, size: 20),
         const SizedBox(width: 8),
-        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        Text(title, style: context.appSectionTitleStyle),
       ],
     );
   }
@@ -524,12 +367,12 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
           : Builder(
               builder: (context) {
                 final progress = ref.read(roadmapProvider.notifier).progressFor(roadmap);
+                final percent = progress.total == 0 ? 0 : ((progress.completed / progress.total) * 100).round();
                 final notifier = ref.read(roadmapProvider.notifier);
 
                 return ListView(
       padding: appScreenPadding(context),
       children: [
-        TextButton.icon(onPressed: () => context.pop(), icon: const Icon(Icons.arrow_back), label: const Text('Lộ trình')),
         PageHeader(
           title: roadmap.title,
           subtitle: roadmap.subtitle,
@@ -592,7 +435,7 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
                         '${roadmap.roleMatchInfo!['roleName'] ?? roadmap.roleMatchInfo!['matchedRole'] ?? roadmap.careerOutcome}'
                         '  •  ${(roadmap.roleMatchInfo!['matchScore'] ?? 0.0).toStringAsFixed(1)}%'
                         '  •  ${roadmap.roleMatchInfo!['matchLevelLabel'] ?? roadmap.roleMatchInfo!['matchLevel'] ?? ''}',
-                        style: const TextStyle(fontSize: 12, color: AppColors.slate600),
+                        style: context.appLabelStyle,
                       ),
                     ),
                   ],
@@ -630,35 +473,31 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
                 ),
               ],
               const SizedBox(height: 16),
-              LinearProgressIndicator(
-                value: roadmap.progress / 100,
-                minHeight: 8,
-                borderRadius: BorderRadius.circular(8),
-                color: AppColors.primary,
+              RoadmapProgressBar(
+                percent: percent,
+                caption: '$percent% hoàn thành • ${progress.completed}/${progress.total} node',
               ),
-              const SizedBox(height: 4),
-              Text('${roadmap.progress}% hoàn thành • ${progress.completed}/${progress.total} node'),
             ],
           ),
         ),
         const SizedBox(height: 16),
         Container(
           decoration: BoxDecoration(
-            color: Colors.grey.shade100,
+            color: context.appBubbleAiBg,
             borderRadius: BorderRadius.circular(12),
           ),
           padding: const EdgeInsets.all(4),
           child: Row(
             children: [
-              _tabButton(0, 'Lộ trình', Icons.alt_route),
-              _tabButton(1, 'Mục tiêu', Icons.track_changes),
-              _tabButton(2, 'Bổ trợ', Icons.extension),
+              _tabButton(context, 0, 'Lộ trình', Icons.alt_route),
+              _tabButton(context, 1, 'Mục tiêu', Icons.track_changes),
+              _tabButton(context, 2, 'Bổ trợ', Icons.extension),
             ],
           ),
         ),
         const SizedBox(height: 16),
         if (_selectedTab == 0) ...[
-          const Text('Cây lộ trình', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          Text('Cây lộ trình', style: context.appSectionTitleStyle),
           const SizedBox(height: 8),
           RoadmapTreeWidget(
             roadmap: roadmap,
@@ -670,7 +509,7 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
           LearningTimelineWidget(roadmap: roadmap),
         ],
         if (_selectedTab == 1) ...[
-          _sectionHeader('Mục tiêu học tập', Icons.flag, AppColors.primary),
+          _sectionHeader(context, 'Mục tiêu học tập', Icons.flag, AppColors.primary),
           const SizedBox(height: 8),
           if (roadmap.objectives.isEmpty)
             const Padding(
@@ -688,14 +527,14 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
                     children: [
                       const Icon(Icons.check_circle_outline, color: AppColors.primary, size: 18),
                       const SizedBox(width: 8),
-                      Expanded(child: Text(obj, style: const TextStyle(fontSize: 14))),
+                      Expanded(child: Text(obj, style: context.appBodyStyle)),
                     ],
                   ),
                 )).toList(),
               ),
             ),
           const SizedBox(height: 16),
-          _sectionHeader('Kỹ năng hiện có', Icons.star_border, AppColors.emerald),
+          _sectionHeader(context, 'Kỹ năng hiện có', Icons.star_border, AppColors.emerald),
           const SizedBox(height: 8),
           if (roadmap.requiredSkills.isEmpty)
             const Padding(
@@ -711,7 +550,7 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
               ),
             ),
           const SizedBox(height: 16),
-          _sectionHeader('Kỹ năng cần bổ sung', Icons.warning_amber_rounded, AppColors.amber),
+          _sectionHeader(context, 'Kỹ năng cần bổ sung', Icons.warning_amber_rounded, AppColors.amber),
           const SizedBox(height: 8),
           if (roadmap.missingSkills.isEmpty)
             const Padding(
@@ -749,7 +588,7 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
                         Expanded(
                           child: Text(
                             path.title,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.slate900),
+                            style: context.appSectionTitleStyle.copyWith(fontWeight: FontWeight.bold),
                           ),
                         ),
                       ],
@@ -757,7 +596,7 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
                     const SizedBox(height: 8),
                     Text(
                       path.reason,
-                      style: const TextStyle(fontSize: 14, color: AppColors.slate600),
+                      style: context.appBodyStyle,
                     ),
                     const SizedBox(height: 12),
                     if (path.skills.isNotEmpty) ...[
@@ -779,7 +618,7 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
                           Expanded(
                             child: Text(
                               task,
-                              style: const TextStyle(fontSize: 13, color: AppColors.slate900),
+                              style: context.appBodyStyle.copyWith(fontSize: 13),
                             ),
                           ),
                         ],
