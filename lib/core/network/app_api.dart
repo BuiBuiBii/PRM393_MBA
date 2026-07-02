@@ -76,6 +76,7 @@ class AppApi {
     String? targetRole,
     bool includeDetails = true,
   }) async {
+    // Legacy single-repo role matching. New mobile flow should use POST /api/analysis/role-matches.
     final res = await _dio.get(
       '/analysis/repositories/$repoId/role-matches',
       queryParameters: {
@@ -87,6 +88,34 @@ class AppApi {
     final data = unwrapResponse<dynamic>(res.data);
     if (data == null) return null;
     return RoleMatchModel.fromJson(Map<String, dynamic>.from(data as Map? ?? {}));
+  }
+
+  Future<RoleMatchResponse> generateRoleMatches({
+    String? sourceMode,
+    String? repoId,
+    List<String>? repoIds,
+    int limit = 5,
+    String view = 'summary',
+    bool includeDetails = false,
+  }) async {
+    final effectiveSourceMode = sourceMode ??
+        (repoIds != null && repoIds.isNotEmpty
+            ? 'selected_repos'
+            : (repoId != null && repoId.isNotEmpty ? 'single_repo' : 'all_analyzed_repos'));
+    final res = await _dio.post('/analysis/role-matches', data: {
+      'sourceMode': effectiveSourceMode,
+      if (effectiveSourceMode == 'single_repo' && repoId != null && repoId.isNotEmpty) 'repoId': repoId,
+      if (effectiveSourceMode == 'selected_repos' && repoIds != null && repoIds.isNotEmpty) 'repoIds': repoIds,
+      'limit': limit,
+      'view': includeDetails ? 'detail' : view,
+      if (includeDetails) 'includeDetails': true,
+    });
+    return normalizeRoleMatchResponse(res.data);
+  }
+
+  Future<List<RoleCatalogItem>> getRoleCatalog() async {
+    final res = await _dio.get('/roles/catalog');
+    return normalizeRoleCatalog(res.data);
   }
 
   Future<List<AnalysisModel>> getMyAnalyses() async {
@@ -222,19 +251,31 @@ class AppApi {
 
   Future<RoadmapModel> generateRoadmap({
     required String targetRole,
+    String? roleId,
     String? repoId,
+    List<String>? repoIds,
     String level = 'beginner',
     int durationWeeks = 6,
     String language = 'vi',
+    bool useRoleMatching = true,
     bool forceRegenerate = false,
+    String? sourceMode,
   }) async {
+    final effectiveSourceMode = sourceMode ??
+        (repoIds != null && repoIds.isNotEmpty
+            ? 'selected_repos'
+            : (repoId != null && repoId.isNotEmpty ? 'single_repo' : 'all_analyzed_repos'));
     final res = await _dio.post('/roadmaps/generate', data: {
       'targetRole': targetRole,
-      if (repoId != null && repoId.isNotEmpty) 'repoId': repoId,
+      if (roleId != null && roleId.isNotEmpty) 'roleId': roleId,
       'level': level,
       'durationWeeks': durationWeeks,
       'language': language,
+      'useRoleMatching': useRoleMatching,
       'forceRegenerate': forceRegenerate,
+      'sourceMode': effectiveSourceMode,
+      if (effectiveSourceMode == 'single_repo' && repoId != null && repoId.isNotEmpty) 'repoId': repoId,
+      if (effectiveSourceMode == 'selected_repos' && repoIds != null && repoIds.isNotEmpty) 'repoIds': repoIds,
     });
     return normalizeRoadmap(res.data);
   }
@@ -247,6 +288,61 @@ class AppApi {
   Future<RoadmapModel> archiveRoadmap(String id) async {
     final res = await _dio.patch('/roadmaps/$id/archive');
     return normalizeRoadmap(res.data);
+  }
+
+  Future<RoadmapProgressResponse> getRoadmapProgress(String roadmapId) async {
+    final res = await _dio.get('/roadmaps/$roadmapId/progress');
+    return normalizeRoadmapProgress(res.data);
+  }
+
+  Future<RoadmapProgressResponse> updateRoadmapProgressItem({
+    required String roadmapId,
+    required String itemId,
+    required String status,
+    int? progressPercent,
+  }) async {
+    final beStatus = status == 'in-progress' ? 'in_progress' : status;
+    final res = await _dio.patch('/roadmaps/$roadmapId/progress/items', data: {
+      'itemId': itemId,
+      'status': beStatus,
+      if (progressPercent != null) 'progressPercent': progressPercent,
+    });
+    return normalizeRoadmapProgress(res.data);
+  }
+
+  Future<RoadmapProgressResponse> resetRoadmapProgress(String roadmapId) async {
+    final res = await _dio.post('/roadmaps/$roadmapId/progress/reset');
+    return normalizeRoadmapProgress(res.data);
+  }
+
+  Future<RoadmapLearningListResponse> getRoadmapLearning(String roadmapId) async {
+    final res = await _dio.get('/roadmaps/$roadmapId/learning');
+    return normalizeRoadmapLearning(res.data);
+  }
+
+  Future<RoadmapLearningItemResponse> getRoadmapLearningItem({
+    required String roadmapId,
+    required String itemId,
+    bool includeResources = true,
+  }) async {
+    final res = await _dio.get(
+      '/roadmaps/$roadmapId/learning/items/$itemId',
+      queryParameters: {'includeResources': includeResources},
+    );
+    return normalizeRoadmapLearningItem(res.data);
+  }
+
+  Future<RoadmapLearningItemResponse> generateRoadmapLearningItem({
+    required String roadmapId,
+    required String itemId,
+    bool forceRegenerate = false,
+    bool includeResources = true,
+  }) async {
+    final res = await _dio.post('/roadmaps/$roadmapId/learning/items/$itemId/generate', data: {
+      'forceRegenerate': forceRegenerate,
+      'includeResources': includeResources,
+    });
+    return normalizeRoadmapLearningItem(res.data);
   }
 
   Future<Map<String, dynamic>> getMyProgress() async {

@@ -35,7 +35,15 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(repositoryProvider);
-    final repo = state.selected ?? state.repositories.where((r) => r.id == widget.repoId).firstOrNull;
+    var repo = state.selected;
+    if (repo == null) {
+      for (final item in state.repositories) {
+        if (item.id == widget.repoId) {
+          repo = item;
+          break;
+        }
+      }
+    }
     final packages = state.packagesFor(widget.repoId);
     final commits = state.commitsFor(widget.repoId);
     final feedback = state.feedbackFor(widget.repoId);

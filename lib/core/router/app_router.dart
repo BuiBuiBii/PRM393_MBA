@@ -7,6 +7,8 @@ import '../../features/admin/screens/admin_ai_feedback_screen.dart';
 import '../../features/admin/screens/admin_analysis_detail_screen.dart';
 import '../../features/admin/screens/admin_analysis_screen.dart';
 import '../../features/admin/screens/admin_ai_feedback_detail_screen.dart';
+import '../../features/admin/screens/admin_chat_detail_screen.dart';
+import '../../features/admin/screens/admin_chat_sessions_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
 import '../../features/admin/screens/admin_report_detail_screen.dart';
 import '../../features/admin/screens/admin_reports_screen.dart';
@@ -36,6 +38,8 @@ import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/repositories/screens/repositories_screen.dart';
 import '../../features/repositories/screens/repository_detail_screen.dart';
 import '../../features/roadmaps/screens/roadmaps_screen.dart';
+import '../../features/roadmaps/screens/roadmap_detail_screen.dart';
+import '../../features/roadmaps/screens/roadmap_learning_item_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/shell/screens/main_shell.dart';
@@ -79,6 +83,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/github/auth/callback', builder: (_, __) => const GitHubAuthCallbackScreen()),
       GoRoute(path: '/auth/github/callback', builder: (_, __) => const GitHubAuthCallbackScreen()),
       GoRoute(path: '/admin/denied', builder: (_, __) => const AdminAccessDeniedScreen()),
+      GoRoute(path: '/admin/chat', builder: (_, __) => const AdminShell(child: AdminChatSessionsScreen())),
+      GoRoute(path: '/admin/chats', redirect: (_, __) => '/admin/chat'),
+      GoRoute(path: '/admin/support-chat', redirect: (_, __) => '/admin/chat'),
+      GoRoute(path: '/admin/messages', redirect: (_, __) => '/admin/chat'),
+      GoRoute(path: '/admin/chat-sessions', redirect: (_, __) => '/admin/chat'),
+      GoRoute(
+        path: '/admin/chat/:sessionId',
+        builder: (_, state) => AdminShell(
+          child: AdminChatDetailScreen(sessionId: state.pathParameters['sessionId']!),
+        ),
+      ),
       ShellRoute(
         builder: (_, __, child) => AdminShell(child: child),
         routes: [
@@ -140,7 +155,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/roadmaps', builder: (_, __) => const RoadmapsScreen()),
           GoRoute(
             path: '/roadmaps/:id',
-            builder: (_, state) => RoadmapDetailScreen(roadmapId: state.pathParameters['id']!),
+            builder: (_, state) => RoadmapDetailScreenV2(roadmapId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: '/roadmaps/:roadmapId/learning/:itemId',
+            builder: (_, state) => RoadmapLearningItemScreen(
+              roadmapId: state.pathParameters['roadmapId']!,
+              itemId: state.pathParameters['itemId']!,
+              generateOnOpen: state.uri.queryParameters['generate'] == '1',
+            ),
           ),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),

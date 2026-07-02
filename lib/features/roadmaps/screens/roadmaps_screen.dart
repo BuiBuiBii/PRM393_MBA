@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/models/app_models.dart';
 import '../../../shared/widgets/roadmap_widgets.dart';
 import '../../app_providers.dart';
 import '../../../shared/widgets/async_content.dart';
@@ -50,18 +51,22 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
   void _openCreateSheet() {
     final state = ref.read(roadmapProvider);
     final analyses = ref.read(repositoryProvider).analyses;
+    final roleCatalog = ref.read(roleCatalogProvider).valueOrNull ?? const <RoleCatalogItem>[];
     showCreateRoadmapSheet(
       context,
       analyses: analyses,
+      roleCatalog: roleCatalog,
       selectedRole: state.selectedTargetRole,
       isGenerating: state.isGenerating,
-      onGenerate: (role) => generateAndOpenRoadmap(context, ref, role),
+      initialSourceMode: 'all_analyzed_repos',
+      onGenerate: (request) => generateAndOpenRoadmap(context, ref, request),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(roadmapProvider);
+    ref.watch(roleCatalogProvider);
     final analyses = ref.watch(repositoryProvider).analyses;
     final insight = buildSkillInsight(analyses);
     final filtered = filterRoadmaps(
@@ -255,13 +260,14 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
                       (context, index) {
                         final roadmap = filtered[index];
                         final taskCount = taskCountFor(roadmap);
+                        final routeId = roadmap.roadmapId?.isNotEmpty == true ? roadmap.roadmapId! : roadmap.id;
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: RoadmapCompactCard(
                             roadmap: roadmap,
                             taskCount: taskCount,
-                            onTap: () => context.push('/roadmaps/${roadmap.slug.isNotEmpty ? roadmap.slug : roadmap.id}'),
-                            onContinue: () => context.push('/roadmaps/${roadmap.slug.isNotEmpty ? roadmap.slug : roadmap.id}'),
+                            onTap: () => context.push('/roadmaps/$routeId'),
+                            onContinue: () => context.push('/roadmaps/$routeId'),
                           ),
                         );
                       },

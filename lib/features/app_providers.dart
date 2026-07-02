@@ -12,6 +12,9 @@ import '../core/network/normalizers.dart';
 import 'roadmaps/data/roadmap_mock_data.dart';
 import 'roadmaps/utils/roadmap_progress_utils.dart';
 
+export 'admin/providers/admin_provider.dart'
+    show adminChatSettingsProvider, adminChatSessionsProvider, adminChatSessionDetailProvider, adminChatDetailProvider;
+
 class RepositoryState {
   const RepositoryState({
     this.repositories = const [],
@@ -209,11 +212,21 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
         state = state.copyWith(clearLoadingRoleMatchFor: true);
         return null;
       }
-      final result = await safeRequest(() => _api.getRoleMatches(repoId, limit: 3, includeDetails: true));
-      if (result == null) {
-        state = state.copyWith(clearLoadingRoleMatchFor: true);
-        return null;
-      }
+      final response = await safeRequest(
+        () => _api.generateRoleMatches(
+          sourceMode: 'single_repo',
+          repoId: repoId,
+          limit: 3,
+          includeDetails: true,
+        ),
+      );
+      final result = RoleMatchModel(
+        topRole: response.matches.isNotEmpty ? response.matches.first.roleName ?? response.matches.first.role : '',
+        matches: response.matches,
+        recommendedNextSkills: response.matches.isNotEmpty ? response.matches.first.recommendedNextSkills : const [],
+        topMatchedSkills: response.matches.isNotEmpty ? response.matches.first.matchedSkills : const [],
+        topMissingSkills: response.matches.isNotEmpty ? response.matches.first.missingSkills : const [],
+      );
       state = state.copyWith(
         clearLoadingRoleMatchFor: true,
         roleMatchByRepoId: {...state.roleMatchByRepoId, repoId: result},
@@ -366,18 +379,21 @@ class ChatState {
     this.sessions = const [],
     this.current,
     this.isLoading = false,
+    this.isSending = false,
     this.error,
   });
 
   final List<ChatSessionModel> sessions;
   final ChatSessionModel? current;
   final bool isLoading;
+  final bool isSending;
   final String? error;
 
   ChatState copyWith({
     List<ChatSessionModel>? sessions,
     ChatSessionModel? current,
     bool? isLoading,
+    bool? isSending,
     String? error,
     bool clearError = false,
   }) {
@@ -385,6 +401,7 @@ class ChatState {
       sessions: sessions ?? this.sessions,
       current: current ?? this.current,
       isLoading: isLoading ?? this.isLoading,
+      isSending: isSending ?? this.isSending,
       error: clearError ? null : (error ?? this.error),
     );
   }
@@ -407,7 +424,7 @@ class ChatNotifier extends Notifier<ChatState> {
           : await safeRequest(_api.getChatSessions);
 
       var current = state.current;
-      final synced = current != null ? sessions.where((s) => s.id == current!.id).firstOrNull ?? current : null;
+      final synced = current != null ? _findChatSession(sessions, current!.id) ?? current : null;
       current = synced ?? (sessions.isNotEmpty ? sessions.first : null);
 
       if (current != null && current.id.isNotEmpty && !AppConfig.demoMode) {
@@ -448,7 +465,7 @@ class ChatNotifier extends Notifier<ChatState> {
   }
 
   Future<void> selectSession(String id) async {
-    final cached = state.sessions.where((s) => s.id == id).firstOrNull;
+    final cached = _findChatSession(state.sessions, id);
     if (cached != null) state = state.copyWith(current: cached, clearError: true);
     try {
       final session = AppConfig.demoMode
@@ -457,6 +474,25 @@ class ChatNotifier extends Notifier<ChatState> {
       state = state.copyWith(
         current: session,
         sessions: state.sessions.map((s) => s.id == id ? session : s).toList(),
+      );
+    } catch (e) {
+      state = state.copyWith(error: getApiErrorMessage(e));
+    }
+  }
+
+  Future<void> refreshCurrentSession() async {
+    final session = state.current;
+    if (session == null || session.id.isEmpty) return;
+    try {
+      final next = AppConfig.demoMode
+          ? await DemoService.instance.getChatSession(session.id)
+          : await safeRequest(() => _api.getChatSession(session.id));
+      state = state.copyWith(
+        current: next,
+        sessions: state.sessions.any((s) => s.id == next.id)
+            ? state.sessions.map((s) => s.id == next.id ? next : s).toList()
+            : [next, ...state.sessions],
+        clearError: true,
       );
     } catch (e) {
       state = state.copyWith(error: getApiErrorMessage(e));
@@ -479,9 +515,10 @@ class ChatNotifier extends Notifier<ChatState> {
       role: 'user',
       content: content,
       timestamp: DateTime.now().toIso8601String(),
+      senderType: 'USER',
     );
     final updated = session.copyWith(messages: [...session.messages, optimistic]);
-    state = state.copyWith(current: updated, isLoading: true, clearError: true);
+    state = state.copyWith(current: updated, isSending: true, clearError: true);
 
     try {
       ChatSessionModel nextSession;
@@ -492,14 +529,46 @@ class ChatNotifier extends Notifier<ChatState> {
         final record = toRecord(unwrapResponse<dynamic>(payload));
         final hasMessages = record['messages'] is List;
         final responseSession = hasMessages ? normalizeChatSessionDetail(payload) : null;
-        final assistant = responseSession == null ? pickAssistantMessage(payload) : null;
+        final userMessage = record['userMessage'] is Map ? normalizeChatMessage(record['userMessage']) : null;
+        final aiMessage = record['aiMessage'] is Map
+            ? normalizeChatMessage(record['aiMessage'])
+            : (record['assistantMessage'] is Map ? normalizeChatMessage(record['assistantMessage']) : null);
+        final adminMessage = record['adminMessage'] is Map ? normalizeChatMessage(record['adminMessage']) : null;
+        final assistant = responseSession == null && aiMessage == null && adminMessage == null
+            ? pickAssistantMessage(payload)
+            : null;
 
         if (responseSession != null) {
           nextSession = mergeChatSession(updated, responseSession);
+        } else if (userMessage != null || aiMessage != null || adminMessage != null) {
+          final merged = [...updated.messages];
+          if (userMessage != null) {
+            final optimisticIndex = merged.indexWhere((m) => m.id == optimistic.id);
+            if (optimisticIndex >= 0) {
+              merged[optimisticIndex] = userMessage;
+            } else if (!merged.any((m) => m.id == userMessage.id)) {
+              merged.add(userMessage);
+            }
+          }
+          for (final message in [aiMessage, adminMessage]) {
+            if (message != null && !merged.any((m) => m.id == message.id)) merged.add(message);
+          }
+          nextSession = updated.copyWith(
+            messages: merged,
+            mode: record['mode']?.toString(),
+            effectiveMode: record['effectiveMode']?.toString(),
+            modeSource: record['modeSource']?.toString(),
+            status: record['status']?.toString(),
+          );
         } else if (assistant != null) {
           nextSession = updated.copyWith(messages: [...updated.messages, assistant]);
         } else {
-          nextSession = updated;
+          nextSession = updated.copyWith(
+            mode: record['mode']?.toString(),
+            effectiveMode: record['effectiveMode']?.toString(),
+            modeSource: record['modeSource']?.toString(),
+            status: record['status']?.toString(),
+          );
         }
 
         try {
@@ -515,16 +584,23 @@ class ChatNotifier extends Notifier<ChatState> {
         sessions: state.sessions.any((s) => s.id == session!.id)
             ? state.sessions.map((s) => s.id == session!.id ? nextSession : s).toList()
             : [nextSession, ...state.sessions],
-        isLoading: false,
+        isSending: false,
       );
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: getApiErrorMessage(e));
+      state = state.copyWith(isSending: false, error: getApiErrorMessage(e));
       rethrow;
     }
   }
 }
 
 final chatProvider = NotifierProvider<ChatNotifier, ChatState>(ChatNotifier.new);
+
+ChatSessionModel? _findChatSession(List<ChatSessionModel> sessions, String id) {
+  for (final session in sessions) {
+    if (session.id == id) return session;
+  }
+  return null;
+}
 
 class RoadmapFilters {
   const RoadmapFilters({
@@ -706,11 +782,15 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
 
   Future<RoadmapModel?> generateAI({
     String? targetRole,
+    String? roleId,
     String? repoId,
+    List<String>? repoIds,
     String level = 'beginner',
     int durationWeeks = 6,
     String language = 'vi',
+    bool useRoleMatching = true,
     bool forceRegenerate = false,
+    String? sourceMode,
   }) async {
     final role = targetRole ?? state.selectedTargetRole;
     state = state.copyWith(isGenerating: true, clearError: true, selectedTargetRole: role);
@@ -723,11 +803,15 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
       final roadmap = await safeRequest(
         () => _api.generateRoadmap(
           targetRole: role,
+          roleId: roleId,
           repoId: repoId,
+          repoIds: repoIds,
           level: level,
           durationWeeks: durationWeeks,
           language: language,
+          useRoleMatching: useRoleMatching,
           forceRegenerate: forceRegenerate,
+          sourceMode: sourceMode,
         ),
       );
       _applyGeneratedRoadmap(roadmap);
@@ -901,6 +985,42 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
 }
 
 final roadmapProvider = NotifierProvider<RoadmapNotifier, RoadmapState>(RoadmapNotifier.new);
+
+final roleCatalogProvider = FutureProvider<List<RoleCatalogItem>>((ref) async {
+  if (AppConfig.demoMode) return const [];
+  final api = ref.read(appApiProvider);
+  return safeRequest(api.getRoleCatalog);
+});
+
+final roleMatchProvider = FutureProvider.family<RoleMatchResponse, String>((ref, repoId) async {
+  if (AppConfig.demoMode) return const RoleMatchResponse();
+  final api = ref.read(appApiProvider);
+  return safeRequest(
+    () => api.generateRoleMatches(
+      sourceMode: 'single_repo',
+      repoId: repoId,
+      limit: 5,
+      includeDetails: true,
+    ),
+  );
+});
+
+final roadmapProgressProvider = FutureProvider.family<RoadmapProgressResponse, String>((ref, roadmapId) async {
+  if (AppConfig.demoMode) {
+    return RoadmapProgressResponse(
+      roadmapId: roadmapId,
+      progressSummary: const RoadmapProgressSummary(),
+    );
+  }
+  final api = ref.read(appApiProvider);
+  return safeRequest(() => api.getRoadmapProgress(roadmapId));
+});
+
+final roadmapLearningProvider = FutureProvider.family<RoadmapLearningListResponse, String>((ref, roadmapId) async {
+  if (AppConfig.demoMode) return RoadmapLearningListResponse(roadmapId: roadmapId);
+  final api = ref.read(appApiProvider);
+  return safeRequest(() => api.getRoadmapLearning(roadmapId));
+});
 
 class DashboardState {
   const DashboardState({this.payload, this.isLoading = false, this.error});

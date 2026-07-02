@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_utils.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../shared/models/app_models.dart';
 import '../data/admin_api.dart';
 import '../models/admin_models.dart';
 
@@ -299,6 +300,206 @@ class AdminRoadmapsNotifier extends Notifier<AdminListState<AdminRoadmapRecord>>
 
 final adminRoadmapsProvider =
     NotifierProvider<AdminRoadmapsNotifier, AdminListState<AdminRoadmapRecord>>(AdminRoadmapsNotifier.new);
+
+class AdminChatState {
+  const AdminChatState({
+    this.settings,
+    this.sessions = const [],
+    this.detail,
+    this.isLoading = false,
+    this.isSending = false,
+    this.error,
+    this.statusFilter,
+    this.modeFilter,
+    this.modeSourceFilter,
+    this.page = 1,
+    this.limit = 20,
+    this.total = 0,
+  });
+
+  final ChatSettingsModel? settings;
+  final List<AdminChatSessionModel> sessions;
+  final AdminChatSessionDetailResponse? detail;
+  final bool isLoading;
+  final bool isSending;
+  final String? error;
+  final String? statusFilter;
+  final String? modeFilter;
+  final String? modeSourceFilter;
+  final int page;
+  final int limit;
+  final int total;
+
+  AdminChatState copyWith({
+    ChatSettingsModel? settings,
+    List<AdminChatSessionModel>? sessions,
+    AdminChatSessionDetailResponse? detail,
+    bool? isLoading,
+    bool? isSending,
+    String? error,
+    bool clearError = false,
+    String? statusFilter,
+    bool clearStatusFilter = false,
+    String? modeFilter,
+    bool clearModeFilter = false,
+    String? modeSourceFilter,
+    bool clearModeSourceFilter = false,
+    int? page,
+    int? limit,
+    int? total,
+  }) {
+    return AdminChatState(
+      settings: settings ?? this.settings,
+      sessions: sessions ?? this.sessions,
+      detail: detail ?? this.detail,
+      isLoading: isLoading ?? this.isLoading,
+      isSending: isSending ?? this.isSending,
+      error: clearError ? null : (error ?? this.error),
+      statusFilter: clearStatusFilter ? null : (statusFilter ?? this.statusFilter),
+      modeFilter: clearModeFilter ? null : (modeFilter ?? this.modeFilter),
+      modeSourceFilter: clearModeSourceFilter ? null : (modeSourceFilter ?? this.modeSourceFilter),
+      page: page ?? this.page,
+      limit: limit ?? this.limit,
+      total: total ?? this.total,
+    );
+  }
+}
+
+class AdminChatNotifier extends Notifier<AdminChatState> {
+  late AdminApi _api;
+
+  @override
+  AdminChatState build() {
+    _api = ref.read(adminApiProvider);
+    return const AdminChatState();
+  }
+
+  Future<void> loadSettings() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final settings = await safeRequest(_api.getAdminChatSettings);
+      state = state.copyWith(settings: settings, isLoading: false);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: getApiErrorMessage(e));
+    }
+  }
+
+  Future<void> updateGlobalMode(String mode) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final settings = await safeRequest(() => _api.updateAdminChatSettings(mode));
+      state = state.copyWith(settings: settings, isLoading: false);
+      await loadSessions();
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: getApiErrorMessage(e));
+      rethrow;
+    }
+  }
+
+  Future<void> loadSessions({String? status, String? mode, String? modeSource, int page = 1}) async {
+    state = state.copyWith(
+      isLoading: true,
+      clearError: true,
+      statusFilter: status,
+      clearStatusFilter: status == null,
+      modeFilter: mode,
+      clearModeFilter: mode == null,
+      modeSourceFilter: modeSource,
+      clearModeSourceFilter: modeSource == null,
+      page: page,
+    );
+    try {
+      final response = await safeRequest(
+        () => _api.getAdminChatSessions(
+          status: status,
+          mode: mode,
+          modeSource: modeSource,
+          page: page,
+          limit: state.limit,
+        ),
+      );
+      state = state.copyWith(
+        sessions: response.sessions,
+        page: response.page,
+        limit: response.limit,
+        total: response.total,
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: getApiErrorMessage(e));
+    }
+  }
+
+  Future<void> loadSession(String sessionId) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final detail = await safeRequest(() => _api.getAdminChatSession(sessionId));
+      state = state.copyWith(detail: detail, isLoading: false);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: getApiErrorMessage(e));
+    }
+  }
+
+  Future<void> sendAdminMessage(String sessionId, String content) async {
+    state = state.copyWith(isSending: true, clearError: true);
+    try {
+      await safeRequest(() => _api.sendAdminChatMessage(sessionId: sessionId, content: content));
+      state = state.copyWith(isSending: false);
+      await loadSession(sessionId);
+    } catch (e) {
+      state = state.copyWith(isSending: false, error: getApiErrorMessage(e));
+      rethrow;
+    }
+  }
+
+  Future<void> updateSessionMode(String sessionId, String mode, {String? reason}) async {
+    state = state.copyWith(isSending: true, clearError: true);
+    try {
+      await safeRequest(() => _api.updateAdminChatSessionMode(sessionId: sessionId, mode: mode, reason: reason));
+      state = state.copyWith(isSending: false);
+      await loadSession(sessionId);
+    } catch (e) {
+      state = state.copyWith(isSending: false, error: getApiErrorMessage(e));
+      rethrow;
+    }
+  }
+
+  Future<void> useGlobalMode(String sessionId) async {
+    state = state.copyWith(isSending: true, clearError: true);
+    try {
+      await safeRequest(() => _api.useGlobalChatMode(sessionId));
+      state = state.copyWith(isSending: false);
+      await loadSession(sessionId);
+    } catch (e) {
+      state = state.copyWith(isSending: false, error: getApiErrorMessage(e));
+      rethrow;
+    }
+  }
+
+  Future<void> refresh() async {
+    await loadSettings();
+    await loadSessions(
+      status: state.statusFilter,
+      mode: state.modeFilter,
+      modeSource: state.modeSourceFilter,
+      page: state.page,
+    );
+    final id = state.detail?.session.id;
+    if (id != null && id.isNotEmpty) await loadSession(id);
+  }
+}
+
+final adminChatSettingsProvider =
+    NotifierProvider<AdminChatNotifier, AdminChatState>(AdminChatNotifier.new);
+final adminChatSessionsProvider = adminChatSettingsProvider;
+final adminChatSessionDetailProvider =
+    Provider.family<AdminChatSessionDetailResponse?, String>((ref, sessionId) {
+  final state = ref.watch(adminChatSettingsProvider);
+  final detail = state.detail;
+  if (detail?.session.id == sessionId) return detail;
+  return null;
+});
+final adminChatDetailProvider = adminChatSessionDetailProvider;
 
 class AdminRoadmapDetailState {
   const AdminRoadmapDetailState({this.roadmap, this.isLoading = false, this.error, this.isSaving = false});

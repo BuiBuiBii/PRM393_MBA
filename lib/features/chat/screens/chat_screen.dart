@@ -103,7 +103,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
     ref.listen(chatProvider.select((s) => s.current?.messages.length), (_, __) => _scrollToBottom());
-    if (chat.isLoading) _scrollToBottom();
+    if (chat.isSending) _scrollToBottom();
 
     return Column(
       children: [
@@ -118,7 +118,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           onOpenSessions: _openSessions,
           onCreateSession: _createSession,
           onSelectSession: (id) => ref.read(chatProvider.notifier).selectSession(id),
+          onRefreshSession: () => ref.read(chatProvider.notifier).refreshCurrentSession(),
         ),
+        if (session != null) _ModeBanner(session: session),
         Expanded(
           child: session == null
               ? _NoSessionEmpty(onCreateSession: _createSession)
@@ -138,9 +140,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       child: ListView.builder(
                         controller: _scrollController,
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                        itemCount: session.messages.length + (chat.isLoading ? 1 : 0),
+                        itemCount: session.messages.length + (chat.isSending ? 1 : 0),
                         itemBuilder: (context, index) {
-                          if (chat.isLoading && index == session.messages.length) {
+                          if (chat.isSending && index == session.messages.length) {
                             return const _TypingIndicator();
                           }
                           return _MessageBubble(message: session.messages[index]);
@@ -159,7 +161,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               Expanded(
                 child: TextField(
                   controller: _controller,
-                  enabled: !chat.isLoading,
+                  enabled: !chat.isSending,
                   style: TextStyle(color: context.appTextPrimary),
                   decoration: InputDecoration(
                     hintText: 'Nhập câu hỏi...',
@@ -181,7 +183,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
               const SizedBox(width: 8),
               FilledButton(
-                onPressed: chat.isLoading ? null : _send,
+                onPressed: chat.isSending ? null : _send,
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(48, 48),
                   padding: EdgeInsets.zero,
@@ -204,6 +206,7 @@ class _ChatHeader extends StatelessWidget {
     required this.onOpenSessions,
     required this.onCreateSession,
     required this.onSelectSession,
+    required this.onRefreshSession,
   });
 
   final ChatSessionModel? session;
@@ -211,6 +214,7 @@ class _ChatHeader extends StatelessWidget {
   final VoidCallback onOpenSessions;
   final VoidCallback onCreateSession;
   final ValueChanged<String> onSelectSession;
+  final VoidCallback onRefreshSession;
 
   @override
   Widget build(BuildContext context) {
@@ -247,6 +251,11 @@ class _ChatHeader extends StatelessWidget {
                 ),
               ),
               IconButton(
+                onPressed: session == null ? null : onRefreshSession,
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Tai lai tin nhan',
+              ),
+              IconButton(
                 onPressed: onCreateSession,
                 icon: const Icon(Icons.add_comment_outlined),
                 tooltip: 'Tạo cuộc trò chuyện',
@@ -256,6 +265,27 @@ class _ChatHeader extends StatelessWidget {
           if (session?.repositoryContext != null) ...[
             const SizedBox(height: 6),
             AppBadge(label: 'Context: ${session!.repositoryContext}', variant: AppBadgeVariant.info),
+          ],
+          if (session != null) ...[
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                if ((session!.effectiveMode ?? session!.mode ?? '').isNotEmpty)
+                  AppBadge(label: session!.effectiveMode ?? session!.mode!, variant: AppBadgeVariant.info),
+                if ((session!.modeSource ?? '').isNotEmpty) AppBadge(label: session!.modeSource!),
+                if ((session!.status ?? '').isNotEmpty)
+                  AppBadge(
+                    label: session!.status!,
+                    variant: session!.status == 'waiting_admin'
+                        ? AppBadgeVariant.warning
+                        : session!.status == 'answered'
+                            ? AppBadgeVariant.success
+                            : AppBadgeVariant.neutral,
+                  ),
+              ],
+            ),
           ],
           if (sessions.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -302,6 +332,32 @@ class _ChatHeader extends StatelessWidget {
   }
 }
 
+class _ModeBanner extends StatelessWidget {
+  const _ModeBanner({required this.session});
+
+  final ChatSessionModel session;
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveMode = session.effectiveMode ?? session.mode;
+    final status = session.status;
+    final isManual = effectiveMode == 'MANUAL' || status == 'waiting_admin';
+    final isAnswered = status == 'answered';
+    final message = isAnswered
+        ? 'Admin da phan hoi'
+        : isManual
+            ? 'Tin nhan da duoc chuyen cho admin. Vui long cho phan hoi.'
+            : 'AI Mentor dang tra loi tu dong';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: BannerMessage(
+        message: message,
+        isWarning: isManual && !isAnswered,
+      ),
+    );
+  }
+}
+
 class _MessageBubble extends StatelessWidget {
   const _MessageBubble({required this.message});
 
@@ -309,7 +365,10 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isUser = message.role == 'user';
+    final senderType = message.senderType ?? (message.role == 'user' ? 'USER' : 'AI');
+    final isUser = senderType == 'USER';
+    final isAdmin = senderType == 'ADMIN';
+    final label = isUser ? 'Ban' : (isAdmin ? 'Admin/Support' : 'AI Mentor');
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -328,6 +387,15 @@ class _MessageBubble extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: isUser ? Colors.white70 : (isAdmin ? AppColors.amber : AppColors.primary),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
                   Text(
                     message.content,
                     style: TextStyle(
@@ -594,7 +662,14 @@ class _SessionsPanel extends ConsumerWidget {
                       selected: chat.current?.id == s.id,
                       selectedTileColor: AppColors.primary.withValues(alpha: context.isDarkMode ? 0.22 : 0.1),
                       title: Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      subtitle: Text(formatRelativeTime(s.createdAt)),
+                      subtitle: Text(
+                        [
+                          if ((s.status ?? '').isNotEmpty) s.status,
+                          if ((s.effectiveMode ?? s.mode ?? '').isNotEmpty) s.effectiveMode ?? s.mode,
+                          if ((s.modeSource ?? '').isNotEmpty) s.modeSource,
+                          formatRelativeTime(s.createdAt),
+                        ].whereType<String>().join(' - '),
+                      ),
                       onTap: () {
                         ref.read(chatProvider.notifier).selectSession(s.id);
                         Navigator.pop(context);

@@ -20,6 +20,7 @@ List<AdminBreadcrumbItem> adminBreadcrumbItems(String location) {
     '/admin/analysis': 'Phân tích',
     '/admin/ai-feedback': 'AI Feedback',
     '/admin/roadmaps': 'Roadmaps',
+    '/admin/chat': 'Tin nhắn hỗ trợ',
   };
 
   if (location == '/admin') {
@@ -43,6 +44,9 @@ List<AdminBreadcrumbItem> adminBreadcrumbItems(String location) {
   } else if (location.startsWith('/admin/ai-feedback/')) {
     parent = '/admin/ai-feedback';
     detailLabel = 'Chi tiết feedback';
+  } else if (location.startsWith('/admin/chat/')) {
+    parent = '/admin/chat';
+    detailLabel = 'Chi tiết tin nhắn';
   } else if (location.startsWith('/admin/roadmaps/')) {
     parent = '/admin/roadmaps';
     detailLabel = 'Chi tiết roadmap';

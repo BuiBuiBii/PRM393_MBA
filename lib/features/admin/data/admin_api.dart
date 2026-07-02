@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../../core/network/api_utils.dart';
+import '../../../shared/models/app_models.dart';
 import '../models/admin_models.dart';
 
 class AdminApi {
@@ -186,5 +187,68 @@ class AdminApi {
     final res = await _dio.get('/admin/github/repositories/$repositoryId');
     final map = _unwrapMap(res.data);
     return AdminRepoRecord.fromJson(toRecord(map['repository'] ?? map['repo'] ?? map['item'] ?? map['detail'] ?? map));
+  }
+
+  Future<ChatSettingsModel> getAdminChatSettings() async {
+    final res = await _dio.get('/admin/chat/settings');
+    final map = _unwrapMap(res.data);
+    return ChatSettingsModel.fromJson(toRecord(map['settings'] ?? map));
+  }
+
+  Future<ChatSettingsModel> updateAdminChatSettings(String mode) async {
+    final res = await _dio.patch('/admin/chat/settings', data: {'mode': mode});
+    final map = _unwrapMap(res.data);
+    return ChatSettingsModel.fromJson(toRecord(map['settings'] ?? map));
+  }
+
+  Future<AdminChatSessionListResponse> getAdminChatSessions({
+    String? status,
+    String? mode,
+    String? modeSource,
+    String? userId,
+    String? assignedAdminId,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final res = await _dio.get('/admin/chat/sessions', queryParameters: {
+      if (status != null && status.isNotEmpty) 'status': status,
+      if (mode != null && mode.isNotEmpty) 'mode': mode,
+      if (modeSource != null && modeSource.isNotEmpty) 'modeSource': modeSource,
+      if (userId != null && userId.isNotEmpty) 'userId': userId,
+      if (assignedAdminId != null && assignedAdminId.isNotEmpty) 'assignedAdminId': assignedAdminId,
+      'page': page,
+      'limit': limit,
+    });
+    return AdminChatSessionListResponse.fromJson(_unwrapMap(res.data));
+  }
+
+  Future<AdminChatSessionDetailResponse> getAdminChatSession(String sessionId) async {
+    final res = await _dio.get('/admin/chat/sessions/$sessionId');
+    return AdminChatSessionDetailResponse.fromJson(_unwrapMap(res.data));
+  }
+
+  Future<AdminChatSessionDetailResponse> sendAdminChatMessage({
+    required String sessionId,
+    required String content,
+  }) async {
+    final res = await _dio.post('/admin/chat/sessions/$sessionId/messages', data: {'content': content});
+    return AdminChatSessionDetailResponse.fromJson(_unwrapMap(res.data));
+  }
+
+  Future<AdminChatSessionDetailResponse> updateAdminChatSessionMode({
+    required String sessionId,
+    required String mode,
+    String? reason,
+  }) async {
+    final res = await _dio.patch('/admin/chat/sessions/$sessionId/mode', data: {
+      'mode': mode,
+      if (reason != null && reason.isNotEmpty) 'reason': reason,
+    });
+    return AdminChatSessionDetailResponse.fromJson(_unwrapMap(res.data));
+  }
+
+  Future<AdminChatSessionDetailResponse> useGlobalChatMode(String sessionId) async {
+    final res = await _dio.patch('/admin/chat/sessions/$sessionId/use-global-mode');
+    return AdminChatSessionDetailResponse.fromJson(_unwrapMap(res.data));
   }
 }

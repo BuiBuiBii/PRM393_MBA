@@ -29,6 +29,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     _AdminNavItem(path: '/admin/analysis', label: 'Phân tích', icon: Icons.analytics_outlined),
     _AdminNavItem(path: '/admin/ai-feedback', label: 'AI Feedback', icon: Icons.auto_awesome_outlined),
     _AdminNavItem(path: '/admin/roadmaps', label: 'Roadmaps', icon: Icons.route_outlined),
+    _AdminNavItem(path: '/admin/chat', label: 'Tin nhắn hỗ trợ', icon: Icons.chat_bubble_outline),
   ];
 
   String get _location => GoRouterState.of(context).matchedLocation;

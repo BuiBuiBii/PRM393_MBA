@@ -1,3 +1,23 @@
+Map<String, dynamic> _mapOf(dynamic value) {
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) return value.map((key, value) => MapEntry(key.toString(), value));
+  return {};
+}
+
+List<Map<String, dynamic>> _mapListOf(dynamic value) {
+  if (value is! List) return const [];
+  return value.whereType<Map>().map((e) => _mapOf(e)).toList();
+}
+
+List<String> _stringListOf(dynamic value) {
+  if (value is! List) return const [];
+  return value.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+}
+
+int _intOf(dynamic value, [int fallback = 0]) => int.tryParse(value?.toString() ?? '') ?? fallback;
+
+double _doubleOf(dynamic value, [double fallback = 0]) => double.tryParse(value?.toString() ?? '') ?? fallback;
+
 class RepositoryModel {
   const RepositoryModel({
     required this.id,
@@ -99,6 +119,14 @@ class AnalysisModel {
     required this.weaknesses,
     required this.recommendations,
     this.careerDirection,
+    this.analysisId,
+    this.snapshotId,
+    this.repository,
+    this.analysisScope,
+    this.summary,
+    this.topSkillItems = const [],
+    this.missingSkillItems = const [],
+    this.analyzedAt,
   });
 
   final String id;
@@ -112,17 +140,35 @@ class AnalysisModel {
   final List<String> weaknesses;
   final List<String> recommendations;
   final String? careerDirection;
+  final String? analysisId;
+  final String? snapshotId;
+  final AnalysisRepositoryInfo? repository;
+  final AnalysisScopeInfo? analysisScope;
+  final AnalysisSummaryInfo? summary;
+  final List<AnalysisSkillModel> topSkillItems;
+  final List<AnalysisSkillModel> missingSkillItems;
+  final String? analyzedAt;
 
   factory AnalysisModel.fromJson(Map<String, dynamic> json) {
-    final scoresJson = json['scores'] is Map
-        ? Map<String, dynamic>.from(json['scores'] as Map)
-        : json;
+    final repository = AnalysisRepositoryInfo.fromJson(_mapOf(json['repository']));
+    final scope = AnalysisScopeInfo.fromJson(_mapOf(json['analysisScope']));
+    final summary = AnalysisSummaryInfo.fromJson(_mapOf(json['summary']));
+    final scoresJson = json['scores'] is Map ? _mapOf(json['scores']) : {
+      ...json,
+      'overallScore': summary.overallScore ?? summary.userReadinessScore,
+    };
+    final topSkills = _mapListOf(json['topSkills'] ?? json['topSkillItems'])
+        .map(AnalysisSkillModel.fromJson)
+        .toList();
+    final missingSkills = _mapListOf(json['missingSkills'] ?? json['missingSkillItems'])
+        .map(AnalysisSkillModel.fromJson)
+        .toList();
     return AnalysisModel(
-      id: (json['id'] ?? json['_id'] ?? '').toString(),
-      repositoryId: (json['repositoryId'] ?? json['repoId'] ?? '').toString(),
-      repositoryName: (json['repositoryName'] ?? json['repoName'] ?? json['fullName'] ?? 'Repository').toString(),
+      id: (json['analysisId'] ?? json['id'] ?? json['_id'] ?? '').toString(),
+      repositoryId: (repository.repositoryId ?? json['repositoryId'] ?? json['repoId'] ?? '').toString(),
+      repositoryName: (repository.repoName ?? repository.fullName ?? json['repositoryName'] ?? json['repoName'] ?? json['fullName'] ?? 'Repository').toString(),
       createdAt: (json['createdAt'] ?? DateTime.now().toIso8601String()).toString(),
-      projectType: (json['projectType'] ?? 'Unknown').toString(),
+      projectType: (summary.projectType ?? json['projectType'] ?? 'Unknown').toString(),
       techStack: (json['techStack'] as List? ?? json['languages'] as List? ?? [])
           .map((e) => e.toString())
           .toList(),
@@ -133,11 +179,97 @@ class AnalysisModel {
           .map((e) => e is Map ? (e['title'] ?? e['description'] ?? '').toString() : e.toString())
           .where((e) => e.isNotEmpty)
           .toList(),
-      careerDirection: json['careerDirection'] is Map
+      careerDirection: summary.careerDirection ?? (json['careerDirection'] is Map
           ? (json['careerDirection'] as Map)['primary']?.toString()
-          : json['careerDirection']?.toString(),
+          : json['careerDirection']?.toString()),
+      analysisId: json['analysisId']?.toString(),
+      snapshotId: json['snapshotId']?.toString(),
+      repository: repository.hasData ? repository : null,
+      analysisScope: scope.hasData ? scope : null,
+      summary: summary.hasData ? summary : null,
+      topSkillItems: topSkills,
+      missingSkillItems: missingSkills,
+      analyzedAt: json['analyzedAt']?.toString(),
     );
   }
+}
+
+class AnalysisRepositoryInfo {
+  const AnalysisRepositoryInfo({this.repositoryId, this.githubRepoId, this.repoName, this.fullName});
+  final String? repositoryId;
+  final String? githubRepoId;
+  final String? repoName;
+  final String? fullName;
+  bool get hasData => [repositoryId, githubRepoId, repoName, fullName].any((e) => e != null && e!.isNotEmpty);
+  factory AnalysisRepositoryInfo.fromJson(Map<String, dynamic> json) => AnalysisRepositoryInfo(
+        repositoryId: json['repositoryId']?.toString(),
+        githubRepoId: json['githubRepoId']?.toString(),
+        repoName: json['repoName']?.toString(),
+        fullName: json['fullName']?.toString(),
+      );
+}
+
+class AnalysisScopeInfo {
+  const AnalysisScopeInfo({this.type, this.githubUsername, this.totalRepoCommits, this.userCommits, this.activeDays, this.firstCommitDate, this.lastCommitDate});
+  final String? type;
+  final String? githubUsername;
+  final int? totalRepoCommits;
+  final int? userCommits;
+  final int? activeDays;
+  final String? firstCommitDate;
+  final String? lastCommitDate;
+  bool get hasData => type != null || githubUsername != null || totalRepoCommits != null || userCommits != null || activeDays != null;
+  factory AnalysisScopeInfo.fromJson(Map<String, dynamic> json) => AnalysisScopeInfo(
+        type: json['type']?.toString(),
+        githubUsername: json['githubUsername']?.toString(),
+        totalRepoCommits: json.containsKey('totalRepoCommits') ? _intOf(json['totalRepoCommits']) : null,
+        userCommits: json.containsKey('userCommits') ? _intOf(json['userCommits']) : null,
+        activeDays: json.containsKey('activeDays') ? _intOf(json['activeDays']) : null,
+        firstCommitDate: json['firstCommitDate']?.toString(),
+        lastCommitDate: json['lastCommitDate']?.toString(),
+      );
+}
+
+class AnalysisSummaryInfo {
+  const AnalysisSummaryInfo({this.careerDirection, this.userLevel, this.userReadinessScore, this.overallScore, this.projectType, this.confidence});
+  final String? careerDirection;
+  final String? userLevel;
+  final double? userReadinessScore;
+  final double? overallScore;
+  final String? projectType;
+  final double? confidence;
+  bool get hasData => [careerDirection, userLevel, projectType].any((e) => e != null && e!.isNotEmpty) || userReadinessScore != null || overallScore != null || confidence != null;
+  factory AnalysisSummaryInfo.fromJson(Map<String, dynamic> json) => AnalysisSummaryInfo(
+        careerDirection: json['careerDirection']?.toString(),
+        userLevel: json['userLevel']?.toString(),
+        userReadinessScore: json.containsKey('userReadinessScore') ? _doubleOf(json['userReadinessScore']) : null,
+        overallScore: json.containsKey('overallScore') ? _doubleOf(json['overallScore']) : null,
+        projectType: json['projectType']?.toString(),
+        confidence: json.containsKey('confidence') ? _doubleOf(json['confidence']) : null,
+      );
+}
+
+class AnalysisSkillModel {
+  const AnalysisSkillModel({this.skill, this.canonicalSkillName, this.category, this.score, this.level, this.priority});
+  final String? skill;
+  final String? canonicalSkillName;
+  final String? category;
+  final double? score;
+  final String? level;
+  final String? priority;
+  String get displayName {
+    if ((canonicalSkillName ?? '').isNotEmpty) return canonicalSkillName!;
+    if ((skill ?? '').isNotEmpty) return skill!;
+    return 'Khong ro ky nang';
+  }
+  factory AnalysisSkillModel.fromJson(Map<String, dynamic> json) => AnalysisSkillModel(
+        skill: json['skill']?.toString(),
+        canonicalSkillName: json['canonicalSkillName']?.toString(),
+        category: json['category']?.toString(),
+        score: json.containsKey('score') ? _doubleOf(json['score']) : null,
+        level: json['level']?.toString(),
+        priority: json['priority']?.toString(),
+      );
 }
 
 class ChatMessageModel {
@@ -146,19 +278,23 @@ class ChatMessageModel {
     required this.role,
     required this.content,
     required this.timestamp,
+    this.senderType,
   });
 
   final String id;
   final String role;
   final String content;
   final String timestamp;
+  final String? senderType;
 
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) {
+    final senderType = json['senderType']?.toString();
     return ChatMessageModel(
       id: (json['id'] ?? json['_id'] ?? DateTime.now().millisecondsSinceEpoch).toString(),
-      role: (json['role'] ?? 'assistant').toString(),
+      role: (json['role'] ?? (senderType == 'USER' ? 'user' : 'assistant')).toString(),
       content: (json['content'] ?? json['message'] ?? '').toString(),
       timestamp: (json['timestamp'] ?? json['createdAt'] ?? DateTime.now().toIso8601String()).toString(),
+      senderType: senderType,
     );
   }
 }
@@ -170,6 +306,10 @@ class ChatSessionModel {
     required this.createdAt,
     required this.messages,
     this.repositoryContext,
+    this.mode,
+    this.effectiveMode,
+    this.modeSource,
+    this.status,
   });
 
   final String id;
@@ -177,14 +317,30 @@ class ChatSessionModel {
   final String createdAt;
   final List<ChatMessageModel> messages;
   final String? repositoryContext;
+  final String? mode;
+  final String? effectiveMode;
+  final String? modeSource;
+  final String? status;
 
-  ChatSessionModel copyWith({List<ChatMessageModel>? messages}) {
+  bool get isWaitingAdmin => status == 'waiting_admin' || effectiveMode == 'MANUAL';
+
+  ChatSessionModel copyWith({
+    List<ChatMessageModel>? messages,
+    String? mode,
+    String? effectiveMode,
+    String? modeSource,
+    String? status,
+  }) {
     return ChatSessionModel(
       id: id,
       title: title,
       createdAt: createdAt,
       messages: messages ?? this.messages,
       repositoryContext: repositoryContext,
+      mode: mode ?? this.mode,
+      effectiveMode: effectiveMode ?? this.effectiveMode,
+      modeSource: modeSource ?? this.modeSource,
+      status: status ?? this.status,
     );
   }
 
@@ -194,6 +350,10 @@ class ChatSessionModel {
       title: (json['title'] ?? json['name'] ?? 'Cuộc trò chuyện mới').toString(),
       createdAt: (json['createdAt'] ?? DateTime.now().toIso8601String()).toString(),
       repositoryContext: json['repositoryContext']?.toString(),
+      mode: json['mode']?.toString(),
+      effectiveMode: json['effectiveMode']?.toString(),
+      modeSource: json['modeSource']?.toString(),
+      status: json['status']?.toString(),
       messages: (json['messages'] as List? ?? [])
           .whereType<Map>()
           .map((e) => ChatMessageModel.fromJson(Map<String, dynamic>.from(e)))
@@ -373,6 +533,8 @@ class LearningNodeModel {
     this.targetRole,
     this.category,
     this.priority,
+    this.itemId,
+    this.week,
     this.resources = const [],
   });
 
@@ -390,7 +552,9 @@ class LearningNodeModel {
   final String? canonicalSkillName;
   final String? targetRole;
   final String? category;
-  final int? priority;
+  final dynamic priority;
+  final String? itemId;
+  final int? week;
   final List<dynamic> resources;
 
   LearningNodeModel copyWith({String? status, bool? bookmarked}) {
@@ -409,6 +573,8 @@ class LearningNodeModel {
       targetRole: targetRole,
       category: category,
       priority: priority,
+      itemId: itemId,
+      week: week,
       resources: resources,
     );
   }
@@ -481,8 +647,17 @@ class RoadmapModel {
     this.sourceRepositoriesCount = 0,
     // New metadata fields
     this.roadmapSource,
+    this.roadmapSourceInfo,
     this.roleMatchInfo,
     this.skillGapSummary,
+    this.roadmapId,
+    this.roleId,
+    this.requestedLevel,
+    this.effectiveLevel,
+    this.language,
+    this.mainRoadmap,
+    this.alternativeRoadmaps = const [],
+    this.progressSummary,
   });
 
   final String id;
@@ -510,8 +685,17 @@ class RoadmapModel {
   final int sourceRepositoriesCount;
   // New metadata
   final String? roadmapSource;
+  final RoadmapSourceInfo? roadmapSourceInfo;
   final Map<String, dynamic>? roleMatchInfo;
   final Map<String, dynamic>? skillGapSummary;
+  final String? roadmapId;
+  final String? roleId;
+  final String? requestedLevel;
+  final String? effectiveLevel;
+  final String? language;
+  final RoadmapPathModel? mainRoadmap;
+  final List<RoadmapPathModel> alternativeRoadmaps;
+  final RoadmapProgressSummary? progressSummary;
 
   bool get isArchived => status == 'archived';
 
@@ -559,10 +743,97 @@ class RoadmapModel {
       supportingPaths: supportingPaths,
       sourceRepositoriesCount: sourceRepositoriesCount,
       roadmapSource: roadmapSource,
+      roadmapSourceInfo: roadmapSourceInfo,
       roleMatchInfo: roleMatchInfo,
       skillGapSummary: skillGapSummary,
+      roadmapId: roadmapId,
+      roleId: roleId,
+      requestedLevel: requestedLevel,
+      effectiveLevel: effectiveLevel,
+      language: language,
+      mainRoadmap: mainRoadmap,
+      alternativeRoadmaps: alternativeRoadmaps,
+      progressSummary: progressSummary,
     );
   }
+}
+
+class RoadmapPathModel {
+  const RoadmapPathModel({this.title, this.targetRole, this.reason, this.phases = const []});
+  final String? title;
+  final String? targetRole;
+  final String? reason;
+  final List<Map<String, dynamic>> phases;
+  factory RoadmapPathModel.fromJson(Map<String, dynamic> json) => RoadmapPathModel(
+        title: json['title']?.toString(),
+        targetRole: json['targetRole']?.toString(),
+        reason: json['reason']?.toString(),
+        phases: _mapListOf(json['phases']),
+      );
+}
+
+class RoadmapSourceInfo {
+  const RoadmapSourceInfo({
+    this.type,
+    this.sourceMode,
+    this.analysisId,
+    this.snapshotId,
+    this.repositoryId,
+    this.repoName,
+    this.fullName,
+    this.githubUsername,
+    this.totalRepoCommits,
+    this.userCommits,
+    this.totalUserCommits,
+    this.activeDays,
+    this.userLevel,
+    this.userReadinessScore,
+    this.careerDirection,
+    this.projectType,
+    this.repositories = const [],
+    this.analysisIds = const [],
+    this.repositoryIds = const [],
+  });
+  final String? type;
+  final String? sourceMode;
+  final String? analysisId;
+  final String? snapshotId;
+  final String? repositoryId;
+  final String? repoName;
+  final String? fullName;
+  final String? githubUsername;
+  final int? totalRepoCommits;
+  final int? userCommits;
+  final int? totalUserCommits;
+  final int? activeDays;
+  final String? userLevel;
+  final double? userReadinessScore;
+  final String? careerDirection;
+  final String? projectType;
+  final List<Map<String, dynamic>> repositories;
+  final List<String> analysisIds;
+  final List<String> repositoryIds;
+  factory RoadmapSourceInfo.fromJson(Map<String, dynamic> json) => RoadmapSourceInfo(
+        type: json['type']?.toString(),
+        sourceMode: json['sourceMode']?.toString(),
+        analysisId: json['analysisId']?.toString(),
+        snapshotId: json['snapshotId']?.toString(),
+        repositoryId: json['repositoryId']?.toString(),
+        repoName: json['repoName']?.toString(),
+        fullName: json['fullName']?.toString(),
+        githubUsername: json['githubUsername']?.toString(),
+        totalRepoCommits: json.containsKey('totalRepoCommits') ? _intOf(json['totalRepoCommits']) : null,
+        userCommits: json.containsKey('userCommits') ? _intOf(json['userCommits']) : null,
+        totalUserCommits: json.containsKey('totalUserCommits') ? _intOf(json['totalUserCommits']) : null,
+        activeDays: json.containsKey('activeDays') ? _intOf(json['activeDays']) : null,
+        userLevel: json['userLevel']?.toString(),
+        userReadinessScore: json.containsKey('userReadinessScore') ? _doubleOf(json['userReadinessScore']) : null,
+        careerDirection: json['careerDirection']?.toString(),
+        projectType: json['projectType']?.toString(),
+        repositories: _mapListOf(json['repositories']),
+        analysisIds: _stringListOf(json['analysisIds']),
+        repositoryIds: _stringListOf(json['repositoryIds']),
+      );
 }
 
 class SkillProgressModel {
@@ -632,9 +903,19 @@ class RoleMatchItem {
     required this.matchedSkills,
     required this.missingSkills,
     required this.recommendedNextSkills,
+    this.roleId,
+    this.roleName,
+    this.weakSkillNames = const [],
+    this.matchedSkillNames = const [],
+    this.missingSkillNames = const [],
+    this.weakSkills = const [],
+    this.missingRequiredSkills = const [],
+    this.missingOptionalSkills = const [],
   });
 
   final String role;
+  final String? roleId;
+  final String? roleName;
   final String description;
   final String category;
   final double matchScore;
@@ -643,22 +924,94 @@ class RoleMatchItem {
   final List<String> matchedSkills;
   final List<String> missingSkills;
   final List<String> recommendedNextSkills;
+  final List<String> weakSkillNames;
+  final List<String> matchedSkillNames;
+  final List<String> missingSkillNames;
+  final List<Map<String, dynamic>> weakSkills;
+  final List<Map<String, dynamic>> missingRequiredSkills;
+  final List<Map<String, dynamic>> missingOptionalSkills;
+
+  String get displayRoleName {
+    if ((roleName ?? '').isNotEmpty) return roleName!;
+    if (role.isNotEmpty) return role;
+    return 'Khong ro role';
+  }
 
   factory RoleMatchItem.fromJson(Map<String, dynamic> json) {
-    List<String> strList(dynamic v) =>
-        (v as List? ?? []).map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+    List<String> strList(dynamic v) => _stringListOf(v);
+    final roleName = (json['roleName'] ?? json['role'] ?? json['targetRole'] ?? '').toString();
     return RoleMatchItem(
-      role: (json['roleName'] ?? json['role'] ?? json['targetRole'] ?? '').toString(),
+      role: roleName,
+      roleId: json['roleId']?.toString(),
+      roleName: json['roleName']?.toString(),
       description: (json['description'] ?? '').toString(),
       category: (json['category'] ?? '').toString(),
       matchScore: double.tryParse(json['matchScore']?.toString() ?? '') ?? 0.0,
       matchLevel: (json['matchLevel'] ?? '').toString(),
       matchLevelLabel: (json['matchLevelLabel'] ?? json['matchLevel'] ?? '').toString(),
-      matchedSkills: strList(json['matchedSkills'] ?? json['topMatchedSkills']),
-      missingSkills: strList(json['missingSkills'] ?? json['topMissingSkills']),
+      matchedSkills: strList(json['matchedSkillNames'] ?? json['matchedSkills'] ?? json['topMatchedSkills']),
+      missingSkills: strList(json['missingSkillNames'] ?? json['missingSkills'] ?? json['topMissingSkills']),
       recommendedNextSkills: strList(json['recommendedNextSkills']),
+      matchedSkillNames: strList(json['matchedSkillNames']),
+      weakSkillNames: strList(json['weakSkillNames']),
+      missingSkillNames: strList(json['missingSkillNames']),
+      weakSkills: _mapListOf(json['weakSkills']),
+      missingRequiredSkills: _mapListOf(json['missingRequiredSkills']),
+      missingOptionalSkills: _mapListOf(json['missingOptionalSkills']),
     );
   }
+}
+
+class AnalysisSourceInfo {
+  const AnalysisSourceInfo({this.type, this.sourceMode, this.totalRepositories, this.totalUserCommits, this.userLevel, this.userReadinessScore, this.repositoryNames = const []});
+  final String? type;
+  final String? sourceMode;
+  final int? totalRepositories;
+  final int? totalUserCommits;
+  final String? userLevel;
+  final double? userReadinessScore;
+  final List<String> repositoryNames;
+  factory AnalysisSourceInfo.fromJson(Map<String, dynamic> json) => AnalysisSourceInfo(
+        type: json['type']?.toString(),
+        sourceMode: json['sourceMode']?.toString(),
+        totalRepositories: json.containsKey('totalRepositories') ? _intOf(json['totalRepositories']) : null,
+        totalUserCommits: json.containsKey('totalUserCommits') ? _intOf(json['totalUserCommits']) : null,
+        userLevel: json['userLevel']?.toString(),
+        userReadinessScore: json.containsKey('userReadinessScore') ? _doubleOf(json['userReadinessScore']) : null,
+        repositoryNames: _stringListOf(json['repositoryNames']),
+      );
+}
+
+class RoleMatchResponse {
+  const RoleMatchResponse({this.sourceMode, this.analysisSource, this.matches = const []});
+  final String? sourceMode;
+  final AnalysisSourceInfo? analysisSource;
+  final List<RoleMatchItem> matches;
+  factory RoleMatchResponse.fromJson(Map<String, dynamic> json) => RoleMatchResponse(
+        sourceMode: json['sourceMode']?.toString(),
+        analysisSource: json['analysisSource'] is Map ? AnalysisSourceInfo.fromJson(_mapOf(json['analysisSource'])) : null,
+        matches: _mapListOf(json['matches']).map(RoleMatchItem.fromJson).toList(),
+      );
+}
+
+class RoleCatalogItem {
+  const RoleCatalogItem({required this.roleId, required this.roleName, this.description, this.category, this.level, this.requiredSkillCount = 0, this.optionalSkillCount = 0});
+  final String roleId;
+  final String roleName;
+  final String? description;
+  final String? category;
+  final String? level;
+  final int requiredSkillCount;
+  final int optionalSkillCount;
+  factory RoleCatalogItem.fromJson(Map<String, dynamic> json) => RoleCatalogItem(
+        roleId: (json['roleId'] ?? '').toString(),
+        roleName: (json['roleName'] ?? '').toString(),
+        description: json['description']?.toString(),
+        category: json['category']?.toString(),
+        level: json['level']?.toString(),
+        requiredSkillCount: _intOf(json['requiredSkillCount']),
+        optionalSkillCount: _intOf(json['optionalSkillCount']),
+      );
 }
 
 class RoleMatchModel {
@@ -824,7 +1177,288 @@ class SnapshotCompareResultModel {
       resolvedMissingSkills: strList(json['resolvedMissingSkills']),
       remainingMissingSkills: strList(json['remainingMissingSkills']),
       newMissingSkills: strList(json['newMissingSkills']),
-      summary: (json['summary'] ?? '').toString(),
+      summary: json['comparison'] == null && json['enoughData'] == false
+          ? 'Not enough snapshots to compare'
+          : (json['summary'] ?? '').toString(),
     );
+  }
+}
+
+class RoadmapProgressSummary {
+  const RoadmapProgressSummary({this.totalItems = 0, this.completedItems = 0, this.inProgressItems = 0, this.overallProgress = 0});
+  final int totalItems;
+  final int completedItems;
+  final int inProgressItems;
+  final int overallProgress;
+  factory RoadmapProgressSummary.fromJson(Map<String, dynamic> json) => RoadmapProgressSummary(
+        totalItems: _intOf(json['totalItems']),
+        completedItems: _intOf(json['completedItems']),
+        inProgressItems: _intOf(json['inProgressItems']),
+        overallProgress: _intOf(json['overallProgress']),
+      );
+}
+
+class RoadmapProgressItem {
+  const RoadmapProgressItem({required this.itemId, this.title, this.skillName, this.canonicalSkillName, this.category, this.targetRole, this.level, this.priority, this.status = 'not_started', this.progressPercent = 0, this.startedAt, this.completedAt, this.updatedAt});
+  final String itemId;
+  final String? title;
+  final String? skillName;
+  final String? canonicalSkillName;
+  final String? category;
+  final String? targetRole;
+  final String? level;
+  final String? priority;
+  final String status;
+  final int progressPercent;
+  final String? startedAt;
+  final String? completedAt;
+  final String? updatedAt;
+  factory RoadmapProgressItem.fromJson(Map<String, dynamic> json) => RoadmapProgressItem(
+        itemId: (json['itemId'] ?? '').toString(),
+        title: json['title']?.toString(),
+        skillName: json['skillName']?.toString(),
+        canonicalSkillName: json['canonicalSkillName']?.toString(),
+        category: json['category']?.toString(),
+        targetRole: json['targetRole']?.toString(),
+        level: json['level']?.toString(),
+        priority: json['priority']?.toString(),
+        status: (json['status'] ?? 'not_started').toString(),
+        progressPercent: _intOf(json['progressPercent']),
+        startedAt: json['startedAt']?.toString(),
+        completedAt: json['completedAt']?.toString(),
+        updatedAt: json['updatedAt']?.toString(),
+      );
+}
+
+class RoadmapProgressResponse {
+  const RoadmapProgressResponse({required this.roadmapId, required this.progressSummary, this.items = const []});
+  final String roadmapId;
+  final RoadmapProgressSummary progressSummary;
+  final List<RoadmapProgressItem> items;
+  factory RoadmapProgressResponse.fromJson(Map<String, dynamic> json) => RoadmapProgressResponse(
+        roadmapId: (json['roadmapId'] ?? '').toString(),
+        progressSummary: RoadmapProgressSummary.fromJson(_mapOf(json['progressSummary'])),
+        items: _mapListOf(json['items']).map(RoadmapProgressItem.fromJson).toList(),
+      );
+}
+
+class RoadmapLearningListResponse {
+  const RoadmapLearningListResponse({required this.roadmapId, this.sourceMode, this.language, this.items = const []});
+  final String roadmapId;
+  final String? sourceMode;
+  final String? language;
+  final List<RoadmapLearningStatusItem> items;
+  factory RoadmapLearningListResponse.fromJson(Map<String, dynamic> json) => RoadmapLearningListResponse(
+        roadmapId: (json['roadmapId'] ?? '').toString(),
+        sourceMode: json['sourceMode']?.toString(),
+        language: json['language']?.toString(),
+        items: _mapListOf(json['items']).map(RoadmapLearningStatusItem.fromJson).toList(),
+      );
+}
+
+class RoadmapLearningStatusItem {
+  const RoadmapLearningStatusItem({required this.itemId, this.taskTitle, this.canonicalSkillName, this.skillName, this.targetRole, this.level, this.week, this.priority, this.learningStatus = 'missing'});
+  final String itemId;
+  final String? taskTitle;
+  final String? canonicalSkillName;
+  final String? skillName;
+  final String? targetRole;
+  final String? level;
+  final int? week;
+  final String? priority;
+  final String learningStatus;
+  factory RoadmapLearningStatusItem.fromJson(Map<String, dynamic> json) => RoadmapLearningStatusItem(
+        itemId: (json['itemId'] ?? '').toString(),
+        taskTitle: json['taskTitle']?.toString(),
+        canonicalSkillName: json['canonicalSkillName']?.toString(),
+        skillName: json['skillName']?.toString(),
+        targetRole: json['targetRole']?.toString(),
+        level: json['level']?.toString(),
+        week: json.containsKey('week') ? _intOf(json['week']) : null,
+        priority: json['priority']?.toString(),
+        learningStatus: (json['learningStatus'] ?? 'missing').toString(),
+      );
+}
+
+class RoadmapLearningTask {
+  const RoadmapLearningTask({this.title, this.description, this.skillName, this.canonicalSkillName, this.category, this.targetRole, this.level, this.week, this.priority, this.estimatedHours});
+  final String? title;
+  final String? description;
+  final String? skillName;
+  final String? canonicalSkillName;
+  final String? category;
+  final String? targetRole;
+  final String? level;
+  final int? week;
+  final String? priority;
+  final int? estimatedHours;
+  factory RoadmapLearningTask.fromJson(Map<String, dynamic> json) => RoadmapLearningTask(
+        title: json['title']?.toString(),
+        description: json['description']?.toString(),
+        skillName: json['skillName']?.toString(),
+        canonicalSkillName: json['canonicalSkillName']?.toString(),
+        category: json['category']?.toString(),
+        targetRole: json['targetRole']?.toString(),
+        level: json['level']?.toString(),
+        week: json.containsKey('week') ? _intOf(json['week']) : null,
+        priority: json['priority']?.toString(),
+        estimatedHours: json.containsKey('estimatedHours') ? _intOf(json['estimatedHours']) : null,
+      );
+}
+
+class RoadmapLearningContent {
+  const RoadmapLearningContent({this.skillName, this.canonicalSkillName, this.targetRole, this.level, this.language, this.title, this.overview, this.whyLearn, this.useCases = const [], this.howToApply, this.examples = const [], this.checklist = const [], this.exercises = const [], this.commonMistakes = const [], this.nextSkills = const [], this.resources = const []});
+  final String? skillName;
+  final String? canonicalSkillName;
+  final String? targetRole;
+  final String? level;
+  final String? language;
+  final String? title;
+  final String? overview;
+  final String? whyLearn;
+  final List<String> useCases;
+  final String? howToApply;
+  final List<String> examples;
+  final List<String> checklist;
+  final List<String> exercises;
+  final List<String> commonMistakes;
+  final List<String> nextSkills;
+  final List<LearningResourceItem> resources;
+  factory RoadmapLearningContent.fromJson(Map<String, dynamic> json) => RoadmapLearningContent(
+        skillName: json['skillName']?.toString(),
+        canonicalSkillName: json['canonicalSkillName']?.toString(),
+        targetRole: json['targetRole']?.toString(),
+        level: json['level']?.toString(),
+        language: json['language']?.toString(),
+        title: json['title']?.toString(),
+        overview: json['overview']?.toString(),
+        whyLearn: json['whyLearn']?.toString(),
+        useCases: _stringListOf(json['useCases']),
+        howToApply: json['howToApply']?.toString(),
+        examples: _stringListOf(json['examples']),
+        checklist: _stringListOf(json['checklist']),
+        exercises: _stringListOf(json['exercises']),
+        commonMistakes: _stringListOf(json['commonMistakes']),
+        nextSkills: _stringListOf(json['nextSkills']),
+        resources: _mapListOf(json['resources']).map(LearningResourceItem.fromJson).toList(),
+      );
+}
+
+class RoadmapPersonalizedContext {
+  const RoadmapPersonalizedContext({this.sourceMode, this.repoName, this.projectType, this.repositoryNames = const [], this.practiceTask, this.roadmapReason});
+  final String? sourceMode;
+  final String? repoName;
+  final String? projectType;
+  final List<String> repositoryNames;
+  final String? practiceTask;
+  final String? roadmapReason;
+  factory RoadmapPersonalizedContext.fromJson(Map<String, dynamic> json) => RoadmapPersonalizedContext(
+        sourceMode: json['sourceMode']?.toString(),
+        repoName: json['repoName']?.toString(),
+        projectType: json['projectType']?.toString(),
+        repositoryNames: _stringListOf(json['repositoryNames']),
+        practiceTask: json['practiceTask']?.toString(),
+        roadmapReason: json['roadmapReason']?.toString(),
+      );
+}
+
+class LearningResourceItem {
+  const LearningResourceItem({this.title, this.url, this.type, this.source});
+  final String? title;
+  final String? url;
+  final String? type;
+  final String? source;
+  factory LearningResourceItem.fromJson(Map<String, dynamic> json) => LearningResourceItem(
+        title: json['title']?.toString(),
+        url: json['url']?.toString(),
+        type: json['type']?.toString(),
+        source: json['source']?.toString(),
+      );
+}
+
+class RoadmapLearningItemResponse {
+  const RoadmapLearningItemResponse({required this.roadmapId, required this.itemId, this.task, this.learning, this.personalizedContext, this.progress});
+  final String roadmapId;
+  final String itemId;
+  final RoadmapLearningTask? task;
+  final RoadmapLearningContent? learning;
+  final RoadmapPersonalizedContext? personalizedContext;
+  final RoadmapProgressItem? progress;
+  factory RoadmapLearningItemResponse.fromJson(Map<String, dynamic> json) => RoadmapLearningItemResponse(
+        roadmapId: (json['roadmapId'] ?? '').toString(),
+        itemId: (json['itemId'] ?? '').toString(),
+        task: json['task'] is Map ? RoadmapLearningTask.fromJson(_mapOf(json['task'])) : null,
+        learning: json['learning'] is Map ? RoadmapLearningContent.fromJson(_mapOf(json['learning'])) : null,
+        personalizedContext: json['personalizedContext'] is Map ? RoadmapPersonalizedContext.fromJson(_mapOf(json['personalizedContext'])) : null,
+        progress: json['progress'] is Map ? RoadmapProgressItem.fromJson({'itemId': json['itemId'], ..._mapOf(json['progress'])}) : null,
+      );
+}
+
+class ChatSettingsModel {
+  const ChatSettingsModel({required this.mode, this.updatedAt});
+  final String mode;
+  final String? updatedAt;
+  factory ChatSettingsModel.fromJson(Map<String, dynamic> json) => ChatSettingsModel(
+        mode: (json['mode'] ?? 'AI_AUTO').toString(),
+        updatedAt: json['updatedAt']?.toString(),
+      );
+}
+
+class AdminChatSessionModel extends ChatSessionModel {
+  const AdminChatSessionModel({
+    required super.id,
+    required super.title,
+    required super.createdAt,
+    required super.messages,
+    super.repositoryContext,
+    super.mode,
+    super.effectiveMode,
+    super.modeSource,
+    super.status,
+    this.user = const {},
+    this.assignedAdminId,
+  });
+  final Map<String, dynamic> user;
+  final String? assignedAdminId;
+  factory AdminChatSessionModel.fromJson(Map<String, dynamic> json) => AdminChatSessionModel(
+        id: (json['id'] ?? json['_id'] ?? json['sessionId'] ?? '').toString(),
+        title: (json['title'] ?? json['name'] ?? 'Chat').toString(),
+        createdAt: (json['createdAt'] ?? '').toString(),
+        messages: _mapListOf(json['messages']).map(ChatMessageModel.fromJson).toList(),
+        repositoryContext: json['repositoryContext']?.toString(),
+        mode: json['mode']?.toString(),
+        effectiveMode: json['effectiveMode']?.toString(),
+        modeSource: json['modeSource']?.toString(),
+        status: json['status']?.toString(),
+        user: _mapOf(json['user']),
+        assignedAdminId: json['assignedAdminId']?.toString(),
+      );
+}
+
+class AdminChatSessionListResponse {
+  const AdminChatSessionListResponse({this.sessions = const [], this.total = 0, this.page = 1, this.limit = 20});
+  final List<AdminChatSessionModel> sessions;
+  final int total;
+  final int page;
+  final int limit;
+  factory AdminChatSessionListResponse.fromJson(Map<String, dynamic> json) {
+    final pagination = _mapOf(json['pagination']);
+    return AdminChatSessionListResponse(
+      sessions: _mapListOf(json['sessions'] ?? json['items']).map(AdminChatSessionModel.fromJson).toList(),
+      total: _intOf(json['total'] ?? pagination['total']),
+      page: _intOf(json['page'] ?? pagination['page'], 1),
+      limit: _intOf(json['limit'] ?? pagination['limit'], 20),
+    );
+  }
+}
+
+class AdminChatSessionDetailResponse {
+  const AdminChatSessionDetailResponse({required this.session, this.messages = const []});
+  final AdminChatSessionModel session;
+  final List<ChatMessageModel> messages;
+  factory AdminChatSessionDetailResponse.fromJson(Map<String, dynamic> json) {
+    final session = AdminChatSessionModel.fromJson(_mapOf(json['session'] ?? json));
+    final messages = _mapListOf(json['messages']).map(ChatMessageModel.fromJson).toList();
+    return AdminChatSessionDetailResponse(session: session, messages: messages);
   }
 }

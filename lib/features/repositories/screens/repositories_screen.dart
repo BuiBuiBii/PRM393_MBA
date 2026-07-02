@@ -80,7 +80,7 @@ class _RepositoriesScreenState extends ConsumerState<RepositoriesScreen> {
           child: Column(
             children: [
               ...repos.map((repo) {
-            final analysis = state.analyses.where((a) => a.repositoryId == repo.id).firstOrNull;
+            final analysis = _findAnalysisForRepo(state.analyses, repo.id);
             final hasAnalysis = analysis != null || repo.analyzed;
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -175,4 +175,11 @@ class _RepositoriesScreenState extends ConsumerState<RepositoriesScreen> {
           Text(text, style: TextStyle(fontSize: 13, color: context.appTextPrimary)),
         ],
       );
+}
+
+Object? _findAnalysisForRepo(Iterable<dynamic> analyses, String repoId) {
+  for (final item in analyses) {
+    if (item.repositoryId == repoId) return item;
+  }
+  return null;
 }

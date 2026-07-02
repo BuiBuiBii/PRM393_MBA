@@ -66,8 +66,25 @@ RepoAnalysisSnapshotModel normalizeSnapshot(dynamic payload) {
 }
 
 SnapshotCompareResultModel normalizeSnapshotCompare(dynamic payload) {
-  final map = extractApiResource<Map<String, dynamic>>(payload, ['comparison', 'result']);
-  return SnapshotCompareResultModel.fromJson(toRecord(map.isNotEmpty ? map : payload));
+  final unwrapped = toRecord(unwrapResponse<dynamic>(payload));
+  final comparison = unwrapped['comparison'];
+  if (comparison is Map) {
+    return SnapshotCompareResultModel.fromJson({
+      ...Map<String, dynamic>.from(comparison),
+      'enoughData': unwrapped['enoughData'],
+      'snapshotsCount': unwrapped['snapshotsCount'],
+    });
+  }
+  final map = extractApiResource<Map<String, dynamic>>(payload, ['result']);
+  return SnapshotCompareResultModel.fromJson(toRecord(map.isNotEmpty ? map : unwrapped));
+}
+
+RoleMatchResponse normalizeRoleMatchResponse(dynamic payload) {
+  return RoleMatchResponse.fromJson(toRecord(unwrapResponse<dynamic>(payload)));
+}
+
+List<RoleCatalogItem> normalizeRoleCatalog(dynamic payload) {
+  return asMapList(payload, ['roles', 'items']).map(RoleCatalogItem.fromJson).toList();
 }
 
 List<ChatSessionModel> normalizeChatSessions(dynamic payload) {
@@ -114,6 +131,10 @@ ChatSessionModel mergeChatSession(ChatSessionModel base, ChatSessionModel next) 
     createdAt: next.createdAt.isNotEmpty ? next.createdAt : base.createdAt,
     messages: merged,
     repositoryContext: next.repositoryContext ?? base.repositoryContext,
+    mode: next.mode ?? base.mode,
+    effectiveMode: next.effectiveMode ?? base.effectiveMode,
+    modeSource: next.modeSource ?? base.modeSource,
+    status: next.status ?? base.status,
   );
 }
 
@@ -145,6 +166,7 @@ ChatMessageModel? pickAssistantMessage(dynamic payload) {
         role: 'assistant',
         content: candidate.trim(),
         timestamp: DateTime.now().toIso8601String(),
+        senderType: 'AI',
       );
     }
 
@@ -171,6 +193,7 @@ ChatMessageModel? pickAssistantMessage(dynamic payload) {
         role: 'assistant',
         content: directText,
         timestamp: (candidateRecord['createdAt'] ?? DateTime.now().toIso8601String()).toString(),
+        senderType: (candidateRecord['senderType'] ?? 'AI').toString(),
       );
     }
 
@@ -192,7 +215,13 @@ ChatMessageModel? pickAssistantMessage(dynamic payload) {
 
 ChatMessageModel normalizeChatMessage(dynamic payload) {
   final json = toRecord(payload);
-  final rawRole = (json['role'] ?? json['sender'] ?? json['type'] ?? json['author'] ?? 'assistant')
+  final senderType = json['senderType']?.toString();
+  final rawRole = (json['role'] ??
+          (senderType == 'USER' ? 'user' : null) ??
+          json['sender'] ??
+          json['type'] ??
+          json['author'] ??
+          'assistant')
       .toString()
       .toLowerCase();
   final role = ['user', 'human'].contains(rawRole) ? 'user' : 'assistant';
@@ -210,6 +239,7 @@ ChatMessageModel normalizeChatMessage(dynamic payload) {
     role: role,
     content: content,
     timestamp: (json['timestamp'] ?? json['createdAt'] ?? DateTime.now().toIso8601String()).toString(),
+    senderType: senderType,
   );
 }
 
@@ -289,14 +319,18 @@ String categoryFromTargetRole(String targetRole) {
 
 RoadmapModel normalizeRoadmap(dynamic payload) {
   final map = toRecord(extractApiResource<dynamic>(payload, ['roadmap']));
-  final id = (map['_id'] ?? map['id'] ?? '').toString();
+  final id = (map['roadmapId'] ?? map['_id'] ?? map['id'] ?? '').toString();
   final targetRole = (map['targetRole'] ?? '').toString();
   final summary = (map['summary'] ?? '').toString();
-  final mainPath = map['mainPath'] is Map ? Map<String, dynamic>.from(map['mainPath'] as Map) : <String, dynamic>{};
+  final mainRoadmap = map['mainRoadmap'] is Map ? Map<String, dynamic>.from(map['mainRoadmap'] as Map) : <String, dynamic>{};
+  final mainPath = mainRoadmap.isNotEmpty
+      ? mainRoadmap
+      : (map['mainPath'] is Map ? Map<String, dynamic>.from(map['mainPath'] as Map) : <String, dynamic>{});
   final phases = mainPath['phases'] as List? ?? [];
 
   // New metadata fields
-  final roadmapSource = map['roadmapSource']?.toString();
+  final roadmapSourceMap = map['roadmapSource'] is Map ? Map<String, dynamic>.from(map['roadmapSource'] as Map) : null;
+  final roadmapSource = roadmapSourceMap?['sourceMode']?.toString() ?? map['roadmapSource']?.toString();
   final roleMatchInfo = map['roleMatch'] is Map
       ? Map<String, dynamic>.from(map['roleMatch'] as Map)
       : null;
@@ -324,19 +358,21 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
     if (rawDiff == 'advanced' || rawDiff == 'hard') difficulty = 'Advanced';
 
     return LearningNodeModel(
-      id: (task['_id'] ?? task['id'] ?? '$phasePrefix-$taskIndex').toString(),
+      id: (task['itemId'] ?? task['_id'] ?? task['id'] ?? '$phasePrefix-$taskIndex').toString(),
       title: (task['title'] ?? 'Task').toString(),
       description: (task['description'] ?? '').toString(),
       estimatedHours: hours,
       difficulty: difficulty,
       status: mapRoadmapTaskStatus(status),
-      skills: (task['skillTags'] as List? ?? []).map((e) => e.toString()).toList(),
+      skills: (task['skillTags'] as List? ?? (task['skillName'] != null ? [task['skillName']] : [])).map((e) => e.toString()).toList(),
       xp: hours * 40,
       skillName: task['skillName']?.toString(),
       canonicalSkillName: task['canonicalSkillName']?.toString(),
       targetRole: task['targetRole']?.toString(),
       category: task['category']?.toString(),
-      priority: int.tryParse(task['priority']?.toString() ?? ''),
+      priority: task['priority']?.toString(),
+      itemId: task['itemId']?.toString(),
+      week: int.tryParse(task['week']?.toString() ?? ''),
       resources: task['resources'] is List ? List<dynamic>.from(task['resources'] as List) : const [],
     );
   }
@@ -465,13 +501,36 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
     supportingPaths: supportingPaths,
     sourceRepositoriesCount: sourceRepositoriesCount,
     roadmapSource: roadmapSource,
+    roadmapSourceInfo: roadmapSourceMap != null ? RoadmapSourceInfo.fromJson(roadmapSourceMap) : null,
     roleMatchInfo: roleMatchInfo,
     skillGapSummary: skillGapSummary,
+    roadmapId: map['roadmapId']?.toString(),
+    roleId: map['roleId']?.toString(),
+    requestedLevel: map['requestedLevel']?.toString(),
+    effectiveLevel: map['effectiveLevel']?.toString(),
+    language: map['language']?.toString(),
+    mainRoadmap: mainRoadmap.isNotEmpty ? RoadmapPathModel.fromJson(mainRoadmap) : null,
+    alternativeRoadmaps: asMapList(map['alternativeRoadmaps']).map(RoadmapPathModel.fromJson).toList(),
+    progressSummary: map['progressSummary'] is Map
+        ? RoadmapProgressSummary.fromJson(Map<String, dynamic>.from(map['progressSummary'] as Map))
+        : null,
   );
 }
 
 List<RoadmapModel> normalizeRoadmaps(dynamic payload) {
   return asMapList(payload, ['roadmaps', 'items']).map(normalizeRoadmap).toList();
+}
+
+RoadmapProgressResponse normalizeRoadmapProgress(dynamic payload) {
+  return RoadmapProgressResponse.fromJson(toRecord(unwrapResponse<dynamic>(payload)));
+}
+
+RoadmapLearningListResponse normalizeRoadmapLearning(dynamic payload) {
+  return RoadmapLearningListResponse.fromJson(toRecord(unwrapResponse<dynamic>(payload)));
+}
+
+RoadmapLearningItemResponse normalizeRoadmapLearningItem(dynamic payload) {
+  return RoadmapLearningItemResponse.fromJson(toRecord(unwrapResponse<dynamic>(payload)));
 }
 
 AIRecommendationModel normalizeAiRecommendation(RoadmapModel roadmap, {List<String>? strengths, List<String>? weaknesses, List<String>? missingSkills}) {

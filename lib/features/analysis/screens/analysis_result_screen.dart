@@ -28,18 +28,19 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
         ref.read(repositoryProvider.notifier).fetchAnalysis(repoId);
       }
       ref.read(repositoryProvider.notifier).fetchAiFeedback(repoId);
-      // Fetch Role Match
-      ref.read(repositoryProvider.notifier).fetchRoleMatches(repoId);
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(repositoryProvider);
-    final analysis = state.analyses.where((a) => a.repositoryId == widget.repoId || a.id == widget.repoId).firstOrNull;
+    final analysis = _findAnalysisByRepoId(state.analyses, widget.repoId);
     final feedback = state.feedbackFor(widget.repoId);
-    final roleMatch = state.roleMatchFor(widget.repoId);
-    final isLoadingRoleMatch = state.isLoadingRoleMatch(widget.repoId);
+    final roleMatchAsync = ref.watch(roleMatchProvider(widget.repoId));
+    final roleCatalogAsync = ref.watch(roleCatalogProvider);
+    final roleMatch = roleMatchAsync.valueOrNull;
+    final roleCatalog = roleCatalogAsync.valueOrNull ?? const <RoleCatalogItem>[];
+    final isLoadingRoleMatch = roleMatchAsync.isLoading;
 
     if (analysis == null) {
       return ListView(
@@ -72,25 +73,22 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
       );
     }
 
-    final scores = [
-      ('Kiến trúc', analysis.scores.architecture),
-      ('Độ hoàn thiện', analysis.scores.completeness),
-      ('Commit', analysis.scores.commitQuality),
-      ('Tài liệu', analysis.scores.documentation),
-      ('Quy ước', analysis.scores.codeConvention),
-    ];
+    final overallScore = (analysis.summary?.userReadinessScore ??
+            analysis.summary?.overallScore ??
+            analysis.scores.overall)
+        .round();
 
     return ListView(
       padding: appScreenPadding(context),
       children: [
-        PageHeader(title: analysis.repositoryName, subtitle: '${analysis.projectType} • ${scoreLabel(analysis.scores.overall)}'),
+        PageHeader(title: analysis.repositoryName, subtitle: '${analysis.projectType} • ${scoreLabel(overallScore)}'),
         const SizedBox(height: 8),
         Center(
           child: Column(
             children: [
               Text(
-                '${analysis.scores.overall}',
-                style: TextStyle(fontSize: 56, fontWeight: FontWeight.bold, color: scoreColor(analysis.scores.overall)),
+                '$overallScore',
+                style: TextStyle(fontSize: 56, fontWeight: FontWeight.bold, color: scoreColor(overallScore)),
               ),
               Text('Điểm tổng quan', style: context.appCaptionStyle),
             ],
@@ -102,39 +100,14 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
           runSpacing: 8,
           children: analysis.techStack.map((t) => AppBadge(label: t, variant: AppBadgeVariant.info)).toList(),
         ),
-        const SizedBox(height: 16),
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Chi tiết điểm', style: context.appSectionTitleStyle),
-              const SizedBox(height: 12),
-              ...scores.map(
-                (s) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(s.$1, style: context.appBodyStyle),
-                          Text('${s.$2}', style: TextStyle(fontWeight: FontWeight.bold, color: scoreColor(s.$2))),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      LinearProgressIndicator(
-                        value: s.$2 / 100,
-                        backgroundColor: Colors.grey.shade200,
-                        color: scoreColor(s.$2),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        if (analysis.analysisScope != null || analysis.summary != null || analysis.topSkillItems.isNotEmpty || analysis.missingSkillItems.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _analysisCompactCard(analysis),
+        ],
+        if (_hasAnalysisDetails(analysis)) ...[
+          const SizedBox(height: 16),
+          _analysisDetailCard(analysis),
+        ],
         const SizedBox(height: 12),
         _listCard('Điểm mạnh', analysis.strengths, Icons.check_circle, AppColors.emerald),
         const SizedBox(height: 12),
@@ -149,8 +122,9 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
           analysis: analysis,
           roleMatch: roleMatch,
           isLoading: isLoadingRoleMatch,
-          onCreateRoadmap: () => _openCreateRoadmapSheet(roleMatch),
-          onRetry: () => ref.read(repositoryProvider.notifier).fetchRoleMatches(widget.repoId),
+          error: roleMatchAsync.hasError ? 'Khong the tai role match' : null,
+          onCreateRoadmap: () => _openCreateRoadmapSheet(roleMatch, roleCatalog),
+          onRetry: () => ref.invalidate(roleMatchProvider(widget.repoId)),
         ),
         const SizedBox(height: 12),
         AppCard(
@@ -201,14 +175,14 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
     );
   }
 
-  void _openCreateRoadmapSheet(RoleMatchModel? roleMatch) {
+  void _openCreateRoadmapSheet(RoleMatchResponse? roleMatch, List<RoleCatalogItem> roleCatalog) {
     final state = ref.read(repositoryProvider);
     final roadmapState = ref.read(roadmapProvider);
     final analyses = state.analyses;
 
     // Pre-seed the role from role match top result if available
-    final suggestedRole = roleMatch?.topRole.isNotEmpty == true
-        ? roleMatch!.topRole
+    final suggestedRole = roleMatch?.matches.isNotEmpty == true
+        ? roleMatch!.matches.first.displayRoleName
         : roadmapState.selectedTargetRole;
 
     if (suggestedRole.isNotEmpty && suggestedRole != roadmapState.selectedTargetRole) {
@@ -219,9 +193,12 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
       context,
       analyses: analyses,
       roleMatch: roleMatch,
+      roleCatalog: roleCatalog,
       selectedRole: suggestedRole.isNotEmpty ? suggestedRole : roadmapState.selectedTargetRole,
       isGenerating: roadmapState.isGenerating,
-      onGenerate: (role) => generateAndOpenRoadmap(context, ref, role, repoId: widget.repoId),
+      initialSourceMode: 'single_repo',
+      currentRepoId: widget.repoId,
+      onGenerate: (request) => generateAndOpenRoadmap(context, ref, request),
     );
   }
 
@@ -246,6 +223,114 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
       ),
     );
   }
+
+  bool _hasAnalysisDetails(AnalysisModel analysis) {
+    final summary = analysis.summary;
+    final scope = analysis.analysisScope;
+    return summary?.userLevel?.isNotEmpty == true ||
+        summary?.userReadinessScore != null ||
+        summary?.overallScore != null ||
+        summary?.careerDirection?.isNotEmpty == true ||
+        summary?.projectType?.isNotEmpty == true ||
+        summary?.confidence != null ||
+        scope?.userCommits != null ||
+        scope?.totalRepoCommits != null ||
+        scope?.activeDays != null;
+  }
+
+  Widget _analysisDetailCard(AnalysisModel analysis) {
+    final summary = analysis.summary;
+    final scope = analysis.analysisScope;
+    final rows = <(String, String)>[
+      if ((summary?.userLevel ?? '').isNotEmpty) ('Mức độ', summary!.userLevel!),
+      if (summary?.userReadinessScore != null) ('Readiness', summary!.userReadinessScore!.toStringAsFixed(1)),
+      if (summary?.overallScore != null) ('Overall', summary!.overallScore!.toStringAsFixed(1)),
+      if ((summary?.careerDirection ?? '').isNotEmpty) ('Career direction', summary!.careerDirection!),
+      if ((summary?.projectType ?? '').isNotEmpty) ('Project type', summary!.projectType!),
+      if (summary?.confidence != null) ('Confidence', summary!.confidence!.toStringAsFixed(1)),
+      if (scope?.userCommits != null) ('Commits của user', '${scope!.userCommits}'),
+      if (scope?.totalRepoCommits != null) ('Tổng commits repo', '${scope!.totalRepoCommits}'),
+      if (scope?.activeDays != null) ('Active days', '${scope!.activeDays}'),
+    ];
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Chi tiết phân tích', style: context.appSectionTitleStyle),
+          const SizedBox(height: 12),
+          ...rows.map(
+            (row) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(child: Text(row.$1, style: context.appCaptionStyle)),
+                  Text(row.$2, style: context.appBodyStyle.copyWith(fontWeight: FontWeight.w700)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _analysisCompactCard(AnalysisModel analysis) {
+    final scope = analysis.analysisScope;
+    final summary = analysis.summary;
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Tong quan phan tich', style: context.appSectionTitleStyle),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (scope?.githubUsername?.isNotEmpty == true) AppBadge(label: '@${scope!.githubUsername}', variant: AppBadgeVariant.info),
+              if (scope?.userCommits != null) AppBadge(label: '${scope!.userCommits} commits'),
+              if (scope?.activeDays != null) AppBadge(label: '${scope!.activeDays} active days'),
+              if (summary?.careerDirection?.isNotEmpty == true) AppBadge(label: summary!.careerDirection!, variant: AppBadgeVariant.info),
+              if (summary?.userLevel?.isNotEmpty == true) AppBadge(label: summary!.userLevel!, variant: AppBadgeVariant.success),
+              if (summary?.userReadinessScore != null) AppBadge(label: 'Ready ${summary!.userReadinessScore}'),
+            ],
+          ),
+          if (analysis.topSkillItems.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _skillItems('Ky nang noi bat', analysis.topSkillItems, AppBadgeVariant.success),
+          ],
+          if (analysis.missingSkillItems.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _skillItems('Ky nang con thieu', analysis.missingSkillItems, AppBadgeVariant.warning),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _skillItems(String title, List<AnalysisSkillModel> items, AppBadgeVariant variant) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: context.appLabelStyle.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: items.take(8).map((item) {
+            final meta = [
+              if ((item.category ?? '').isNotEmpty) item.category,
+              if (item.score != null) item.score.toString(),
+              if ((item.level ?? '').isNotEmpty) item.level,
+              if ((item.priority ?? '').isNotEmpty) item.priority,
+            ].whereType<String>().join(' - ');
+            return AppBadge(label: meta.isEmpty ? item.displayName : '${item.displayName} ($meta)', variant: variant);
+          }).toList(),
+        ),
+      ],
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -256,13 +341,15 @@ class _RoleMatchCard extends StatelessWidget {
     required this.analysis,
     required this.roleMatch,
     required this.isLoading,
+    this.error,
     required this.onCreateRoadmap,
     required this.onRetry,
   });
 
   final AnalysisModel analysis;
-  final RoleMatchModel? roleMatch;
+  final RoleMatchResponse? roleMatch;
   final bool isLoading;
+  final String? error;
   final VoidCallback onCreateRoadmap;
   final VoidCallback onRetry;
 
@@ -333,6 +420,10 @@ class _RoleMatchCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
+          if (error != null && !isLoading) ...[
+            Text(error!, style: const TextStyle(color: AppColors.amber, fontSize: 12)),
+            const SizedBox(height: 8),
+          ],
 
           // Loading state
           if (isLoading) ...[
@@ -351,7 +442,7 @@ class _RoleMatchCard extends StatelessWidget {
           ]
 
           // Role match data available
-          else if (roleMatch != null && roleMatch!.topRole.isNotEmpty) ...[
+          else if (roleMatch != null && roleMatch!.matches.isNotEmpty) ...[
             _buildRoleMatchContent(context, roleMatch!),
           ]
 
@@ -379,18 +470,18 @@ class _RoleMatchCard extends StatelessWidget {
     );
   }
 
-  Widget _buildRoleMatchContent(BuildContext context, RoleMatchModel rm) {
-    final top = rm.topMatch;
+  Widget _buildRoleMatchContent(BuildContext context, RoleMatchResponse rm) {
+    final top = rm.matches.isNotEmpty ? rm.matches.first : null;
     final matchScore = top?.matchScore ?? 0.0;
     final matchLevel = top?.matchLevel ?? '';
     final matchLevelLabel = top?.matchLevelLabel ?? matchLevel;
     final levelColor = _matchLevelColor(context, matchLevel);
     final levelVariant = _matchLevelVariant(matchLevel);
 
-    // Gather skill lists preferring top-level lists, fallback to first match's lists
-    final matchedSkills = rm.topMatchedSkills.isNotEmpty ? rm.topMatchedSkills : (top?.matchedSkills ?? []);
-    final missingSkills = rm.topMissingSkills.isNotEmpty ? rm.topMissingSkills : (top?.missingSkills ?? []);
-    final nextSkills = rm.recommendedNextSkills.isNotEmpty ? rm.recommendedNextSkills : (top?.recommendedNextSkills ?? []);
+    final matchedSkills = top?.matchedSkillNames.isNotEmpty == true ? top!.matchedSkillNames : (top?.matchedSkills ?? []);
+    final weakSkills = top?.weakSkillNames ?? const <String>[];
+    final missingSkills = top?.missingSkillNames.isNotEmpty == true ? top!.missingSkillNames : (top?.missingSkills ?? []);
+    final nextSkills = top?.recommendedNextSkills ?? const <String>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -406,20 +497,62 @@ class _RoleMatchCard extends StatelessWidget {
                   Text('Bạn phù hợp nhất với', style: context.appLabelStyle),
                   const SizedBox(height: 4),
                   Text(
-                    rm.topRole,
+                    top?.displayRoleName ?? '',
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primary),
                   ),
                 ],
               ),
             ),
-            
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('${matchScore.toStringAsFixed(0)}%', style: TextStyle(fontWeight: FontWeight.w800, color: levelColor)),
+                if (matchLevelLabel.isNotEmpty) AppBadge(label: matchLevelLabel, variant: levelVariant),
+              ],
+            ),
           ],
         ),
-        
-
-        
-
-        
+        const SizedBox(height: 12),
+        if (matchedSkills.isNotEmpty)
+          _skillSection(
+            icon: Icons.check_circle_outline,
+            color: AppColors.emerald,
+            title: 'Ky nang khop',
+            skills: matchedSkills.take(6).toList(),
+            variant: AppBadgeVariant.success,
+          ),
+        if (weakSkills.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _skillSection(
+            icon: Icons.trending_up,
+            color: AppColors.cyan,
+            title: 'Ky nang can cung co',
+            skills: weakSkills.take(6).toList(),
+            variant: AppBadgeVariant.info,
+          ),
+        ],
+        if (missingSkills.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _skillSection(
+            icon: Icons.warning_amber_rounded,
+            color: AppColors.amber,
+            title: 'Ky nang thieu',
+            skills: missingSkills.take(6).toList(),
+            variant: AppBadgeVariant.warning,
+          ),
+        ],
+        if (nextSkills.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text('Nen hoc tiep: ${nextSkills.take(4).join(', ')}', style: context.appLabelStyle),
+        ],
+        if (rm.matches.length > 1) ...[
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: rm.matches.skip(1).take(4).map((item) => _OtherRoleChip(item: item)).toList(),
+          ),
+        ],
       ],
     );
   }
@@ -482,4 +615,11 @@ class _OtherRoleChip extends StatelessWidget {
       ),
     );
   }
+}
+
+AnalysisModel? _findAnalysisByRepoId(List<AnalysisModel> analyses, String repoId) {
+  for (final item in analyses) {
+    if (item.repositoryId == repoId || item.id == repoId) return item;
+  }
+  return null;
 }
