@@ -43,7 +43,7 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
     final detail = repo;
 
     return AsyncPageBody(
-      isLoading: state.isLoading,
+      isLoading: state.loadingDetailFor == widget.repoId && detail == null,
       hasData: detail != null,
       onRetry: () => ref.read(repositoryProvider.notifier).fetchRepository(widget.repoId),
       child: detail == null

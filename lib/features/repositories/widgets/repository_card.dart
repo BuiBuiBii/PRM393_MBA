@@ -16,6 +16,9 @@ class RepositoryCard extends StatelessWidget {
     required this.isAnalyzing,
     required this.analyzeDisabled,
     required this.onAnalyze,
+    this.readinessScore,
+    this.overallScore,
+    this.careerPreview,
   });
 
   final RepositoryModel repo;
@@ -23,6 +26,9 @@ class RepositoryCard extends StatelessWidget {
   final bool isAnalyzing;
   final bool analyzeDisabled;
   final VoidCallback onAnalyze;
+  final int? readinessScore;
+  final int? overallScore;
+  final String? careerPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -66,25 +72,62 @@ class RepositoryCard extends StatelessWidget {
                 label: hasAnalysis ? 'Đã phân tích' : 'Chưa phân tích',
                 variant: hasAnalysis ? AppBadgeVariant.success : AppBadgeVariant.neutral,
               ),
+              if (readinessScore != null)
+                AppBadge(
+                  label: 'Readiness $readinessScore',
+                  variant: AppBadgeVariant.info,
+                ),
+              if (overallScore != null && overallScore! > 0)
+                AppBadge(
+                  label: 'Điểm $overallScore',
+                  variant: AppBadgeVariant.success,
+                ),
               Text(formatRelativeTime(repo.updatedAt), style: context.appLabelStyle),
             ],
           ),
+          if (careerPreview != null && careerPreview!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              careerPreview!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.appCaptionStyle,
+            ),
+          ],
           const SizedBox(height: 12),
           if (hasAnalysis)
+            Row(
+              children: [
+                Expanded(
+                  child: PrimaryButton(
+                    label: 'Xem phân tích',
+                    icon: Icons.insights_outlined,
+                    expand: true,
+                    onPressed: () => context.push('/repositories/${repo.id}/analysis'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  tooltip: 'Phân tích lại',
+                  onPressed: analyzeDisabled || isAnalyzing ? null : onAnalyze,
+                  icon: isAnalyzing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh),
+                ),
+              ],
+            )
+          else
             PrimaryButton(
-              label: 'Xem phân tích',
-              outlined: true,
+              label: isAnalyzing ? 'Đang phân tích...' : 'Phân tích',
+              icon: Icons.play_arrow,
+              loading: isAnalyzing,
               expand: true,
-              onPressed: () => context.push('/repositories/${repo.id}/analysis'),
+              onPressed: analyzeDisabled ? null : onAnalyze,
             ),
-          const SizedBox(height: 8),
-          PrimaryButton(
-            label: isAnalyzing ? 'Đang phân tích...' : (hasAnalysis ? 'Phân tích lại' : 'Phân tích'),
-            icon: hasAnalysis ? Icons.refresh : Icons.play_arrow,
-            loading: isAnalyzing,
-            expand: true,
-            onPressed: analyzeDisabled ? null : onAnalyze,
-          ),
           TextButton.icon(
             onPressed: () => launchUrl(Uri.parse(repo.url), mode: LaunchMode.externalApplication),
             icon: const Icon(Icons.open_in_new, size: 16),

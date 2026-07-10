@@ -9,6 +9,8 @@ import '../../../shared/widgets/skeleton_loading.dart';
 import '../../feature_providers.dart';
 import '../utils/roadmap_recommendation.dart';
 import '../utils/roadmap_utils.dart';
+import '../utils/roadmap_generate_helper.dart';
+import '../widgets/create_roadmap_sheet.dart';
 import '../widgets/roadmap_list_header.dart';
 import '../widgets/roadmap_mobile_widgets.dart';
 
@@ -30,7 +32,15 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
     super.initState();
     Future.microtask(() {
       ref.read(roadmapProvider.notifier).loadRoadmaps();
-      ref.read(repositoryProvider.notifier).fetchMyAnalyses();
+      final analyses = ref.read(repositoryProvider).analyses;
+      if (analyses.isEmpty) {
+        ref.read(repositoryProvider.notifier).fetchMyAnalyses();
+      } else {
+        ref.read(repositoryProvider.notifier).calculateRoleMatches(
+              sourceMode: 'all_analyzed_repos',
+              forceRefresh: false,
+            );
+      }
     });
   }
 
@@ -46,19 +56,20 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
   }
 
   Future<void> _refresh() async {
-    await ref.read(roadmapProvider.notifier).loadRoadmaps();
-    await ref.read(repositoryProvider.notifier).fetchMyAnalyses();
+    await Future.wait([
+      ref.read(roadmapProvider.notifier).loadRoadmaps(),
+      ref.read(repositoryProvider.notifier).fetchMyAnalyses(),
+    ]);
   }
 
   void _openCreateSheet() {
-    final state = ref.read(roadmapProvider);
-    final analyses = ref.read(repositoryProvider).analyses;
+    if (ref.read(roadmapProvider).isGenerating) return;
     showCreateRoadmapSheet(
       context,
-      analyses: analyses,
-      selectedRole: state.selectedTargetRole,
-      isGenerating: state.isGenerating,
-      onGenerate: (role) => generateAndOpenRoadmap(context, ref, role),
+      config: CreateRoadmapSheetConfig(
+        sourceMode: 'all_analyzed_repos',
+        onGenerate: (params) => generateAndOpenRoadmap(context, ref, params),
+      ),
     );
   }
 
@@ -94,21 +105,29 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
         ? _initialVisibleCount
         : filtered.length;
 
+    final showFab = filtered.isNotEmpty || isArchivedTab;
+
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: state.isGenerating ? null : _openCreateSheet,
-        icon: state.isGenerating
-            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-            : const Icon(Icons.auto_awesome),
-        label: const Text('Tạo mới'),
-      ),
+      floatingActionButton: showFab
+          ? FloatingActionButton.extended(
+              onPressed: state.isGenerating ? null : _openCreateSheet,
+              icon: state.isGenerating
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.auto_awesome),
+              label: const Text('Tạo mới'),
+            )
+          : null,
       body: ScrollListHints(
         child: RefreshIndicator(
           onRefresh: _refresh,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              if (state.isLoading && state.roadmaps.isEmpty)
+              if (state.isLoading && state.roadmaps.isEmpty && state.statusFilter == 'active')
                 SliverFillRemaining(
                   child: ListView(
                     padding: appScreenPadding(context),
@@ -136,6 +155,7 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
                         context,
                         state.filters,
                         notifier.setFilters,
+                        categories: deriveRoadmapCategoryFilters(state.roadmaps),
                       ),
                     ),
                   ),
@@ -158,6 +178,7 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
                             ? PrimaryButton(
                                 label: 'Tạo roadmap',
                                 icon: Icons.auto_awesome,
+                                loading: state.isGenerating,
                                 onPressed: state.isGenerating ? null : _openCreateSheet,
                               )
                             : null,

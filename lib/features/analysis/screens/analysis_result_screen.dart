@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../../core/theme/app_theme.dart';
 import '../../feature_providers.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/widgets/scroll_list_hints.dart';
 import '../../../shared/widgets/app_widgets.dart';
-import '../../roadmaps/widgets/roadmap_mobile_widgets.dart';
 import '../widgets/analysis_list_card.dart';
+import '../widgets/analysis_readiness_section.dart';
 import '../widgets/analysis_score_section.dart';
 import '../widgets/role_match_card.dart';
+import '../../roadmaps/models/roadmap_generate_params.dart';
+import '../../roadmaps/utils/roadmap_generate_helper.dart';
+import '../../roadmaps/widgets/create_roadmap_sheet.dart';
 
 class AnalysisResultScreen extends ConsumerStatefulWidget {
   const AnalysisResultScreen({super.key, required this.repoId});
@@ -22,6 +24,8 @@ class AnalysisResultScreen extends ConsumerStatefulWidget {
 }
 
 class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
+  RoleMatchItem? _selectedRoleMatch;
+
   @override
   void initState() {
     super.initState();
@@ -30,7 +34,7 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
       final notifier = ref.read(repositoryProvider.notifier);
       if (notifier.getAnalysisById(repoId) == null) notifier.fetchAnalysis(repoId);
       notifier.fetchAiFeedback(repoId);
-      notifier.fetchRoleMatches(repoId);
+      notifier.calculateRoleMatches(sourceMode: 'single_repo', repoId: repoId);
     });
   }
 
@@ -41,6 +45,9 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
     final feedback = state.feedbackFor(widget.repoId);
     final roleMatch = state.roleMatchFor(widget.repoId);
     final isLoadingRoleMatch = state.isLoadingRoleMatch(widget.repoId);
+    final roleMatchError = isLoadingRoleMatch
+        ? null
+        : ref.read(repositoryProvider.notifier).roleMatchErrorForKey(widget.repoId);
 
     if (analysis == null) {
       return ScrollListHints(
@@ -61,6 +68,13 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
                         : () async {
                             try {
                               await ref.read(repositoryProvider.notifier).analyzeRepository(widget.repoId);
+                              if (mounted) {
+                                ref.read(repositoryProvider.notifier).calculateRoleMatches(
+                                      sourceMode: 'single_repo',
+                                      repoId: widget.repoId,
+                                      forceRefresh: true,
+                                    );
+                              }
                             } catch (_) {}
                           },
                   ),
@@ -78,6 +92,8 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
         children: [
           AnalysisScoreSection(analysis: analysis),
           const SizedBox(height: 12),
+          AnalysisReadinessSection(analysis: analysis),
+          const SizedBox(height: 12),
           AnalysisListCard(title: 'Điểm mạnh', items: analysis.strengths, icon: Icons.check_circle, color: AppColors.emerald),
           const SizedBox(height: 12),
           AnalysisListCard(title: 'Điểm yếu', items: analysis.weaknesses, icon: Icons.warning_amber, color: AppColors.amber),
@@ -88,8 +104,14 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
             analysis: analysis,
             roleMatch: roleMatch,
             isLoading: isLoadingRoleMatch,
-            onCreateRoadmap: () => _openCreateRoadmapSheet(roleMatch),
-            onRetry: () => ref.read(repositoryProvider.notifier).fetchRoleMatches(widget.repoId),
+            errorMessage: roleMatchError,
+            onCreateRoadmap: _openCreateRoadmapSheet,
+            onRetry: () => ref.read(repositoryProvider.notifier).calculateRoleMatches(
+                  sourceMode: 'single_repo',
+                  repoId: widget.repoId,
+                  forceRefresh: true,
+                ),
+            onSelectMatch: (match) => setState(() => _selectedRoleMatch = match),
           ),
           const SizedBox(height: 12),
           _AiFeedbackCard(
@@ -108,22 +130,32 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
     );
   }
 
-  void _openCreateRoadmapSheet(RoleMatchModel? roleMatch) {
-    final state = ref.read(repositoryProvider);
-    final roadmapState = ref.read(roadmapProvider);
-    final suggestedRole = roleMatch?.topRole.isNotEmpty == true ? roleMatch!.topRole : roadmapState.selectedTargetRole;
-
-    if (suggestedRole.isNotEmpty && suggestedRole != roadmapState.selectedTargetRole) {
-      ref.read(roadmapProvider.notifier).setTargetRole(suggestedRole);
+  void _openCreateRoadmapSheet() {
+    final roleMatch = ref.read(repositoryProvider).roleMatchFor(widget.repoId);
+    final selected = _selectedRoleMatch ?? roleMatch?.topMatch;
+    if (selected != null) {
+      ref.read(roadmapProvider.notifier).setTargetRole(selected.role);
     }
 
     showCreateRoadmapSheet(
       context,
-      analyses: state.analyses,
-      roleMatch: roleMatch,
-      selectedRole: suggestedRole.isNotEmpty ? suggestedRole : roadmapState.selectedTargetRole,
-      isGenerating: roadmapState.isGenerating,
-      onGenerate: (role) => generateAndOpenRoadmap(context, ref, role, repoId: widget.repoId),
+      config: CreateRoadmapSheetConfig(
+        sourceMode: 'single_repo',
+        repoId: widget.repoId,
+        onGenerate: (params) => generateAndOpenRoadmap(
+          context,
+          ref,
+          RoadmapGenerateParams(
+            roleId: params.roleId,
+            targetRole: params.targetRole,
+            sourceMode: 'single_repo',
+            repoId: widget.repoId,
+            level: params.level,
+            durationWeeks: params.durationWeeks,
+            language: params.language,
+          ),
+        ),
+      ),
     );
   }
 }
