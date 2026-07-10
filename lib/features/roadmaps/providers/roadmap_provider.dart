@@ -2,10 +2,10 @@
 
 import '../../../core/config/app_config.dart';
 import '../data/roadmap_repository.dart';
+import '../models/roadmap_generate_params.dart';
 import '../../../core/network/api_utils.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/network/normalizers.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../../../core/storage/roadmap_progress_storage.dart';
 import '../../../shared/models/app_models.dart';
 import '../data/roadmap_mock_data.dart';
@@ -46,7 +46,7 @@ class RoadmapState {
     this.isGenerating = false,
     this.isArchiving = false,
     this.error,
-    this.selectedTargetRole = 'Backend Developer',
+    this.selectedTargetRole = '',
   });
 
   final List<RoadmapModel> roadmaps;
@@ -97,6 +97,8 @@ class RoadmapState {
 class RoadmapNotifier extends Notifier<RoadmapState> {
   late RoadmapRepository _repository;
   RoadmapProgressStorage? _progressStorage;
+  Future<void>? _loadInFlight;
+  String? _loadInFlightStatus;
 
   Future<RoadmapProgressStorage> _storage() async {
     return _progressStorage ??= await RoadmapProgressStorage.create();
@@ -138,7 +140,6 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
         learningStats: mockLearningStats,
       );
     }
-    Future.microtask(loadRoadmaps);
     return const RoadmapState();
   }
 
@@ -148,13 +149,39 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
 
   Future<void> setStatusFilter(String status) async {
     if (status == state.statusFilter) return;
-    state = state.copyWith(statusFilter: status, clearError: true);
+    state = state.copyWith(
+      statusFilter: status,
+      roadmaps: const [],
+      isLoading: true,
+      clearError: true,
+    );
     await loadRoadmaps(status: status);
   }
 
   Future<void> loadRoadmaps({String? status}) async {
     final effectiveStatus = status ?? state.statusFilter;
-    state = state.copyWith(isLoading: true, clearError: true, statusFilter: effectiveStatus);
+    if (_loadInFlight != null && _loadInFlightStatus == effectiveStatus) {
+      return _loadInFlight!;
+    }
+
+    final showLoading = state.roadmaps.isEmpty;
+    state = state.copyWith(
+      isLoading: showLoading,
+      clearError: true,
+      statusFilter: effectiveStatus,
+    );
+
+    _loadInFlightStatus = effectiveStatus;
+    _loadInFlight = _loadRoadmapsTask(effectiveStatus, showLoading: showLoading);
+    try {
+      await _loadInFlight;
+    } finally {
+      _loadInFlight = null;
+      _loadInFlightStatus = null;
+    }
+  }
+
+  Future<void> _loadRoadmapsTask(String effectiveStatus, {required bool showLoading}) async {
     try {
       if (AppConfig.demoMode) {
         final items = effectiveStatus == 'archived'
@@ -189,14 +216,9 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
   }
 
   Future<RoadmapModel?> generateAI({
-    String? targetRole,
-    String? repoId,
-    String level = 'beginner',
-    int durationWeeks = 6,
-    String language = 'vi',
-    bool forceRegenerate = false,
+    required RoadmapGenerateParams params,
   }) async {
-    final role = targetRole ?? state.selectedTargetRole;
+    final role = params.targetRole;
     state = state.copyWith(isGenerating: true, clearError: true, selectedTargetRole: role);
     try {
       if (AppConfig.demoMode) {
@@ -204,21 +226,11 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
         state = state.copyWith(isGenerating: false);
         return mockRoadmaps.first;
       }
-      final roadmap = await safeRequest(
-        () => _repository.generateRoadmap(
-          targetRole: role,
-          repoId: repoId,
-          level: level,
-          durationWeeks: durationWeeks,
-          language: language,
-          forceRegenerate: forceRegenerate,
-        ),
-      );
+      final roadmap = await safeRequest(() => _repository.generateRoadmap(params));
       _applyGeneratedRoadmap(roadmap);
       return roadmap;
     } catch (e) {
       final message = getApiErrorMessage(e);
-      // BE có thể đã lưu roadmap nhưng lỗi khi gọi createAutomaticNotification (chưa deploy).
       if (_isRoadmapNotificationBackendBug(message)) {
         final recovered = await _recoverAfterGenerateFailure(role);
         if (recovered != null) {

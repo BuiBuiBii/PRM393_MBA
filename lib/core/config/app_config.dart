@@ -1,3 +1,7 @@
+import 'package:flutter/foundation.dart';
+
+import '../constants/dev2vec_roles.dart';
+
 class AppConfig {
   static const String appName = 'GitAnalyzer AI';
 
@@ -15,20 +19,17 @@ class AppConfig {
   static const String tokenKey = 'gitanalyzer.jwt';
   static const String userKey = 'gitanalyzer.user';
 
-  /// Bật demo (offline): flutter run --dart-define=DEMO_MODE=true
-  static const bool demoMode = bool.fromEnvironment('DEMO_MODE', defaultValue: false);
+  /// Demo chỉ bật khi debug + `--dart-define=DEMO_MODE=true`. Release luôn dùng API thật.
+  static bool get demoMode {
+    if (kReleaseMode) return false;
+    return const bool.fromEnvironment('DEMO_MODE', defaultValue: false);
+  }
 
-  /// Target roles khớp BE (/api/roadmaps/generate)
-  static const List<String> targetRoles = [
-    'Frontend Developer',
-    'Backend Developer',
-    'Fullstack Developer',
-    'Mobile Developer',
-    'Tester / QA Engineer',
-    'DevOps Beginner',
-    'Data Analyst',
-    'AI / Machine Learning Beginner',
-  ];
+  /// @deprecated Dùng [roleCatalogProvider] — catalog từ `GET /roles/catalog`.
+  static const List<Dev2VecRole> dev2VecRoles = Dev2VecRole.catalog;
+
+  /// @deprecated Dùng [dev2VecRoles] hoặc catalog API.
+  static List<String> get targetRoles => dev2VecRoles.map((r) => r.name).toList();
 
   static const String demoEmail = 'demo@gitanalyzer.vn';
   static const String demoPassword = 'demo123';

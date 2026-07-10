@@ -22,6 +22,19 @@ class RepositoryRepository {
 
   Future<AnalysisModel?> getAnalysis(String id) => _api.getAnalysis(id);
 
+  Future<RoleMatchModel?> calculateRoleMatches({
+    required String sourceMode,
+    String? repoId,
+    List<String>? repoIds,
+    int limit = 3,
+  }) =>
+      _api.calculateRoleMatches(
+        sourceMode: sourceMode,
+        repoId: repoId,
+        repoIds: repoIds,
+        limit: limit,
+      );
+
   Future<RoleMatchModel?> getRoleMatches(
     String repoId, {
     int limit = 3,

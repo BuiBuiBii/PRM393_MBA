@@ -1,8 +1,10 @@
 import 'package:dio/dio.dart';
 
+import '../../core/constants/dev2vec_roles.dart';
 import '../../core/network/api_utils.dart';
 import '../../core/network/normalizers.dart';
 import '../../shared/models/app_models.dart';
+import '../../features/roadmaps/models/roadmap_generate_params.dart';
 
 class AppApi {
   AppApi(this._dio);
@@ -58,10 +60,20 @@ class AppApi {
     await _dio.get('/github/oauth/callback', queryParameters: queryParams);
   }
 
-  Future<AnalysisModel> analyzeRepository(String id) async {
+  Future<AnalysisModel> analyzeRepository(
+    String id, {
+    String view = 'detail',
+    bool includeEvidence = false,
+  }) async {
     await syncPackages(id);
     await syncCommits(id);
-    final res = await _dio.post('/analysis/repositories/$id');
+    final res = await _dio.post(
+      '/analysis/repositories/$id',
+      queryParameters: {
+        'view': view,
+        'includeEvidence': includeEvidence,
+      },
+    );
     return normalizeAnalysis(res.data);
   }
 
@@ -70,6 +82,25 @@ class AppApi {
     return normalizeAnalysis(res.data);
   }
 
+  Future<RoleMatchModel?> calculateRoleMatches({
+    required String sourceMode,
+    String? repoId,
+    List<String>? repoIds,
+    int limit = 3,
+  }) async {
+    final body = <String, dynamic>{
+      'sourceMode': sourceMode,
+      'limit': limit,
+      if (repoId != null && repoId.isNotEmpty) 'repoId': repoId,
+      if (repoIds != null && repoIds.isNotEmpty) 'repoIds': repoIds,
+    };
+    final res = await _dio.post('/analysis/role-matches', data: body);
+    final data = unwrapResponse<dynamic>(res.data);
+    if (data == null) return null;
+    return RoleMatchModel.fromJson(Map<String, dynamic>.from(data as Map? ?? {}));
+  }
+
+  /// Legacy single-repo — fallback nếu POST lỗi.
   Future<RoleMatchModel?> getRoleMatches(
     String repoId, {
     int? limit,
@@ -87,6 +118,17 @@ class AppApi {
     final data = unwrapResponse<dynamic>(res.data);
     if (data == null) return null;
     return RoleMatchModel.fromJson(Map<String, dynamic>.from(data as Map? ?? {}));
+  }
+
+  Future<List<Dev2VecRole>> getRoleCatalog() async {
+    final res = await _dio.get('/roles/catalog');
+    final data = unwrapResponse<dynamic>(res.data);
+    final roles = (data is Map ? data['roles'] : data) as List? ?? [];
+    return roles
+        .whereType<Map>()
+        .map((e) => Dev2VecRole.fromJson(Map<String, dynamic>.from(e)))
+        .where((r) => r.id.isNotEmpty)
+        .toList();
   }
 
   Future<List<AnalysisModel>> getMyAnalyses() async {
@@ -220,24 +262,31 @@ class AppApi {
     return normalizeRoadmaps(res.data);
   }
 
-  Future<RoadmapModel> generateRoadmap({
+  Future<RoadmapModel> generateRoadmap(RoadmapGenerateParams params) async {
+    final res = await _dio.post('/roadmaps/generate', data: params.toJson());
+    return normalizeRoadmap(res.data);
+  }
+
+  /// @deprecated Dùng [generateRoadmap] với [RoadmapGenerateParams].
+  Future<RoadmapModel> generateRoadmapLegacy({
     required String targetRole,
     String? repoId,
     String level = 'beginner',
     int durationWeeks = 6,
     String language = 'vi',
     bool forceRegenerate = false,
-  }) async {
-    final res = await _dio.post('/roadmaps/generate', data: {
-      'targetRole': targetRole,
-      if (repoId != null && repoId.isNotEmpty) 'repoId': repoId,
-      'level': level,
-      'durationWeeks': durationWeeks,
-      'language': language,
-      'forceRegenerate': forceRegenerate,
-    });
-    return normalizeRoadmap(res.data);
-  }
+  }) =>
+      generateRoadmap(
+        RoadmapGenerateParams(
+          roleId: Dev2VecRole.findByName(targetRole)?.id ?? targetRole,
+          targetRole: targetRole,
+          repoId: repoId,
+          level: level,
+          durationWeeks: durationWeeks,
+          language: language,
+          forceRegenerate: forceRegenerate,
+        ),
+      );
 
   Future<RoadmapModel> getRoadmap(String id) async {
     final res = await _dio.get('/roadmaps/$id');
