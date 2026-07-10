@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/router/app_navigator_keys.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_app_bar.dart';
 import '../../../shared/widgets/app_image_assets.dart';
@@ -47,16 +48,43 @@ class _AdminShellState extends ConsumerState<AdminShell> {
 
   bool get _isDetailRoute => GoRouterState.of(context).uri.pathSegments.length > 2;
 
+  bool get _shellCanPop => adminShellNavigatorKey.currentState?.canPop() ?? false;
+
+  bool get _showBackButton {
+    if (_isDetailRoute) return true;
+    return _shellCanPop || GoRouter.of(context).canPop();
+  }
+
+  String? _fallbackParentRoute() {
+    final segments = GoRouterState.of(context).uri.pathSegments;
+    if (segments.length < 3) return null;
+    // /admin/users/123 -> /admin/users
+    return '/${segments[0]}/${segments[1]}';
+  }
+
   void _handleBack() {
+    if (_isDetailRoute) {
+      final parent = _fallbackParentRoute();
+      if (parent != null) {
+        GoRouter.of(context).go(parent);
+        return;
+      }
+    }
+
+    final shellNav = adminShellNavigatorKey.currentState;
+    if (shellNav != null && shellNav.canPop()) {
+      shellNav.pop();
+      return;
+    }
+
     final router = GoRouter.of(context);
     if (router.canPop()) {
       router.pop();
       return;
     }
 
-    final segments = GoRouterState.of(context).uri.pathSegments;
-    if (segments.length >= 2) {
-      router.go('/${segments[0]}/${segments[1]}');
+    if (_isDetailRoute) {
+      router.go('/admin');
     }
   }
 
@@ -72,11 +100,12 @@ class _AdminShellState extends ConsumerState<AdminShell> {
         key: _scaffoldKey,
         backgroundColor: Colors.transparent,
         appBar: AppAppBar(
-          title: _title(),
+          title: _showBackButton ? _title() : '',
+          showBrand: !_showBackButton,
           brandLabel: 'Admin Console',
           backgroundColor: appBarBg,
           foregroundColor: appBarFg,
-          leading: _isDetailRoute
+          leading: _showBackButton
               ? IconButton(
                   tooltip: 'Quay lại',
                   onPressed: _handleBack,
@@ -157,14 +186,18 @@ class _AdminShellState extends ConsumerState<AdminShell> {
             ],
           ),
         ),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AdminBreadcrumb(location: _location),
-            Expanded(
-              child: KeyedSubtree(key: ValueKey(_location), child: widget.child),
-            ),
-          ],
+        body: PopScope(
+          canPop: !_showBackButton,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop && _showBackButton) _handleBack();
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (!_showBackButton) AdminBreadcrumb(location: _location),
+              Expanded(child: widget.child),
+            ],
+          ),
         ),
       ),
     );

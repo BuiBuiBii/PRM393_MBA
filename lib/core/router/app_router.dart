@@ -35,10 +35,12 @@ import '../../features/misc/screens/not_found_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/repositories/screens/repositories_screen.dart';
 import '../../features/repositories/screens/repository_detail_screen.dart';
+import '../../features/roadmaps/screens/roadmap_detail_screen.dart';
 import '../../features/roadmaps/screens/roadmaps_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/shell/screens/main_shell.dart';
+import 'app_navigator_keys.dart';
 import 'auth_navigation.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -46,6 +48,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(refresh.dispose);
 
   final router = GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/dashboard',
     refreshListenable: refresh,
     errorBuilder: (_, __) => const NotFoundScreen(),
@@ -80,6 +83,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/auth/github/callback', builder: (_, __) => const GitHubAuthCallbackScreen()),
       GoRoute(path: '/admin/denied', builder: (_, __) => const AdminAccessDeniedScreen()),
       ShellRoute(
+        navigatorKey: adminShellNavigatorKey,
         builder: (_, __, child) => AdminShell(child: child),
         routes: [
           GoRoute(path: '/admin', builder: (_, __) => const AdminDashboardScreen()),
@@ -116,6 +120,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       ShellRoute(
+        navigatorKey: mainShellNavigatorKey,
         builder: (_, __, child) => MainShell(child: child),
         routes: [
           GoRoute(path: '/dashboard', builder: (_, __) => const DashboardScreen()),
@@ -129,12 +134,26 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'analysis',
                 builder: (_, state) => AnalysisResultScreen(repoId: state.pathParameters['id']!),
               ),
+              GoRoute(
+                path: 'snapshots',
+                builder: (_, state) => SnapshotListScreen(repoId: state.pathParameters['id']!),
+              ),
+              GoRoute(
+                path: 'progress',
+                builder: (_, state) => SnapshotCompareScreen(repoId: state.pathParameters['id']!),
+              ),
             ],
           ),
-          GoRoute(path: '/repositories/:id/snapshots', builder: (_, state) => SnapshotListScreen(repoId: state.pathParameters['id']!)),
-          GoRoute(path: '/repositories/:id/progress', builder: (_, state) => SnapshotCompareScreen(repoId: state.pathParameters['id']!)),
-          GoRoute(path: '/snapshots', builder: (_, __) => const SnapshotSelectRepoScreen()),
-          GoRoute(path: '/snapshots/:id', builder: (_, state) => SnapshotDetailScreen(snapshotId: state.pathParameters['id']!)),
+          GoRoute(
+            path: '/snapshots',
+            builder: (_, __) => const SnapshotSelectRepoScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (_, state) => SnapshotDetailScreen(snapshotId: state.pathParameters['id']!),
+              ),
+            ],
+          ),
           GoRoute(path: '/analysis/:id', builder: (_, state) => AnalysisResultScreen(repoId: state.pathParameters['id']!)),
           GoRoute(path: '/chat', builder: (_, __) => const ChatScreen()),
           GoRoute(path: '/roadmaps', builder: (_, __) => const RoadmapsScreen()),
