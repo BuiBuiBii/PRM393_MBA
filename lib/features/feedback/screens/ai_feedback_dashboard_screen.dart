@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../app_providers.dart';
+import '../../feature_providers.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/utils/format_utils.dart';
 import '../../../shared/widgets/async_content.dart';
+import '../../../shared/widgets/scroll_list_hints.dart';
+import '../../../shared/widgets/collapsible_list.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
 class AiFeedbackDashboardScreen extends ConsumerStatefulWidget {
@@ -37,7 +39,8 @@ class _AiFeedbackDashboardScreenState extends ConsumerState<AiFeedbackDashboardS
           .any((v) => (v ?? '').toLowerCase().contains(keyword));
     }).toList();
 
-    return RefreshIndicator(
+    return ScrollListHints(
+      child: RefreshIndicator(
       onRefresh: _reload,
       child: ListView(
         padding: appScreenPadding(context),
@@ -89,21 +92,19 @@ class _AiFeedbackDashboardScreenState extends ConsumerState<AiFeedbackDashboardS
               icon: Icons.folder_outlined,
               onPressed: () => context.go('/repositories'),
             ),
-            child: Column(
-              children: [
-                for (final feedback in feedbacks)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _FeedbackCard(
-                      feedback: feedback,
-                      onTap: () => context.push('/repositories/${feedback.repositoryId}'),
-                    ),
-                  ),
-              ],
+            child: CollapsibleItemList(
+              resetKey: keyword,
+              initialVisibleCount: 4,
+              items: feedbacks,
+              itemBuilder: (context, feedback) => _FeedbackCard(
+                feedback: feedback,
+                onTap: () => context.push('/repositories/${feedback.repositoryId}'),
+              ),
             ),
           ),
         ],
       ),
+    ),
     );
   }
 }

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../auth/providers/auth_provider.dart';
-import '../../app_providers.dart';
+import '../../feature_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/utils/format_utils.dart';
 import '../../../shared/widgets/app_image_assets.dart';
@@ -47,7 +47,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: () => context.go('/profile'),
+                onTap: () => context.push('/profile'),
                 borderRadius: BorderRadius.circular(12),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
@@ -194,7 +194,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 outlined: true,
                 expand: true,
                 leading: const AppSvgIcon(asset: AppAssets.githubIcon, size: 18),
-                onPressed: () => context.go('/github/connect'),
+                onPressed: () => context.push('/github/connect'),
               ),
               const SizedBox(height: 8),
               PrimaryButton(label: 'Đồng bộ / phân tích repository', icon: Icons.folder_copy, outlined: true, expand: true, onPressed: () => context.go('/repositories')),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/app_strings.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/router/auth_navigation.dart';
@@ -69,10 +70,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         children: [
           const Center(child: AppBrandLogo(size: 48, withBackground: true)),
           const SizedBox(height: 16),
-          const Center(child: AppBadge(label: 'Chào mừng trở lại', variant: AppBadgeVariant.info)),
+          const Center(child: AppBadge(label: AppStrings.welcomeBack, variant: AppBadgeVariant.info)),
           const SizedBox(height: 8),
           Text(
-            'Đăng nhập GitAnalyzer',
+            AppStrings.loginTitle,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,

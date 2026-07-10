@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/github_oauth_service.dart';
 import '../../../core/auth/social_auth_service.dart';
-import '../../../core/network/app_api.dart';
+import '../../../core/network/app_api_provider.dart';
 import '../../../core/network/api_utils.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../shared/models/app_models.dart';
@@ -11,6 +11,8 @@ import '../../../shared/models/user_model.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/demo/demo_data.dart';
 import '../../../core/demo/demo_service.dart';
+
+export '../../../core/network/app_api_provider.dart';
 
 enum AuthStatus {
   unknown,
@@ -373,5 +375,3 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 });
 
 final authProvider = NotifierProvider<AuthNotifier, AuthState>(AuthNotifier.new);
-
-final appApiProvider = Provider<AppApi>((ref) => AppApi(ref.watch(dioProvider)));

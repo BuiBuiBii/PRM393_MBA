@@ -45,7 +45,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         if (_success != null) ...[const SizedBox(height: 12), BannerMessage(message: _success!)],
         const SizedBox(height: 16),
         AppCard(
-          onTap: () => context.go('/profile'),
+          onTap: () => context.push('/profile'),
           child: Row(
             children: [
               UserAvatar(imageUrl: user?.avatar, name: user?.name, size: 48),
@@ -135,7 +135,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        PrimaryButton(label: 'Kết nối GitHub', outlined: true, expand: true, onPressed: () => context.go('/github/connect')),
+        PrimaryButton(label: 'Kết nối GitHub', outlined: true, expand: true, onPressed: () => context.push('/github/connect')),
         const SizedBox(height: 8),
         PrimaryButton(
           label: 'Đăng xuất',

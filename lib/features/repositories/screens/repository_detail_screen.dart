@@ -4,10 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../app_providers.dart';
+import '../../feature_providers.dart';
 import '../../../shared/utils/format_utils.dart';
 import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/app_widgets.dart';
+import '../../../shared/widgets/scroll_list_hints.dart';
 import '../../../shared/widgets/roadmap_widgets.dart';
 
 class RepositoryDetailScreen extends ConsumerStatefulWidget {
@@ -47,7 +48,8 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
       onRetry: () => ref.read(repositoryProvider.notifier).fetchRepository(widget.repoId),
       child: detail == null
           ? const SizedBox.shrink()
-          : ListView(
+          : ScrollListHints(
+              child: ListView(
         padding: appScreenPadding(context),
         children: [
         PageHeader(title: detail.name, subtitle: detail.fullName),
@@ -212,6 +214,7 @@ class _RepositoryDetailScreenState extends ConsumerState<RepositoryDetailScreen>
         ),
       ],
       ),
+    ),
     );
   }
 
