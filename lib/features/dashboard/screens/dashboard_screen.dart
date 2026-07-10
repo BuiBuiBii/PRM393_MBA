@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../auth/providers/auth_provider.dart';
 import '../../feature_providers.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../shared/utils/format_utils.dart';
-import '../../../shared/widgets/app_image_assets.dart';
 import '../../../shared/widgets/app_widgets.dart';
+import '../../../shared/widgets/scroll_list_hints.dart';
+import '../../../shared/widgets/skeleton_loading.dart';
+import '../widgets/dashboard_widgets.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -20,11 +19,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      ref.read(dashboardProvider.notifier).load();
-      ref.read(repositoryProvider.notifier).fetchRepositories();
-      ref.read(repositoryProvider.notifier).fetchMyAnalyses();
-    });
+    Future.microtask(_refresh);
+  }
+
+  Future<void> _refresh() async {
+    await Future.wait([
+      ref.read(dashboardProvider.notifier).load(),
+      ref.read(repositoryProvider.notifier).fetchRepositories(),
+      ref.read(repositoryProvider.notifier).fetchMyAnalyses(),
+    ]);
   }
 
   @override
@@ -32,180 +35,76 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final user = ref.watch(authProvider).user;
     final dashboard = ref.watch(dashboardProvider);
     final repoState = ref.watch(repositoryProvider);
-    final payload = dashboard.payload ?? {};
-    final totalRepos = payload['totalRepositories'] ?? repoState.repositories.length;
-    final analyzed = payload['analyzedRepositories'] ?? repoState.analyses.length;
-    final githubConnected = payload['githubConnected'] == true || user?.githubConnected == true;
-    final overall = payload['overallScore'] ?? (repoState.analyses.isNotEmpty ? repoState.analyses.first.scores.overall : 0);
-    final strongSkills = (payload['strongSkills'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
-    final missingSkills = (payload['missingSkills'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
-    final suggestedCareer = payload['suggestedCareerPath']?.toString();
+    final payload = dashboard.payload;
+    final hasDashboard = payload != null;
+    final isInitialLoading = dashboard.isLoading && !hasDashboard && repoState.repositories.isEmpty;
 
-    return ListView(
-      padding: appScreenPadding(context),
-      children: [
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => context.push('/profile'),
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  UserAvatar(imageUrl: user?.avatar, name: user?.name, size: 52),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: PageHeader(
-                      title: 'Chào mừng, ${user?.name ?? 'bạn'}!',
-                      subtitle: 'Chạm để xem hồ sơ • Tổng quan GitHub và phân tích.',
-                    ),
-                  ),
-                    Icon(Icons.chevron_right, color: context.appTextSecondary),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        if (dashboard.error != null) ...[
-          const SizedBox(height: 12),
-          BannerMessage(message: 'Dashboard API: ${dashboard.error}', isWarning: true),
+    final totalRepos = hasDashboard ? (payload['totalRepositories'] ?? 0) : repoState.repositories.length;
+    final analyzed = hasDashboard ? (payload['analyzedRepositories'] ?? 0) : repoState.analyses.length;
+    final githubConnected = hasDashboard
+        ? payload['githubConnected'] == true
+        : user?.githubConnected == true;
+    final overallRaw = hasDashboard
+        ? payload['overallScore']
+        : (repoState.analyses.isNotEmpty ? repoState.analyses.first.scores.overall : 0);
+    final overallScore = overallRaw is int ? overallRaw : int.tryParse('$overallRaw') ?? 0;
+    final strongSkills = hasDashboard
+        ? (payload['strongSkills'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[]
+        : const <String>[];
+    final missingSkills = hasDashboard
+        ? (payload['missingSkills'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[]
+        : const <String>[];
+    final suggestedCareer = hasDashboard ? payload['suggestedCareerPath']?.toString() : null;
+
+    if (isInitialLoading) {
+      return ListView(
+        padding: appScreenPadding(context),
+        children: const [
+          SkeletonCard(),
+          SizedBox(height: 16),
+          SkeletonCard(),
+          SizedBox(height: 16),
+          SkeletonCard(),
         ],
-        const SizedBox(height: 16),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: isCompactPhone(context) ? 1.05 : 1.15,
+      );
+    }
+
+    return ScrollListHints(
+      child: RefreshIndicator(
+        onRefresh: _refresh,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: appScreenPadding(context),
           children: [
-            StatCard(label: 'Repositories', value: '$totalRepos', icon: Icons.folder_copy, iconColor: AppColors.primary, iconBg: const Color(0xFFE0E7FF)),
-            StatCard(label: 'Đã phân tích', value: '$analyzed', icon: Icons.check_circle_outline, iconColor: AppColors.emerald, iconBg: const Color(0xFFD1FAE5)),
-            StatCard(
-              label: 'GitHub',
-              value: githubConnected ? 'Đã kết nối' : 'Chưa kết nối',
-              icon: Icons.code,
-              iconColor: AppColors.cyan,
-              iconBg: const Color(0xFFCFFAFE),
+            DashboardHeroCard(
+              userName: user?.name ?? 'bạn',
+              avatarUrl: user?.avatar,
+              overallScore: overallScore,
+              githubConnected: githubConnected,
+              totalRepos: totalRepos is int ? totalRepos : int.tryParse('$totalRepos') ?? 0,
+              analyzedCount: analyzed is int ? analyzed : int.tryParse('$analyzed') ?? 0,
+              onTapProfile: () => context.push('/profile'),
             ),
-            StatCard(label: 'Điểm tổng quan', value: overall == 0 ? '-' : '$overall', icon: Icons.trending_up, iconColor: AppColors.purple, iconBg: const Color(0xFFEDE9FE), valueColor: scoreColor(overall is int ? overall : 0)),
+            if (dashboard.error != null) ...[
+              const SizedBox(height: 12),
+              BannerMessage(message: dashboard.error!, isWarning: true),
+            ],
+            if (suggestedCareer != null && suggestedCareer.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              DashboardCareerCard(careerPath: suggestedCareer),
+            ],
+            if (strongSkills.isNotEmpty || missingSkills.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              DashboardSkillsCard(strongSkills: strongSkills, missingSkills: missingSkills),
+            ],
+            const SizedBox(height: 20),
+            DashboardRecentAnalysesCard(analyses: repoState.analyses),
+            const SizedBox(height: 20),
+            const DashboardQuickActionsGrid(),
+            const SizedBox(height: 8),
           ],
         ),
-        const SizedBox(height: 16),
-        if (suggestedCareer != null && suggestedCareer.isNotEmpty) ...[
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Định hướng nghề nghiệp', style: context.appSectionTitleStyle),
-                const SizedBox(height: 8),
-                Text(suggestedCareer, style: context.appBodyStyle),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-        if (strongSkills.isNotEmpty || missingSkills.isNotEmpty) ...[
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Kỹ năng (từ phân tích mới nhất)', style: context.appSectionTitleStyle),
-                if (strongSkills.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  const Text('Điểm mạnh', style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.emerald)),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: strongSkills.take(8).map((s) => AppBadge(label: s, variant: AppBadgeVariant.success)).toList(),
-                  ),
-                ],
-                if (missingSkills.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  const Text('Cần cải thiện', style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.amber)),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: missingSkills.take(8).map((s) => AppBadge(label: s, variant: AppBadgeVariant.warning)).toList(),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(child: Text('Phân tích gần đây', style: context.appSectionTitleStyle)),
-                  TextButton(onPressed: () => context.go('/repositories'), child: const Text('Repositories')),
-                ],
-              ),
-              const SizedBox(height: 8),
-              if (repoState.analyses.isEmpty)
-                const EmptyState(title: 'Chưa có phân tích', subtitle: 'Hãy đồng bộ repositories và chạy Phân tích.')
-              else
-                ...repoState.analyses.take(4).map((a) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: InkWell(
-                        onTap: () => context.push('/repositories/${a.repositoryId}/analysis'),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: context.appBorderColor),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(a.repositoryName, style: TextStyle(fontWeight: FontWeight.w600, color: context.appTextPrimary)),
-                                    Text(formatRelativeTime(a.createdAt), style: context.appLabelStyle),
-                                  ],
-                                ),
-                              ),
-                              Text('${a.scores.overall}', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: scoreColor(a.scores.overall))),
-                            ],
-                          ),
-                        ),
-                      ),
-                    )),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Thao tác nhanh', style: context.appSectionTitleStyle),
-              const SizedBox(height: 12),
-              PrimaryButton(
-                label: 'Kết nối GitHub',
-                outlined: true,
-                expand: true,
-                leading: const AppSvgIcon(asset: AppAssets.githubIcon, size: 18),
-                onPressed: () => context.push('/github/connect'),
-              ),
-              const SizedBox(height: 8),
-              PrimaryButton(label: 'Đồng bộ / phân tích repository', icon: Icons.folder_copy, outlined: true, expand: true, onPressed: () => context.go('/repositories')),
-              const SizedBox(height: 8),
-              PrimaryButton(label: 'Hỏi AI Mentor', icon: Icons.chat, outlined: true, expand: true, onPressed: () => context.go('/chat')),
-              const SizedBox(height: 8),
-              PrimaryButton(label: 'Cài đặt tài khoản', icon: Icons.settings_outlined, outlined: true, expand: true, onPressed: () => context.go('/settings')),
-            ],
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
