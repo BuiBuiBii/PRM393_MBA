@@ -123,7 +123,7 @@ class RoadmapListHeader extends StatelessWidget {
             ),
           ],
         ),
-        if (state.error != null) ...[
+        if (state.roadmaps.isEmpty && state.error != null) ...[
           const SizedBox(height: 12),
           Text(state.error!, style: const TextStyle(color: AppColors.amber, fontSize: 13)),
         ],

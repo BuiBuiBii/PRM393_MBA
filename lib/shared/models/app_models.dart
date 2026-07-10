@@ -99,6 +99,12 @@ class AnalysisModel {
     required this.weaknesses,
     required this.recommendations,
     this.careerDirection,
+    this.userReadinessScore,
+    this.userLevel,
+    this.topSkills = const [],
+    this.missingSkills = const [],
+    this.scoreBreakdown = const {},
+    this.confidence,
   });
 
   final String id;
@@ -112,30 +118,51 @@ class AnalysisModel {
   final List<String> weaknesses;
   final List<String> recommendations;
   final String? careerDirection;
+  final int? userReadinessScore;
+  final String? userLevel;
+  final List<String> topSkills;
+  final List<String> missingSkills;
+  final Map<String, int> scoreBreakdown;
+  final double? confidence;
 
   factory AnalysisModel.fromJson(Map<String, dynamic> json) {
     final scoresJson = json['scores'] is Map
         ? Map<String, dynamic>.from(json['scores'] as Map)
         : json;
+    final summary = json['summary'] is Map ? Map<String, dynamic>.from(json['summary'] as Map) : <String, dynamic>{};
+
+    List<String> strList(dynamic v) =>
+        (v as List? ?? []).map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+
+    Map<String, int> breakdownMap(dynamic v) {
+      if (v is! Map) return {};
+      return v.map((key, value) => MapEntry(key.toString(), int.tryParse(value.toString()) ?? 0));
+    }
+
+    final readiness = summary['userReadinessScore'] ?? json['userReadinessScore'];
+    final career = summary['careerDirection'] ?? json['careerDirection'];
+
     return AnalysisModel(
-      id: (json['id'] ?? json['_id'] ?? '').toString(),
+      id: (json['id'] ?? json['_id'] ?? json['analysisId'] ?? '').toString(),
       repositoryId: (json['repositoryId'] ?? json['repoId'] ?? '').toString(),
       repositoryName: (json['repositoryName'] ?? json['repoName'] ?? json['fullName'] ?? 'Repository').toString(),
       createdAt: (json['createdAt'] ?? DateTime.now().toIso8601String()).toString(),
-      projectType: (json['projectType'] ?? 'Unknown').toString(),
-      techStack: (json['techStack'] as List? ?? json['languages'] as List? ?? [])
-          .map((e) => e.toString())
-          .toList(),
+      projectType: (summary['projectType'] ?? json['projectType'] ?? 'Unknown').toString(),
+      techStack: strList(json['techStack'] ?? json['languages']),
       scores: AnalysisScores.fromJson(scoresJson),
-      strengths: (json['strengths'] as List? ?? []).map((e) => e.toString()).toList(),
-      weaknesses: (json['weaknesses'] as List? ?? []).map((e) => e.toString()).toList(),
+      strengths: strList(json['strengths']),
+      weaknesses: strList(json['weaknesses']),
       recommendations: (json['recommendations'] as List? ?? [])
           .map((e) => e is Map ? (e['title'] ?? e['description'] ?? '').toString() : e.toString())
           .where((e) => e.isNotEmpty)
           .toList(),
-      careerDirection: json['careerDirection'] is Map
-          ? (json['careerDirection'] as Map)['primary']?.toString()
-          : json['careerDirection']?.toString(),
+      careerDirection: career is Map ? career['primary']?.toString() : career?.toString(),
+      userReadinessScore: int.tryParse(readiness?.toString() ?? ''),
+      userLevel: (summary['userLevel'] ?? json['userLevel'])?.toString(),
+      topSkills: strList(json['topSkills']),
+      missingSkills: strList(json['missingSkills']),
+      scoreBreakdown: breakdownMap(json['scoreBreakdown']),
+      confidence: double.tryParse((summary['confidence'] ?? json['confidence'])?.toString() ?? ''),
     );
   }
 }
@@ -623,6 +650,7 @@ class LearningStatsModel {
 
 class RoleMatchItem {
   const RoleMatchItem({
+    required this.roleId,
     required this.role,
     required this.description,
     required this.category,
@@ -630,10 +658,13 @@ class RoleMatchItem {
     required this.matchLevel,
     required this.matchLevelLabel,
     required this.matchedSkills,
+    required this.weakSkills,
     required this.missingSkills,
     required this.recommendedNextSkills,
+    this.scoringMethod,
   });
 
+  final String roleId;
   final String role;
   final String description;
   final String category;
@@ -641,22 +672,35 @@ class RoleMatchItem {
   final String matchLevel;
   final String matchLevelLabel;
   final List<String> matchedSkills;
+  final List<String> weakSkills;
   final List<String> missingSkills;
   final List<String> recommendedNextSkills;
+  final String? scoringMethod;
 
   factory RoleMatchItem.fromJson(Map<String, dynamic> json) {
     List<String> strList(dynamic v) =>
         (v as List? ?? []).map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+
+    final roleId = (json['roleId'] ?? '').toString();
+    final roleName = (json['roleName'] ?? json['role'] ?? json['targetRole'] ?? '').toString();
+
     return RoleMatchItem(
-      role: (json['roleName'] ?? json['role'] ?? json['targetRole'] ?? '').toString(),
+      roleId: roleId,
+      role: roleName,
       description: (json['description'] ?? '').toString(),
       category: (json['category'] ?? '').toString(),
       matchScore: double.tryParse(json['matchScore']?.toString() ?? '') ?? 0.0,
       matchLevel: (json['matchLevel'] ?? '').toString(),
       matchLevelLabel: (json['matchLevelLabel'] ?? json['matchLevel'] ?? '').toString(),
-      matchedSkills: strList(json['matchedSkills'] ?? json['topMatchedSkills']),
-      missingSkills: strList(json['missingSkills'] ?? json['topMissingSkills']),
+      matchedSkills: strList(
+        json['matchedSkillNames'] ?? json['matchedSkills'] ?? json['topMatchedSkills'],
+      ),
+      weakSkills: strList(json['weakSkillNames'] ?? json['weakSkills']),
+      missingSkills: strList(
+        json['missingSkillNames'] ?? json['missingSkills'] ?? json['topMissingSkills'],
+      ),
       recommendedNextSkills: strList(json['recommendedNextSkills']),
+      scoringMethod: json['scoringMethod']?.toString(),
     );
   }
 }
@@ -668,6 +712,9 @@ class RoleMatchModel {
     required this.recommendedNextSkills,
     required this.topMatchedSkills,
     required this.topMissingSkills,
+    this.analysisSource,
+    this.repositoryId,
+    this.repoName,
   });
 
   final String topRole;
@@ -675,6 +722,9 @@ class RoleMatchModel {
   final List<String> recommendedNextSkills;
   final List<String> topMatchedSkills;
   final List<String> topMissingSkills;
+  final String? analysisSource;
+  final String? repositoryId;
+  final String? repoName;
 
   RoleMatchItem? get topMatch => matches.isNotEmpty ? matches.first : null;
 
@@ -682,13 +732,11 @@ class RoleMatchModel {
     List<String> strList(dynamic v) =>
         (v as List? ?? []).map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
 
-    // Parse matches array
     final matchesList = (json['matches'] as List? ?? [])
         .whereType<Map>()
         .map((e) => RoleMatchItem.fromJson(Map<String, dynamic>.from(e)))
         .toList();
 
-    // topRole can be nested or directly a string
     String topRole = '';
     final tr = json['topRole'];
     if (tr is Map) {
@@ -696,7 +744,7 @@ class RoleMatchModel {
     } else {
       topRole = (tr ?? '').toString();
     }
-    
+
     if (topRole.isEmpty && matchesList.isNotEmpty) {
       topRole = matchesList.first.role;
     }
@@ -707,6 +755,9 @@ class RoleMatchModel {
       recommendedNextSkills: strList(json['recommendedNextSkills']),
       topMatchedSkills: strList(json['topMatchedSkills']),
       topMissingSkills: strList(json['topMissingSkills']),
+      analysisSource: json['analysisSource']?.toString(),
+      repositoryId: json['repositoryId']?.toString(),
+      repoName: json['repoName']?.toString(),
     );
   }
 }

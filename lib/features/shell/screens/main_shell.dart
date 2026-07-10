@@ -10,6 +10,7 @@ import '../../../shared/widgets/app_image_assets.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../widgets/app_drawer.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../feature_providers.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key, required this.child});
@@ -22,6 +23,14 @@ class MainShell extends ConsumerStatefulWidget {
 
 class _MainShellState extends ConsumerState<MainShell> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  void initState() {
+    super.initState();
+    if (!AppConfig.demoMode) {
+      Future.microtask(() => ref.read(roleCatalogProvider.future));
+    }
+  }
 
   static const _navItems = [
     ShellNavItem(path: '/dashboard', label: 'Tổng quan', icon: Icons.dashboard_outlined),

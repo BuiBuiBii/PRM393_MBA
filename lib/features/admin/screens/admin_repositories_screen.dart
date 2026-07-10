@@ -47,15 +47,11 @@ class _AdminRepositoriesScreenState extends ConsumerState<AdminRepositoriesScree
           hint: 'Tìm tên repo, ngôn ngữ...',
           onSubmitted: (q) => ref.read(adminReposProvider.notifier).load(search: q.trim()),
         ),
-        if (state.error != null) ...[
-          const SizedBox(height: 12),
-          BannerMessage(message: state.error!, isError: true),
-        ],
         const SizedBox(height: 12),
         AsyncListBody(
           isLoading: state.isLoading,
           isEmpty: state.items.isEmpty,
-          error: state.error,
+          error: state.items.isEmpty ? state.error : null,
           onRetry: () => ref.read(adminReposProvider.notifier).load(search: _search.text.trim()),
           emptyTitle: 'Không có repository',
           emptySubtitle: 'Chưa có dữ liệu đồng bộ.',

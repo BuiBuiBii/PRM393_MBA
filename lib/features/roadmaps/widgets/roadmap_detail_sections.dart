@@ -44,21 +44,10 @@ class RoadmapDetailInfoCard extends StatelessWidget {
           ),
           if (roadmap.roleMatchInfo != null) ...[
             const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Icon(Icons.work_outline, size: 14, color: AppColors.primary),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    '${roadmap.roleMatchInfo!['roleName'] ?? roadmap.roleMatchInfo!['matchedRole'] ?? roadmap.careerOutcome}'
-                    '  •  ${(roadmap.roleMatchInfo!['matchScore'] ?? 0.0).toStringAsFixed(1)}%'
-                    '  •  ${roadmap.roleMatchInfo!['matchLevelLabel'] ?? roadmap.roleMatchInfo!['matchLevel'] ?? ''}',
-                    style: context.appLabelStyle,
-                  ),
-                ),
-              ],
+            RoadmapDev2VecMetaCard(
+              roleMatchInfo: roadmap.roleMatchInfo!,
+              skillGapSummary: roadmap.skillGapSummary,
+              roadmapSource: roadmap.roadmapSource,
             ),
           ],
           if (roadmap.skillGapSummary != null && roadmap.prioritySkills.isNotEmpty) ...[
@@ -341,6 +330,64 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(width: 8),
         Text(title, style: context.appSectionTitleStyle),
       ],
+    );
+  }
+}
+
+/// Metadata Dev2Vec trên roadmap detail.
+class RoadmapDev2VecMetaCard extends StatelessWidget {
+  const RoadmapDev2VecMetaCard({
+    super.key,
+    required this.roleMatchInfo,
+    this.skillGapSummary,
+    this.roadmapSource,
+  });
+
+  final Map<String, dynamic> roleMatchInfo;
+  final Map<String, dynamic>? skillGapSummary;
+  final String? roadmapSource;
+
+  @override
+  Widget build(BuildContext context) {
+    final roleName = roleMatchInfo['roleName'] ?? roleMatchInfo['matchedRole'] ?? '';
+    final matchScore = roleMatchInfo['matchScore'];
+    final matchLevel = roleMatchInfo['matchLevelLabel'] ?? roleMatchInfo['matchLevel'] ?? '';
+    final scoringMethod = roleMatchInfo['scoringMethod']?.toString();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Cá nhân hóa theo Dev2Vec', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
+          const SizedBox(height: 8),
+          Text(
+            '$roleName  •  ${matchScore?.toString() ?? '-'}%  •  $matchLevel',
+            style: context.appBodyStyle,
+          ),
+          if (scoringMethod != null && scoringMethod.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text('Phương pháp: $scoringMethod', style: context.appCaptionStyle),
+          ],
+          if (roadmapSource != null && roadmapSource!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text('Nguồn roadmap: $roadmapSource', style: context.appCaptionStyle),
+          ],
+          if (skillGapSummary != null && skillGapSummary!['totalGaps'] != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Skill gaps: ${skillGapSummary!['totalGaps']}',
+              style: context.appLabelStyle,
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

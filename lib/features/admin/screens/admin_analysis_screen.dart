@@ -47,15 +47,11 @@ class _AdminAnalysisScreenState extends ConsumerState<AdminAnalysisScreen> {
           hint: 'Tìm repo, project type...',
           onSubmitted: (q) => ref.read(adminAnalysisProvider.notifier).load(search: q.trim()),
         ),
-        if (state.error != null) ...[
-          const SizedBox(height: 12),
-          BannerMessage(message: state.error!, isError: true),
-        ],
         const SizedBox(height: 12),
         AsyncListBody(
           isLoading: state.isLoading,
           isEmpty: state.items.isEmpty,
-          error: state.error,
+          error: state.items.isEmpty ? state.error : null,
           onRetry: () => ref.read(adminAnalysisProvider.notifier).load(search: _search.text.trim()),
           emptyTitle: 'Không có phân tích',
           emptySubtitle: 'Chưa có snapshot phân tích.',

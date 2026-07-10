@@ -49,9 +49,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             ),
           ],
         ),
-        if (state.error != null) ...[const SizedBox(height: 12), BannerMessage(message: state.error!, isError: true)],
         const SizedBox(height: 16),
-
         AppCard(
           child: Column(
             children: [
@@ -70,7 +68,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               AsyncListBody(
                 isLoading: state.isLoading,
                 isEmpty: state.items.isEmpty,
-                error: state.error,
+                error: state.items.isEmpty ? state.error : null,
                 onRetry: _load,
                 emptyTitle: 'Không có thông báo',
                 child: CollapsibleItemList(

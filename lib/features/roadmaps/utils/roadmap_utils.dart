@@ -61,6 +61,12 @@ String formatDurationFilter(String duration) {
   }
 }
 
+/// Danh mục lọc lấy từ roadmap thật của user (không hard-code).
+List<String> deriveRoadmapCategoryFilters(List<RoadmapModel> roadmaps) {
+  final values = roadmaps.map((r) => r.category.trim()).where((c) => c.isNotEmpty).toSet().toList()..sort();
+  return ['All', ...values];
+}
+
 String formatDifficultyBadge(String difficulty) {
   switch (difficulty) {
     case 'Beginner':

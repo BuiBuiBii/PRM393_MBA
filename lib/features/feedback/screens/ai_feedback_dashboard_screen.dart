@@ -57,10 +57,6 @@ class _AiFeedbackDashboardScreenState extends ConsumerState<AiFeedbackDashboardS
               onPressed: state.isLoadingMyFeedbacks ? null : _reload,
             ),
           ),
-          if (state.error != null) ...[
-            const SizedBox(height: 12),
-            BannerMessage(message: state.error!, isError: true),
-          ],
           const SizedBox(height: 16),
           AppCard(
             child: TextField(
@@ -83,7 +79,7 @@ class _AiFeedbackDashboardScreenState extends ConsumerState<AiFeedbackDashboardS
           AsyncListBody(
             isLoading: state.isLoadingMyFeedbacks,
             isEmpty: feedbacks.isEmpty,
-            error: state.error,
+            error: feedbacks.isEmpty ? state.error : null,
             onRetry: _reload,
             emptyTitle: 'Chưa có AI feedback',
             emptySubtitle: 'Vào Repositories, phân tích repo rồi bấm Tạo feedback.',

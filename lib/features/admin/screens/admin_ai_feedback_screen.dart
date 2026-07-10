@@ -47,15 +47,11 @@ class _AdminAiFeedbackScreenState extends ConsumerState<AdminAiFeedbackScreen> {
           hint: 'Tìm repo, summary...',
           onSubmitted: (q) => ref.read(adminFeedbackProvider.notifier).load(search: q.trim()),
         ),
-        if (state.error != null) ...[
-          const SizedBox(height: 12),
-          BannerMessage(message: state.error!, isError: true),
-        ],
         const SizedBox(height: 12),
         AsyncListBody(
           isLoading: state.isLoading,
           isEmpty: state.items.isEmpty,
-          error: state.error,
+          error: state.items.isEmpty ? state.error : null,
           onRetry: () => ref.read(adminFeedbackProvider.notifier).load(search: _search.text.trim()),
           emptyTitle: 'Không có AI feedback',
           emptySubtitle: 'Chưa có bản ghi feedback.',
