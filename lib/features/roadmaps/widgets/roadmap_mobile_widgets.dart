@@ -7,7 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/widgets/app_feedback.dart';
 import '../../../shared/widgets/app_widgets.dart';
-import '../../app_providers.dart';
+import '../../feature_providers.dart';
 import '../data/roadmap_mock_data.dart';
 import '../utils/roadmap_recommendation.dart';
 import '../utils/roadmap_progress_utils.dart';
