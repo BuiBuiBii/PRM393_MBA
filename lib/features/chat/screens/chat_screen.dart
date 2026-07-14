@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../feature_providers.dart';
@@ -13,7 +13,18 @@ import '../widgets/chat_message_bubble.dart';
 import '../widgets/chat_sessions_panel.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
-  const ChatScreen({super.key});
+  const ChatScreen({
+    super.key,
+    this.repositoryId,
+    this.roadmapId,
+    this.analysisId,
+    this.snapshotId,
+  });
+
+  final String? repositoryId;
+  final String? roadmapId;
+  final String? analysisId;
+  final String? snapshotId;
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -34,6 +45,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void initState() {
     super.initState();
     Future.microtask(() {
+      ref.read(chatProvider.notifier).setContext(
+            repositoryId: widget.repositoryId,
+            roadmapId: widget.roadmapId,
+            analysisId: widget.analysisId,
+            snapshotId: widget.snapshotId,
+          );
       ref.read(chatProvider.notifier).fetchSessions();
       ref.read(repositoryProvider.notifier).fetchRepositories();
       ref.read(repositoryProvider.notifier).fetchMyAnalyses();
@@ -78,7 +95,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _createSession() async {
     try {
-      await ref.read(chatProvider.notifier).createSession('Tư vấn GitHub của tôi');
+      await ref
+          .read(chatProvider.notifier)
+          .createSession('Tư vấn GitHub của tôi');
     } catch (_) {}
   }
 
@@ -87,13 +106,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Theme.of(context).cardTheme.color,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (ctx) => DraggableScrollableSheet(
         expand: false,
         initialChildSize: 0.78,
         minChildSize: 0.45,
         maxChildSize: 0.92,
-        builder: (_, scrollController) => ChatSessionsPanel(scrollController: scrollController),
+        builder: (_, scrollController) =>
+            ChatSessionsPanel(scrollController: scrollController),
       ),
     );
   }
@@ -104,7 +125,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final session = chat.current;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
-    ref.listen(chatProvider.select((s) => s.current?.messages.length), (_, __) => _scrollToBottom());
+    ref.listen(chatProvider.select((s) => s.current?.messages.length),
+        (_, __) => _scrollToBottom());
     if (chat.isLoading) _scrollToBottom();
 
     return Column(
@@ -119,7 +141,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           sessions: chat.sessions,
           onOpenSessions: _openSessions,
           onCreateSession: _createSession,
-          onSelectSession: (id) => ref.read(chatProvider.notifier).selectSession(id),
+          onSelectSession: (id) =>
+              ref.read(chatProvider.notifier).selectSession(id),
         ),
         Expanded(child: _buildMessages(chat, session)),
         ChatInputBar(
@@ -133,9 +156,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildMessages(ChatState chat, ChatSessionModel? session) {
-    if (session == null) return ChatNoSessionEmpty(onCreateSession: _createSession);
+    if (session == null)
+      return ChatNoSessionEmpty(onCreateSession: _createSession);
     if (session.messages.isEmpty) {
-      return ChatPromptEmpty(prompts: _prompts, onPrompt: (p) => _controller.text = p);
+      return ChatPromptEmpty(
+          prompts: _prompts, onPrompt: (p) => _controller.text = p);
     }
 
     return ScrollListHints(

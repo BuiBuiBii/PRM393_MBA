@@ -27,6 +27,7 @@ class AuthState {
     this.profile,
     this.isLoading = false,
     this.error,
+    this.showGitHubReconnectActions = false,
   });
 
   final AuthStatus status;
@@ -34,6 +35,7 @@ class AuthState {
   final ProfileModel? profile;
   final bool isLoading;
   final String? error;
+  final bool showGitHubReconnectActions;
 
   bool get isAuthenticated => status == AuthStatus.authenticated;
 
@@ -44,6 +46,7 @@ class AuthState {
     bool? isLoading,
     String? error,
     bool clearError = false,
+    bool? showGitHubReconnectActions,
   }) {
     return AuthState(
       status: status ?? this.status,
@@ -51,6 +54,8 @@ class AuthState {
       profile: profile ?? this.profile,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
+      showGitHubReconnectActions:
+          showGitHubReconnectActions ?? this.showGitHubReconnectActions,
     );
   }
 }
@@ -78,7 +83,10 @@ class AuthNotifier extends Notifier<AuthState> {
           DemoService.instance.restoreSession();
           final user = UserModel.fromJson(cached);
           DemoService.instance.user = user;
-          state = AuthState(status: AuthStatus.authenticated, user: user, profile: DemoService.instance.profile);
+          state = AuthState(
+              status: AuthStatus.authenticated,
+              user: user,
+              profile: DemoService.instance.profile);
           return;
         }
         state = const AuthState(status: AuthStatus.unauthenticated);
@@ -113,11 +121,16 @@ class AuthNotifier extends Notifier<AuthState> {
         final storage = ref.read(tokenStorageProvider);
         await storage.saveToken(DemoData.demoToken);
         await storage.saveUser(user.toJson());
-        state = AuthState(status: AuthStatus.authenticated, user: user, profile: DemoService.instance.profile, isLoading: false);
+        state = AuthState(
+            status: AuthStatus.authenticated,
+            user: user,
+            profile: DemoService.instance.profile,
+            isLoading: false);
         return;
       }
       final user = await safeRequest(() => _repository.login(email, password));
-      state = AuthState(status: AuthStatus.authenticated, user: user, isLoading: false);
+      state = AuthState(
+          status: AuthStatus.authenticated, user: user, isLoading: false);
     } catch (error) {
       state = state.copyWith(
         isLoading: false,
@@ -131,17 +144,23 @@ class AuthNotifier extends Notifier<AuthState> {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       if (AppConfig.demoMode) {
-        final user = await DemoService.instance.register(email: email.trim(), fullName: fullName.trim());
+        final user = await DemoService.instance
+            .register(email: email.trim(), fullName: fullName.trim());
         final storage = ref.read(tokenStorageProvider);
         await storage.saveToken(DemoData.demoToken);
         await storage.saveUser(user.toJson());
-        state = AuthState(status: AuthStatus.authenticated, user: user, profile: DemoService.instance.profile, isLoading: false);
+        state = AuthState(
+            status: AuthStatus.authenticated,
+            user: user,
+            profile: DemoService.instance.profile,
+            isLoading: false);
         return;
       }
       final user = await safeRequest(
         () => _repository.register(email, password, fullName),
       );
-      state = AuthState(status: AuthStatus.authenticated, user: user, isLoading: false);
+      state = AuthState(
+          status: AuthStatus.authenticated, user: user, isLoading: false);
     } catch (error) {
       state = state.copyWith(
         isLoading: false,
@@ -159,11 +178,14 @@ class AuthNotifier extends Notifier<AuthState> {
       }
       final social = ref.read(socialAuthServiceProvider);
       final idToken = await social.signInWithGoogle();
-      final user = await safeRequest(() => _repository.loginWithGoogle(idToken));
-      state = AuthState(status: AuthStatus.authenticated, user: user, isLoading: false);
+      final user =
+          await safeRequest(() => _repository.loginWithGoogle(idToken));
+      state = AuthState(
+          status: AuthStatus.authenticated, user: user, isLoading: false);
       await fetchProfile();
     } catch (error) {
-      state = state.copyWith(isLoading: false, error: getApiErrorMessage(error));
+      state =
+          state.copyWith(isLoading: false, error: getApiErrorMessage(error));
       rethrow;
     }
   }
@@ -178,16 +200,20 @@ class AuthNotifier extends Notifier<AuthState> {
       final result = await social.signInWithGithub();
       final UserModel user;
       if (result.mode == GithubSignInMode.appToken) {
-        user = await safeRequest(() => _repository.completeSocialLoginWithToken(result.value));
+        user = await safeRequest(
+            () => _repository.completeSocialLoginWithToken(result.value));
       } else {
-        user = await safeRequest(() => _repository.loginWithGithub(result.value));
+        user =
+            await safeRequest(() => _repository.loginWithGithub(result.value));
       }
-      state = AuthState(status: AuthStatus.authenticated, user: user, isLoading: false);
+      state = AuthState(
+          status: AuthStatus.authenticated, user: user, isLoading: false);
       if (user.provider == 'github' || user.githubConnected) {
         await refreshGitHubAccount();
       }
     } catch (error) {
-      state = state.copyWith(isLoading: false, error: getApiErrorMessage(error));
+      state =
+          state.copyWith(isLoading: false, error: getApiErrorMessage(error));
       rethrow;
     }
   }
@@ -195,13 +221,16 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> completeGithubLoginWithToken(String token) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final user = await safeRequest(() => _repository.completeSocialLoginWithToken(token));
-      state = AuthState(status: AuthStatus.authenticated, user: user, isLoading: false);
+      final user = await safeRequest(
+          () => _repository.completeSocialLoginWithToken(token));
+      state = AuthState(
+          status: AuthStatus.authenticated, user: user, isLoading: false);
       if (user.provider == 'github' || user.githubConnected) {
         await refreshGitHubAccount();
       }
     } catch (error) {
-      state = state.copyWith(isLoading: false, error: getApiErrorMessage(error));
+      state =
+          state.copyWith(isLoading: false, error: getApiErrorMessage(error));
       rethrow;
     }
   }
@@ -224,7 +253,8 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> fetchProfile() async {
     try {
       if (AppConfig.demoMode) {
-        state = state.copyWith(profile: await DemoService.instance.getProfile());
+        state =
+            state.copyWith(profile: await DemoService.instance.getProfile());
         return;
       }
       final api = ref.read(appApiProvider);
@@ -238,20 +268,26 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       if (AppConfig.demoMode) {
         final saved = await DemoService.instance.saveProfile(profile);
-        state = state.copyWith(profile: saved, user: DemoService.instance.user, isLoading: false);
-        await ref.read(tokenStorageProvider).saveUser(DemoService.instance.user.toJson());
+        state = state.copyWith(
+            profile: saved, user: DemoService.instance.user, isLoading: false);
+        await ref
+            .read(tokenStorageProvider)
+            .saveUser(DemoService.instance.user.toJson());
         return;
       }
       final api = ref.read(appApiProvider);
-      final saved = await safeRequest(() => api.saveProfile(profile, exists: exists));
+      final saved =
+          await safeRequest(() => api.saveProfile(profile, exists: exists));
       state = state.copyWith(profile: saved, isLoading: false);
     } catch (error) {
-      state = state.copyWith(isLoading: false, error: getApiErrorMessage(error));
+      state =
+          state.copyWith(isLoading: false, error: getApiErrorMessage(error));
       rethrow;
     }
   }
 
-  Future<void> changePassword(String current, String newPass, String confirm) async {
+  Future<void> changePassword(
+      String current, String newPass, String confirm) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       if (AppConfig.demoMode) {
@@ -267,12 +303,13 @@ class AuthNotifier extends Notifier<AuthState> {
           ));
       state = state.copyWith(isLoading: false);
     } catch (error) {
-      state = state.copyWith(isLoading: false, error: getApiErrorMessage(error));
+      state =
+          state.copyWith(isLoading: false, error: getApiErrorMessage(error));
       rethrow;
     }
   }
 
-  Future<void> connectGitHub() async {
+  Future<void> connectGitHub({bool forceAccountSelection = false}) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       if (AppConfig.demoMode) {
@@ -283,11 +320,16 @@ class AuthNotifier extends Notifier<AuthState> {
         return;
       }
 
-      await ref.read(githubOAuthServiceProvider).connectWithJwt(ref.read(dioProvider));
-      state = state.copyWith(isLoading: false);
+      await ref.read(githubOAuthServiceProvider).connectWithJwt(
+            ref.read(dioProvider),
+            forceAccountSelection: forceAccountSelection,
+          );
+      state =
+          state.copyWith(isLoading: false, showGitHubReconnectActions: false);
       await refreshGitHubAccount();
     } catch (error) {
-      state = state.copyWith(isLoading: false, error: getApiErrorMessage(error));
+      state =
+          state.copyWith(isLoading: false, error: getApiErrorMessage(error));
       rethrow;
     }
   }
@@ -308,7 +350,8 @@ class AuthNotifier extends Notifier<AuthState> {
         return;
       }
       final api = ref.read(appApiProvider);
-      final account = extractApiResource<dynamic>(await api.getGitHubAccount(), ['githubAccount', 'github', 'account']);
+      final account = extractApiResource<dynamic>(
+          await api.getGitHubAccount(), ['githubAccount', 'github', 'account']);
       final hasAccount = account is Map && account.isNotEmpty;
       final user = state.user;
       if (user == null) return;
@@ -320,7 +363,8 @@ class AuthNotifier extends Notifier<AuthState> {
           ),
         );
       } else {
-        state = state.copyWith(user: user.copyWith(githubConnected: false, githubUsername: null));
+        state = state.copyWith(
+            user: user.copyWith(githubConnected: false, githubUsername: null));
       }
     } catch (_) {
       final user = state.user;
@@ -336,7 +380,11 @@ class AuthNotifier extends Notifier<AuthState> {
       if (AppConfig.demoMode) {
         await DemoService.instance.disconnectGitHub();
         final user = DemoService.instance.user;
-        state = state.copyWith(isLoading: false, user: user);
+        state = state.copyWith(
+          isLoading: false,
+          user: user,
+          showGitHubReconnectActions: true,
+        );
         await ref.read(tokenStorageProvider).saveUser(user.toJson());
         return;
       }
@@ -347,12 +395,15 @@ class AuthNotifier extends Notifier<AuthState> {
         state = state.copyWith(
           isLoading: false,
           user: user.copyWith(githubConnected: false, githubUsername: null),
+          showGitHubReconnectActions: true,
         );
       } else {
-        state = state.copyWith(isLoading: false);
+        state =
+            state.copyWith(isLoading: false, showGitHubReconnectActions: true);
       }
     } catch (error) {
-      state = state.copyWith(isLoading: false, error: getApiErrorMessage(error));
+      state =
+          state.copyWith(isLoading: false, error: getApiErrorMessage(error));
       rethrow;
     }
   }
@@ -362,9 +413,11 @@ final authApiProvider = Provider<AuthApi>((ref) {
   return AuthApi(ref.watch(dioProvider));
 });
 
-final socialAuthServiceProvider = Provider<SocialAuthService>((ref) => SocialAuthService());
+final socialAuthServiceProvider =
+    Provider<SocialAuthService>((ref) => SocialAuthService());
 
-final githubOAuthServiceProvider = Provider<GithubOAuthService>((ref) => GithubOAuthService());
+final githubOAuthServiceProvider =
+    Provider<GithubOAuthService>((ref) => GithubOAuthService());
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final storage = ref.watch(tokenStorageProvider);
@@ -374,4 +427,5 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   );
 });
 
-final authProvider = NotifierProvider<AuthNotifier, AuthState>(AuthNotifier.new);
+final authProvider =
+    NotifierProvider<AuthNotifier, AuthState>(AuthNotifier.new);

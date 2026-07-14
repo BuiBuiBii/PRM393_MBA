@@ -26,7 +26,8 @@ class AnalysisScoreSection extends StatelessWidget {
       children: [
         PageHeader(
           title: analysis.repositoryName,
-          subtitle: '${analysis.projectType} • ${scoreLabel(analysis.scores.overall)}',
+          subtitle:
+              '${analysis.projectType} • ${scoreLabel(analysis.scores.overall)}',
         ),
         const SizedBox(height: 8),
         Center(
@@ -48,41 +49,47 @@ class AnalysisScoreSection extends StatelessWidget {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: analysis.techStack.map((t) => AppBadge(label: t, variant: AppBadgeVariant.info)).toList(),
+          children: analysis.techStack
+              .map((t) => AppBadge(label: t, variant: AppBadgeVariant.info))
+              .toList(),
         ),
         const SizedBox(height: 16),
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Chi tiết điểm', style: context.appSectionTitleStyle),
-              const SizedBox(height: 12),
-              ...scores.map(
-                (s) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(s.$1, style: context.appBodyStyle),
-                          Text('${s.$2}', style: TextStyle(fontWeight: FontWeight.bold, color: scoreColor(s.$2))),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      LinearProgressIndicator(
-                        value: s.$2 / 100,
-                        backgroundColor: Colors.grey.shade200,
-                        color: scoreColor(s.$2),
-                      ),
-                    ],
+        if (analysis.scores.hasDetails)
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Chi tiết điểm', style: context.appSectionTitleStyle),
+                const SizedBox(height: 12),
+                ...scores.map(
+                  (s) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(s.$1, style: context.appBodyStyle),
+                            Text('${s.$2}',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: scoreColor(s.$2))),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        LinearProgressIndicator(
+                          value: s.$2 / 100,
+                          backgroundColor: Colors.grey.shade200,
+                          color: scoreColor(s.$2),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
       ],
     );
   }

@@ -10,7 +10,8 @@ class RoadmapRepository {
 
   final AppApi _api;
 
-  Future<List<RoadmapModel>> getMyRoadmaps({String? status, String? targetRole}) =>
+  Future<List<RoadmapModel>> getMyRoadmaps(
+          {String? status, String? targetRole}) =>
       _api.getMyRoadmaps(status: status, targetRole: targetRole);
 
   Future<RoadmapModel> generateRoadmap(RoadmapGenerateParams params) =>
@@ -19,6 +20,23 @@ class RoadmapRepository {
   Future<RoadmapModel> getRoadmap(String id) => _api.getRoadmap(id);
 
   Future<RoadmapModel> archiveRoadmap(String id) => _api.archiveRoadmap(id);
+
+  Future<Map<String, String>> getLearningAvailability(String roadmapId) =>
+      _api.getRoadmapLearningAvailability(roadmapId);
+
+  Future<LearningContentModel> getLearning(String roadmapId, String itemId) =>
+      _api.getRoadmapLearning(roadmapId, itemId);
+
+  Future<LearningContentModel> generateLearning(
+          String roadmapId, String itemId) =>
+      _api.generateRoadmapLearning(roadmapId, itemId);
+
+  Future<Map<String, dynamic>> updateProgress(
+          String roadmapId, String itemId, String status) =>
+      _api.updateRoadmapProgress(roadmapId, itemId, status);
+
+  Future<Map<String, dynamic>> getProgress(String roadmapId) =>
+      _api.getRoadmapProgress(roadmapId);
 
   Future<Map<String, dynamic>> getMyProgress() => _api.getMyProgress();
 }

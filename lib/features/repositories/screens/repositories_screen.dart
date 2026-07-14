@@ -8,6 +8,7 @@ import '../../../shared/widgets/async_content.dart';
 import '../../../shared/widgets/scroll_list_hints.dart';
 import '../../../shared/widgets/collapsible_list.dart';
 import '../../../shared/widgets/app_widgets.dart';
+import '../../../shared/widgets/app_feedback.dart';
 import '../widgets/repository_card.dart';
 
 class RepositoriesScreen extends ConsumerStatefulWidget {
@@ -23,7 +24,8 @@ class _RepositoriesScreenState extends ConsumerState<RepositoriesScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(repositoryProvider.notifier).refreshOverview());
+    Future.microtask(
+        () => ref.read(repositoryProvider.notifier).refreshOverview());
   }
 
   Future<void> _refresh({bool sync = false}) =>
@@ -35,7 +37,8 @@ class _RepositoriesScreenState extends ConsumerState<RepositoriesScreen> {
     final keyword = _search.toLowerCase();
     final repos = state.repositories.where((r) {
       if (keyword.isEmpty) return true;
-      return [r.name, r.fullName, r.description, r.language].any((v) => v?.toLowerCase().contains(keyword) ?? false);
+      return [r.name, r.fullName, r.description, r.language]
+          .any((v) => v?.toLowerCase().contains(keyword) ?? false);
     }).toList();
     final listLoading = state.isLoading && state.repositories.isEmpty;
 
@@ -62,18 +65,25 @@ class _RepositoriesScreenState extends ConsumerState<RepositoriesScreen> {
               child: Column(
                 children: [
                   TextField(
-                    decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Tìm repository...'),
+                    decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.search),
+                        hintText: 'Tìm repository...'),
                     onChanged: (v) => setState(() => _search = v),
                   ),
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: Text('${repos.length} repository', style: context.appCaptionStyle),
+                    child: Text('${repos.length} repository',
+                        style: context.appCaptionStyle),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 12),
+            if (state.error != null) ...[
+              BannerMessage(message: state.error!, isError: true),
+              const SizedBox(height: 12),
+            ],
             AsyncListBody(
               isLoading: listLoading,
               isEmpty: repos.isEmpty,
@@ -85,7 +95,9 @@ class _RepositoriesScreenState extends ConsumerState<RepositoriesScreen> {
                 resetKey: keyword,
                 items: repos,
                 itemBuilder: (context, repo) {
-                  final analysis = state.analyses.where((a) => a.repositoryId == repo.id).firstOrNull;
+                  final analysis = state.analyses
+                      .where((a) => a.repositoryId == repo.id)
+                      .firstOrNull;
                   return RepositoryCard(
                     repo: repo,
                     hasAnalysis: analysis != null || repo.analyzed,
@@ -96,9 +108,22 @@ class _RepositoriesScreenState extends ConsumerState<RepositoriesScreen> {
                     analyzeDisabled: state.isAnalyzing,
                     onAnalyze: () async {
                       try {
-                        final result = await ref.read(repositoryProvider.notifier).analyzeRepository(repo.id);
-                        if (context.mounted) context.push('/repositories/${result.repositoryId}/analysis');
-                      } catch (_) {}
+                        await ref
+                            .read(repositoryProvider.notifier)
+                            .analyzeRepository(repo.id);
+                        if (context.mounted) {
+                          context.push('/repositories/${repo.id}/analysis');
+                        }
+                      } catch (_) {
+                        if (context.mounted) {
+                          AppSnackbar.show(
+                            context,
+                            message: ref.read(repositoryProvider).error ??
+                                'Không thể phân tích repository.',
+                            variant: AppSnackVariant.error,
+                          );
+                        }
+                      }
                     },
                   );
                 },

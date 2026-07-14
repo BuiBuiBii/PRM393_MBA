@@ -15,19 +15,23 @@ class AiFeedbackDashboardScreen extends ConsumerStatefulWidget {
   const AiFeedbackDashboardScreen({super.key});
 
   @override
-  ConsumerState<AiFeedbackDashboardScreen> createState() => _AiFeedbackDashboardScreenState();
+  ConsumerState<AiFeedbackDashboardScreen> createState() =>
+      _AiFeedbackDashboardScreenState();
 }
 
-class _AiFeedbackDashboardScreenState extends ConsumerState<AiFeedbackDashboardScreen> {
+class _AiFeedbackDashboardScreenState
+    extends ConsumerState<AiFeedbackDashboardScreen> {
   String _search = '';
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(repositoryProvider.notifier).fetchMyAiFeedbacks());
+    Future.microtask(
+        () => ref.read(repositoryProvider.notifier).fetchMyAiFeedbacks());
   }
 
-  Future<void> _reload() => ref.read(repositoryProvider.notifier).fetchMyAiFeedbacks();
+  Future<void> _reload() =>
+      ref.read(repositoryProvider.notifier).fetchMyAiFeedbacks();
 
   @override
   Widget build(BuildContext context) {
@@ -41,66 +45,68 @@ class _AiFeedbackDashboardScreenState extends ConsumerState<AiFeedbackDashboardS
 
     return ScrollListHints(
       child: RefreshIndicator(
-      onRefresh: _reload,
-      child: ListView(
-        padding: appScreenPadding(context),
-        children: [
-          PageHeader(
-            title: 'AI Feedback',
-            subtitle: 'Phản hồi AI cho các repository của bạn.',
-            trailing: PrimaryButton(
-              label: 'Tải lại',
-              icon: Icons.refresh,
-              outlined: true,
-              loading: state.isLoadingMyFeedbacks,
-              expand: isCompactPhone(context),
-              onPressed: state.isLoadingMyFeedbacks ? null : _reload,
-            ),
-          ),
-          const SizedBox(height: 16),
-          AppCard(
-            child: TextField(
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                hintText: 'Tìm repository, summary...',
-              ),
-              onChanged: (v) => setState(() => _search = v),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '${feedbacks.length} feedback',
-              style: context.appCaptionStyle,
-            ),
-          ),
-          const SizedBox(height: 12),
-          AsyncListBody(
-            isLoading: state.isLoadingMyFeedbacks,
-            isEmpty: feedbacks.isEmpty,
-            error: feedbacks.isEmpty ? state.error : null,
-            onRetry: _reload,
-            emptyTitle: 'Chưa có AI feedback',
-            emptySubtitle: 'Vào Repositories, phân tích repo rồi bấm Tạo feedback.',
-            emptyAction: PrimaryButton(
-              label: 'Đến Repositories',
-              icon: Icons.folder_outlined,
-              onPressed: () => context.go('/repositories'),
-            ),
-            child: CollapsibleItemList(
-              resetKey: keyword,
-              initialVisibleCount: 4,
-              items: feedbacks,
-              itemBuilder: (context, feedback) => _FeedbackCard(
-                feedback: feedback,
-                onTap: () => context.push('/repositories/${feedback.repositoryId}'),
+        onRefresh: _reload,
+        child: ListView(
+          padding: appScreenPadding(context),
+          children: [
+            PageHeader(
+              title: 'AI Feedback',
+              subtitle: 'Phản hồi AI cho các repository của bạn.',
+              trailing: PrimaryButton(
+                label: 'Tải lại',
+                icon: Icons.refresh,
+                outlined: true,
+                loading: state.isLoadingMyFeedbacks,
+                expand: isCompactPhone(context),
+                onPressed: state.isLoadingMyFeedbacks ? null : _reload,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            AppCard(
+              child: TextField(
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  hintText: 'Tìm repository, summary...',
+                ),
+                onChanged: (v) => setState(() => _search = v),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '${feedbacks.length} feedback',
+                style: context.appCaptionStyle,
+              ),
+            ),
+            const SizedBox(height: 12),
+            AsyncListBody(
+              isLoading: state.isLoadingMyFeedbacks,
+              isEmpty: feedbacks.isEmpty,
+              error: feedbacks.isEmpty ? state.error : null,
+              onRetry: _reload,
+              emptyTitle: 'Chưa có AI feedback',
+              emptySubtitle:
+                  'Vào Repositories, phân tích repo rồi bấm Tạo feedback.',
+              emptyAction: PrimaryButton(
+                label: 'Đến Repositories',
+                icon: Icons.folder_outlined,
+                onPressed: () => context.go('/repositories'),
+              ),
+              child: CollapsibleItemList(
+                resetKey: keyword,
+                initialVisibleCount: 4,
+                items: feedbacks,
+                itemBuilder: (context, feedback) => _FeedbackCard(
+                  feedback: feedback,
+                  onTap: () =>
+                      context.push('/repositories/${feedback.repositoryId}'),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
 }
@@ -127,9 +133,12 @@ class _FeedbackCard extends StatelessWidget {
                   children: [
                     Text(
                       feedback.repositoryName,
-                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary),
                     ),
-                    if (feedback.generatedAt != null && feedback.generatedAt!.isNotEmpty) ...[
+                    if (feedback.generatedAt != null &&
+                        feedback.generatedAt!.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
                         formatRelativeTime(feedback.generatedAt),
@@ -151,6 +160,11 @@ class _FeedbackCard extends StatelessWidget {
               style: context.appBodyStyle,
             ),
           ],
+          if (feedback.isStale) ...[
+            const SizedBox(height: 8),
+            const AppBadge(
+                label: 'Cần tạo lại', variant: AppBadgeVariant.warning),
+          ],
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
@@ -166,8 +180,11 @@ class _FeedbackCard extends StatelessWidget {
                   label: '${feedback.weaknessFeedback.length} điểm yếu',
                   variant: AppBadgeVariant.warning,
                 ),
-              if (feedback.careerSuggestion != null && feedback.careerSuggestion!.isNotEmpty)
-                AppBadge(label: feedback.careerSuggestion!, variant: AppBadgeVariant.info),
+              if (feedback.careerSuggestion != null &&
+                  feedback.careerSuggestion!.isNotEmpty)
+                AppBadge(
+                    label: feedback.careerSuggestion!,
+                    variant: AppBadgeVariant.info),
             ],
           ),
         ],

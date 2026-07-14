@@ -1,4 +1,4 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/demo/demo_service.dart';
@@ -6,6 +6,7 @@ import '../../../core/network/api_utils.dart';
 import '../../../core/network/dio_client.dart';
 import '../data/repository_repository.dart';
 import '../../../shared/models/app_models.dart';
+
 class RepositoryState {
   const RepositoryState({
     this.repositories = const [],
@@ -59,15 +60,19 @@ class RepositoryState {
 
   RoleMatchModel? roleMatchFor(String repoId) => roleMatchByRepoId[repoId];
 
-  List<dynamic> packagesFor(String repoId) => packagesByRepoId[repoId] ?? const [];
+  List<dynamic> packagesFor(String repoId) =>
+      packagesByRepoId[repoId] ?? const [];
 
-  List<dynamic> commitsFor(String repoId) => commitsByRepoId[repoId] ?? const [];
+  List<dynamic> commitsFor(String repoId) =>
+      commitsByRepoId[repoId] ?? const [];
 
   List<AiFeedbackModel> get myFeedbacks {
     final items = aiFeedbacks.values.toList();
     items.sort((a, b) {
-      final ad = DateTime.tryParse(a.generatedAt ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-      final bd = DateTime.tryParse(b.generatedAt ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final ad = DateTime.tryParse(a.generatedAt ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      final bd = DateTime.tryParse(b.generatedAt ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0);
       return bd.compareTo(ad);
     });
     return items;
@@ -111,13 +116,24 @@ class RepositoryState {
       selected: selected ?? this.selected,
       isLoading: isLoading ?? this.isLoading,
       isSyncing: isSyncing ?? this.isSyncing,
-      loadingDetailFor: clearLoadingDetailFor ? null : (loadingDetailFor ?? this.loadingDetailFor),
-      analyzingRepoId: clearAnalyzingRepoId ? null : (analyzingRepoId ?? this.analyzingRepoId),
-      generatingFeedbackRepoId:
-          clearGeneratingFeedbackRepoId ? null : (generatingFeedbackRepoId ?? this.generatingFeedbackRepoId),
-      loadingPackagesFor: clearLoadingPackagesFor ? null : (loadingPackagesFor ?? this.loadingPackagesFor),
-      loadingCommitsFor: clearLoadingCommitsFor ? null : (loadingCommitsFor ?? this.loadingCommitsFor),
-      loadingRoleMatchFor: clearLoadingRoleMatchFor ? null : (loadingRoleMatchFor ?? this.loadingRoleMatchFor),
+      loadingDetailFor: clearLoadingDetailFor
+          ? null
+          : (loadingDetailFor ?? this.loadingDetailFor),
+      analyzingRepoId: clearAnalyzingRepoId
+          ? null
+          : (analyzingRepoId ?? this.analyzingRepoId),
+      generatingFeedbackRepoId: clearGeneratingFeedbackRepoId
+          ? null
+          : (generatingFeedbackRepoId ?? this.generatingFeedbackRepoId),
+      loadingPackagesFor: clearLoadingPackagesFor
+          ? null
+          : (loadingPackagesFor ?? this.loadingPackagesFor),
+      loadingCommitsFor: clearLoadingCommitsFor
+          ? null
+          : (loadingCommitsFor ?? this.loadingCommitsFor),
+      loadingRoleMatchFor: clearLoadingRoleMatchFor
+          ? null
+          : (loadingRoleMatchFor ?? this.loadingRoleMatchFor),
       isLoadingMyFeedbacks: isLoadingMyFeedbacks ?? this.isLoadingMyFeedbacks,
       error: clearError ? null : (error ?? this.error),
     );
@@ -164,7 +180,8 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
       clearError: true,
     );
 
-    final task = _fetchRepositoriesTask(sync: sync, showListLoading: showListLoading);
+    final task =
+        _fetchRepositoriesTask(sync: sync, showListLoading: showListLoading);
     if (!sync) _reposInFlight = task;
     try {
       await task;
@@ -173,11 +190,16 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
     }
   }
 
-  Future<void> _fetchRepositoriesTask({required bool sync, required bool showListLoading}) async {
+  Future<void> _fetchRepositoriesTask(
+      {required bool sync, required bool showListLoading}) async {
     try {
       final repos = AppConfig.demoMode
-          ? await (sync ? DemoService.instance.syncRepositories() : DemoService.instance.getRepositories())
-          : await safeRequest(() => sync ? _repository.syncRepositories() : _repository.getCachedRepositories());
+          ? await (sync
+              ? DemoService.instance.syncRepositories()
+              : DemoService.instance.getRepositories())
+          : await safeRequest(() => sync
+              ? _repository.syncRepositories()
+              : _repository.getCachedRepositories());
       state = state.copyWith(
         repositories: repos,
         isLoading: false,
@@ -223,7 +245,8 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
       state = state.copyWith(selected: repo, clearLoadingDetailFor: true);
       return repo;
     } catch (e) {
-      state = state.copyWith(clearLoadingDetailFor: true, error: getApiErrorMessage(e));
+      state = state.copyWith(
+          clearLoadingDetailFor: true, error: getApiErrorMessage(e));
       return null;
     }
   }
@@ -236,33 +259,40 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
           : await safeRequest(() => _repository.analyzeRepository(id));
       state = state.copyWith(
         clearAnalyzingRepoId: true,
-        analyses: [result, ...state.analyses.where((a) => a.repositoryId != id)],
+        analyses: [
+          result,
+          ...state.analyses.where((a) => a.repositoryId != id)
+        ],
         repositories: state.repositories
-            .map((r) => r.id == id ? RepositoryModel(
-                  id: r.id,
-                  name: r.name,
-                  fullName: r.fullName,
-                  description: r.description,
-                  language: r.language,
-                  stars: r.stars,
-                  forks: r.forks,
-                  updatedAt: r.updatedAt,
-                  hasReadme: r.hasReadme,
-                  analyzed: true,
-                  analysisId: result.id,
-                  url: r.url,
-                  private: r.private,
-                ) : r)
+            .map((r) => r.id == id
+                ? RepositoryModel(
+                    id: r.id,
+                    name: r.name,
+                    fullName: r.fullName,
+                    description: r.description,
+                    language: r.language,
+                    stars: r.stars,
+                    forks: r.forks,
+                    updatedAt: r.updatedAt,
+                    hasReadme: r.hasReadme,
+                    analyzed: true,
+                    analysisId: result.id,
+                    url: r.url,
+                    private: r.private,
+                  )
+                : r)
             .toList(),
       );
       return result;
     } catch (e) {
-      state = state.copyWith(clearAnalyzingRepoId: true, error: getApiErrorMessage(e));
+      state = state.copyWith(
+          clearAnalyzingRepoId: true, error: getApiErrorMessage(e));
       rethrow;
     }
   }
 
-  Future<RoleMatchModel?> fetchRoleMatches(String repoId, {bool forceRefresh = false}) =>
+  Future<RoleMatchModel?> fetchRoleMatches(String repoId,
+          {bool forceRefresh = false}) =>
       calculateRoleMatches(
         sourceMode: 'single_repo',
         repoId: repoId,
@@ -285,7 +315,8 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
     }
 
     state = state.copyWith(loadingRoleMatchFor: cacheKey);
-    final clearedErrors = Map<String, String>.from(state.roleMatchErrors)..remove(cacheKey);
+    final clearedErrors = Map<String, String>.from(state.roleMatchErrors)
+      ..remove(cacheKey);
     state = state.copyWith(roleMatchErrors: clearedErrors);
     try {
       if (AppConfig.demoMode) {
@@ -307,7 +338,8 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
       } catch (_) {
         if (sourceMode == 'single_repo' && repoId != null) {
           result = await safeRequest(
-            () => _repository.getRoleMatches(repoId, limit: limit, includeDetails: true),
+            () => _repository.getRoleMatches(repoId,
+                limit: limit, includeDetails: true),
           );
         } else {
           rethrow;
@@ -322,7 +354,8 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
       state = state.copyWith(
         clearLoadingRoleMatchFor: true,
         roleMatchByRepoId: {...state.roleMatchByRepoId, cacheKey: result},
-        roleMatchErrors: Map<String, String>.from(state.roleMatchErrors)..remove(cacheKey),
+        roleMatchErrors: Map<String, String>.from(state.roleMatchErrors)
+          ..remove(cacheKey),
       );
       return result;
     } catch (e) {
@@ -337,10 +370,13 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
 
   String? roleMatchErrorForKey(String key) => state.roleMatchErrors[key];
 
-  String _roleMatchCacheKey(String sourceMode, String? repoId, List<String>? repoIds) {
-    if (sourceMode == 'single_repo' && repoId != null && repoId.isNotEmpty) return repoId;
+  String _roleMatchCacheKey(
+      String sourceMode, String? repoId, List<String>? repoIds) {
+    if (sourceMode == 'single_repo' && repoId != null && repoId.isNotEmpty)
+      return repoId;
     if (sourceMode == 'all_analyzed_repos') return '__all_analyzed__';
-    if (repoIds != null && repoIds.isNotEmpty) return '__selected__${repoIds.join('_')}';
+    if (repoIds != null && repoIds.isNotEmpty)
+      return '__selected__${repoIds.join('_')}';
     return sourceMode;
   }
 
@@ -357,7 +393,11 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
           : await safeRequest(() => _repository.getAnalysis(id));
       if (result == null) return null;
       state = state.copyWith(
-        analyses: [result, ...state.analyses.where((a) => a.repositoryId != id && a.id != result.id)],
+        analyses: [
+          result,
+          ...state.analyses
+              .where((a) => a.repositoryId != id && a.id != result.id)
+        ],
       );
       return result;
     } catch (_) {
@@ -372,12 +412,15 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
     return null;
   }
 
-  Future<AiFeedbackModel?> fetchAiFeedback(String repoId) async {
+  Future<AiFeedbackModel?> fetchAiFeedback(String repoId,
+      {String? roadmapId}) async {
     try {
       if (AppConfig.demoMode) return null;
-      final feedback = await safeRequest(() => _repository.getAiFeedback(repoId));
+      final feedback = await safeRequest(
+          () => _repository.getAiFeedback(repoId, roadmapId: roadmapId));
       if (feedback == null) return null;
-      state = state.copyWith(aiFeedbacks: {...state.aiFeedbacks, repoId: feedback});
+      state =
+          state.copyWith(aiFeedbacks: {...state.aiFeedbacks, repoId: feedback});
       return feedback;
     } catch (_) {
       return null;
@@ -395,14 +438,25 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
             id: 'demo-feedback-${repo.id}',
             repositoryId: repo.id,
             repositoryName: repo.fullName,
-            summary: 'Repository ${repo.name} có cấu trúc ổn nhưng cần bổ sung test và CI.',
-            strengthFeedback: const ['Cấu trúc project rõ ràng', 'README đầy đủ'],
+            summary:
+                'Repository ${repo.name} có cấu trúc ổn nhưng cần bổ sung test và CI.',
+            strengthFeedback: const [
+              'Cấu trúc project rõ ràng',
+              'README đầy đủ'
+            ],
             weaknessFeedback: const ['Thiếu unit test', 'Chưa có pipeline CI'],
-            learningAdvice: 'Ưu tiên viết test cho module core và thiết lập GitHub Actions.',
-            nextSteps: const ['Thêm Jest/pytest', 'Cấu hình CI', 'Bổ sung badge README'],
+            learningAdvice:
+                'Ưu tiên viết test cho module core và thiết lập GitHub Actions.',
+            nextSteps: const [
+              'Thêm Jest/pytest',
+              'Cấu hình CI',
+              'Bổ sung badge README'
+            ],
             recommendedTopics: const ['Testing', 'DevOps'],
             careerSuggestion: 'Full-Stack Developer',
-            generatedAt: DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
+            generatedAt: DateTime.now()
+                .subtract(const Duration(days: 2))
+                .toIso8601String(),
           );
         }).toList();
       } else {
@@ -411,17 +465,25 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
 
       final merged = <String, AiFeedbackModel>{...state.aiFeedbacks};
       for (final feedback in feedbacks) {
-        final repoId = feedback.repositoryId.isNotEmpty ? feedback.repositoryId : feedback.id;
+        final repoId = feedback.repositoryId.isNotEmpty
+            ? feedback.repositoryId
+            : feedback.id;
         if (repoId.isEmpty) continue;
         merged[repoId] = feedback.copyWithRepositoryId(repoId);
       }
       state = state.copyWith(isLoadingMyFeedbacks: false, aiFeedbacks: merged);
     } catch (e) {
-      state = state.copyWith(isLoadingMyFeedbacks: false, error: getApiErrorMessage(e));
+      state = state.copyWith(
+          isLoadingMyFeedbacks: false, error: getApiErrorMessage(e));
     }
   }
 
-  Future<AiFeedbackModel> generateAiFeedback(String repoId) async {
+  Future<AiFeedbackModel> generateAiFeedback(
+    String repoId, {
+    String? roadmapId,
+    String? analysisId,
+    String? snapshotId,
+  }) async {
     state = state.copyWith(generatingFeedbackRepoId: repoId, clearError: true);
     try {
       final feedback = AppConfig.demoMode
@@ -437,14 +499,22 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
               recommendedTopics: const ['Testing'],
               careerSuggestion: 'Backend Developer',
             )
-          : await safeRequest(() => _repository.generateAiFeedback(repoId));
+          : await safeRequest(
+              () => _repository.generateAiFeedback(
+                repoId,
+                roadmapId: roadmapId,
+                analysisId: analysisId,
+                snapshotId: snapshotId,
+              ),
+            );
       state = state.copyWith(
         clearGeneratingFeedbackRepoId: true,
         aiFeedbacks: {...state.aiFeedbacks, repoId: feedback},
       );
       return feedback;
     } catch (e) {
-      state = state.copyWith(clearGeneratingFeedbackRepoId: true, error: getApiErrorMessage(e));
+      state = state.copyWith(
+          clearGeneratingFeedbackRepoId: true, error: getApiErrorMessage(e));
       rethrow;
     }
   }
@@ -454,15 +524,21 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
     try {
       final items = AppConfig.demoMode
           ? const [
-              {'fileName': 'package.json', 'content': '{"name":"demo-app","dependencies":{"express":"^4"}}'},
+              {
+                'fileName': 'package.json',
+                'content': '{"name":"demo-app","dependencies":{"express":"^4"}}'
+              },
             ]
-          : await safeRequest(() => sync ? _repository.syncPackages(id) : _repository.getCachedPackages(id));
+          : await safeRequest(() => sync
+              ? _repository.syncPackages(id)
+              : _repository.getCachedPackages(id));
       state = state.copyWith(
         clearLoadingPackagesFor: true,
         packagesByRepoId: {...state.packagesByRepoId, id: items},
       );
     } catch (e) {
-      state = state.copyWith(clearLoadingPackagesFor: true, error: getApiErrorMessage(e));
+      state = state.copyWith(
+          clearLoadingPackagesFor: true, error: getApiErrorMessage(e));
     }
   }
 
@@ -471,17 +547,26 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
     try {
       final items = AppConfig.demoMode
           ? const [
-              {'message': 'feat: initial commit', 'author': 'demo', 'date': '2026-01-01'},
+              {
+                'message': 'feat: initial commit',
+                'author': 'demo',
+                'date': '2026-01-01'
+              },
             ]
-          : await safeRequest(() => sync ? _repository.syncCommits(id) : _repository.getCachedCommits(id));
+          : await safeRequest(() => sync
+              ? _repository.syncCommits(id)
+              : _repository.getCachedCommits(id));
       state = state.copyWith(
         clearLoadingCommitsFor: true,
         commitsByRepoId: {...state.commitsByRepoId, id: items},
       );
     } catch (e) {
-      state = state.copyWith(clearLoadingCommitsFor: true, error: getApiErrorMessage(e));
+      state = state.copyWith(
+          clearLoadingCommitsFor: true, error: getApiErrorMessage(e));
     }
   }
 }
 
-final repositoryProvider = NotifierProvider<RepositoryNotifier, RepositoryState>(RepositoryNotifier.new);
+final repositoryProvider =
+    NotifierProvider<RepositoryNotifier, RepositoryState>(
+        RepositoryNotifier.new);

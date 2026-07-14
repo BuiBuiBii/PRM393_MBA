@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,6 +8,7 @@ import '../../../shared/widgets/app_widgets.dart';
 import '../../../shared/widgets/roadmap_widgets.dart';
 import '../../../shared/widgets/scroll_list_hints.dart';
 import '../../../shared/models/app_models.dart';
+import '../../repositories/providers/repository_provider.dart';
 import '../providers/roadmap_provider.dart';
 import '../widgets/roadmap_detail_sections.dart';
 
@@ -17,7 +18,8 @@ class RoadmapDetailScreen extends ConsumerStatefulWidget {
   final String roadmapId;
 
   @override
-  ConsumerState<RoadmapDetailScreen> createState() => _RoadmapDetailScreenState();
+  ConsumerState<RoadmapDetailScreen> createState() =>
+      _RoadmapDetailScreenState();
 }
 
 class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
@@ -27,7 +29,8 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
   void initState() {
     super.initState();
     Future.microtask(() async {
-      if (ref.read(roadmapProvider.notifier).getById(widget.roadmapId) == null) {
+      if (ref.read(roadmapProvider.notifier).getById(widget.roadmapId) ==
+          null) {
         await ref.read(roadmapProvider.notifier).fetchRoadmap(widget.roadmapId);
       }
     });
@@ -36,7 +39,8 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final roadmapState = ref.watch(roadmapProvider);
-    final roadmap = ref.read(roadmapProvider.notifier).getById(widget.roadmapId);
+    final roadmap =
+        ref.read(roadmapProvider.notifier).getById(widget.roadmapId);
     final notifier = ref.read(roadmapProvider.notifier);
 
     return AsyncPageBody(
@@ -56,7 +60,7 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
   }
 }
 
-class _RoadmapDetailBody extends StatelessWidget {
+class _RoadmapDetailBody extends ConsumerWidget {
   const _RoadmapDetailBody({
     required this.roadmap,
     required this.roadmapState,
@@ -72,9 +76,11 @@ class _RoadmapDetailBody extends StatelessWidget {
   final ValueChanged<int> onTabSelected;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final progress = notifier.progressFor(roadmap);
-    final percent = progress.total == 0 ? 0 : ((progress.completed / progress.total) * 100).round();
+    final percent = progress.total == 0
+        ? 0
+        : ((progress.completed / progress.total) * 100).round();
 
     return ScrollListHints(
       child: ListView(
@@ -101,21 +107,100 @@ class _RoadmapDetailBody extends StatelessWidget {
                   ),
           ),
           if (roadmap.isArchived) ...[
-            const AppBadge(label: 'Đã lưu trữ', variant: AppBadgeVariant.warning),
+            const AppBadge(
+                label: 'Đã lưu trữ', variant: AppBadgeVariant.warning),
             const SizedBox(height: 8),
           ],
-          RoadmapDetailInfoCard(roadmap: roadmap, progress: progress, percent: percent),
+          RoadmapDetailInfoCard(
+              roadmap: roadmap, progress: progress, percent: percent),
+          const SizedBox(height: 8),
+          PrimaryButton(
+            label: 'Hỏi AI về roadmap này',
+            outlined: true,
+            onPressed: () => context.push(
+                '/chat?roadmapId=${Uri.encodeQueryComponent(roadmap.id)}'),
+          ),
+          if ((roadmap.roadmapSource?['repositoryId'] ?? '')
+              .toString()
+              .isNotEmpty) ...[
+            const SizedBox(height: 8),
+            PrimaryButton(
+              label: 'Tạo feedback theo tiến độ roadmap',
+              outlined: true,
+              onPressed: () async {
+                final repositoryId =
+                    roadmap.roadmapSource!['repositoryId'].toString();
+                try {
+                  await ref
+                      .read(repositoryProvider.notifier)
+                      .generateAiFeedback(repositoryId, roadmapId: roadmap.id);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content:
+                          Text('Đã cập nhật feedback theo roadmap hiện tại.'),
+                    ),
+                  );
+                } catch (_) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        ref.read(repositoryProvider).error ??
+                            'Không thể tạo feedback theo roadmap.',
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
           const SizedBox(height: 16),
-          RoadmapDetailTabBar(selectedTab: selectedTab, onTabSelected: onTabSelected),
+          RoadmapDetailTabBar(
+              selectedTab: selectedTab, onTabSelected: onTabSelected),
           const SizedBox(height: 16),
           if (selectedTab == 0) ...[
             Text('Cây lộ trình', style: context.appSectionTitleStyle),
             const SizedBox(height: 8),
             RoadmapTreeWidget(
               roadmap: roadmap,
-              onStatusChange: (nodeId, status) => notifier.updateNodeStatus(roadmap.id, nodeId, status),
+              onStatusChange: (nodeId, status) async {
+                try {
+                  await notifier.updateNodeStatus(roadmap.id, nodeId, status);
+                } catch (_) {}
+              },
               onBookmarkToggle: notifier.toggleBookmark,
               isBookmarked: notifier.isBookmarked,
+              loadingLearningItemId: roadmapState.openingLearningItemId,
+              generatingLearningItemId: roadmapState.generatingLearningItemId,
+              onOpenLearning: (node) async {
+                try {
+                  final learning =
+                      await notifier.openLearning(roadmap.id, node.id);
+                  if (!context.mounted) return;
+                  await showModalBottomSheet<void>(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (_) => FractionallySizedBox(
+                      heightFactor: 0.9,
+                      child: LearningContentSheet(learning: learning),
+                    ),
+                  );
+                } catch (_) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(roadmapState.learningError ??
+                          'Không thể mở nội dung học.'),
+                      action: SnackBarAction(
+                        label: 'Thử lại',
+                        onPressed: () =>
+                            notifier.openLearning(roadmap.id, node.id),
+                      ),
+                    ),
+                  );
+                }
+              },
             ),
             const SizedBox(height: 16),
             LearningTimelineWidget(roadmap: roadmap),
