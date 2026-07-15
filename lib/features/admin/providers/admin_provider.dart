@@ -613,7 +613,7 @@ class AdminChatState {
       totalPages: 0,
     ),
     this.selected,
-    this.statusFilter = 'waiting_admin',
+    this.statusFilter,
     this.modeFilter,
     this.modeSourceFilter,
     this.isLoading = false,

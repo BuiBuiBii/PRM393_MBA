@@ -8,6 +8,10 @@ import 'package:gitanalyzer_flutter/features/admin/providers/admin_provider.dart
 import 'package:gitanalyzer_flutter/shared/models/app_models.dart';
 
 void main() {
+  test('admin chat defaults to All status filter', () {
+    expect(const AdminChatState().statusFilter, isNull);
+  });
+
   test('chat detail uses senderType and effectiveMode from backend', () {
     final session = normalizeChatSessionDetail({
       'data': {
