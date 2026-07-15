@@ -16,7 +16,7 @@ import 'oauth_callback_utils.dart';
 
 /// Login: `POST /auth/github { redirectUrl }` → authUrl → browser ngoài →
 
-///        `gitanalyzer://auth/github/callback#accessToken=JWT`
+///        `gitanalyzer://auth/github/callback?token=JWT`
 
 /// Connect: `GET /github/oauth?redirectUrl=<encoded>` + Bearer → deep link → `GET /github/account`
 
@@ -26,7 +26,7 @@ class GithubOAuthService {
 
   final Dio _apiDio;
 
-  /// Trả JWT app (từ fragment `#accessToken` của deep link).
+  /// Trả JWT app từ query hoặc fragment của deep link callback.
 
   Future<String> signInForAppJwt() async {
     final redirectUri = AppConfig.githubAuthRedirectUri;
@@ -45,12 +45,13 @@ class GithubOAuthService {
 
       if (error != null) throw ApiException(error);
 
-      final token = appAccessTokenFromFragment(callback);
+      final token = appTokenFromCallbackUri(callback);
 
       if (token == null || token.isEmpty) {
         throw ApiException(
-          'Thiếu #accessToken trong callback GitHub. '
-          'BE phải redirect về $redirectUri#accessToken=...',
+          'Thiếu token trong callback GitHub. '
+          'BE phải redirect về $redirectUri?token=... hoặc '
+          '$redirectUri#accessToken=...',
         );
       }
 

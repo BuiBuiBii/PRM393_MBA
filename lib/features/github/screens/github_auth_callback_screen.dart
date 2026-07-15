@@ -12,10 +12,12 @@ class GitHubAuthCallbackScreen extends ConsumerStatefulWidget {
   const GitHubAuthCallbackScreen({super.key});
 
   @override
-  ConsumerState<GitHubAuthCallbackScreen> createState() => _GitHubAuthCallbackScreenState();
+  ConsumerState<GitHubAuthCallbackScreen> createState() =>
+      _GitHubAuthCallbackScreenState();
 }
 
-class _GitHubAuthCallbackScreenState extends ConsumerState<GitHubAuthCallbackScreen> {
+class _GitHubAuthCallbackScreenState
+    extends ConsumerState<GitHubAuthCallbackScreen> {
   var _handled = false;
   String? _error;
 
@@ -30,18 +32,20 @@ class _GitHubAuthCallbackScreenState extends ConsumerState<GitHubAuthCallbackScr
 
   Future<void> _handleCallback(Uri uri) async {
     final error = oauthErrorFromUri(uri);
-    final token = appAccessTokenFromFragment(uri);
+    final token = appTokenFromCallbackUri(uri);
 
     try {
       if (error != null) {
         throw Exception(error);
       }
       if (token == null || token.isEmpty) {
-        throw Exception('Thiếu #accessToken trong callback GitHub');
+        throw Exception('Thiếu token trong callback GitHub');
       }
 
       await ref.read(authProvider.notifier).completeGithubLoginWithToken(token);
-      if (mounted) context.go(getDefaultAuthenticatedPath(ref.read(authProvider).user));
+      if (mounted) {
+        context.go(getDefaultAuthenticatedPath(ref.read(authProvider).user));
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _error = e.toString());
@@ -67,15 +71,19 @@ class _GitHubAuthCallbackScreenState extends ConsumerState<GitHubAuthCallbackScr
                   color: Colors.grey.shade900,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const AppSvgIcon(asset: AppAssets.githubIcon, size: 28, color: Colors.white),
+                child: const AppSvgIcon(
+                    asset: AppAssets.githubIcon, size: 28, color: Colors.white),
               ),
               const SizedBox(height: 16),
               if (_error != null)
-                Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.amber))
+                Text(_error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.amber))
               else ...[
                 const CircularProgressIndicator(),
                 const SizedBox(height: 12),
-                const Text('Đang hoàn tất đăng nhập GitHub...', style: TextStyle(color: AppColors.slate500)),
+                const Text('Đang hoàn tất đăng nhập GitHub...',
+                    style: TextStyle(color: AppColors.slate500)),
               ],
             ],
           ),
