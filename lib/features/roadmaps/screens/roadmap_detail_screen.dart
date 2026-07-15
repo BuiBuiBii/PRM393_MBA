@@ -8,7 +8,6 @@ import '../../../shared/widgets/app_widgets.dart';
 import '../../../shared/widgets/roadmap_widgets.dart';
 import '../../../shared/widgets/scroll_list_hints.dart';
 import '../../../shared/models/app_models.dart';
-import '../../repositories/providers/repository_provider.dart';
 import '../../chat/providers/chat_provider.dart';
 import '../providers/roadmap_provider.dart';
 import '../widgets/roadmap_detail_sections.dart';

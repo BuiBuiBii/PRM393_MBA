@@ -24,8 +24,9 @@ List<RoadmapModel> filterRoadmaps(
     if (difficulty != 'All' && roadmap.difficulty != difficulty) return false;
     if (duration == 'Short' && roadmap.estimatedWeeks > 6) return false;
     if (duration == 'Medium' &&
-        (roadmap.estimatedWeeks <= 6 || roadmap.estimatedWeeks > 10))
+        (roadmap.estimatedWeeks <= 6 || roadmap.estimatedWeeks > 10)) {
       return false;
+    }
     if (duration == 'Long' && roadmap.estimatedWeeks <= 10) return false;
     return true;
   }).toList();

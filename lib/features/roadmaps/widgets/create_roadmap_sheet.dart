@@ -66,17 +66,20 @@ class _CreateRoadmapSheetHostState
         cfg.repoId!.isNotEmpty) {
       return cfg.repoId!;
     }
-    if (cfg.sourceMode == 'all_analyzed_repos')
+    if (cfg.sourceMode == 'all_analyzed_repos') {
       return RepositoryNotifier.roleMatchAllKey;
-    if (cfg.repoIds != null && cfg.repoIds!.isNotEmpty)
+    }
+    if (cfg.repoIds != null && cfg.repoIds!.isNotEmpty) {
       return '__selected__${cfg.repoIds!.join('_')}';
+    }
     return cfg.sourceMode;
   }
 
   Future<void> _ensureRoleMatches({bool forceRefresh = false}) async {
     final analyses = ref.read(repositoryProvider).analyses;
-    if (widget.config.sourceMode == 'all_analyzed_repos' && analyses.isEmpty)
+    if (widget.config.sourceMode == 'all_analyzed_repos' && analyses.isEmpty) {
       return;
+    }
 
     await ref.read(repositoryProvider.notifier).calculateRoleMatches(
           sourceMode: widget.config.sourceMode,
