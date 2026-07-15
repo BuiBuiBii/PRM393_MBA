@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_utils.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../shared/models/app_models.dart';
 import '../data/admin_api.dart';
 import '../models/admin_models.dart';
 
@@ -303,16 +304,23 @@ class AdminRoadmapsNotifier extends Notifier<AdminListState<AdminRoadmapRecord>>
     return const AdminListState();
   }
 
-  Future<void> load({int page = 1, String? search, String? status}) =>
+  Future<void> load({
+    int page = 1,
+    String? search,
+    String? status,
+    bool includeDeleted = false,
+  }) =>
       loadPaged(
         page: page,
         search: search,
-        filter: status,
+        filter: status ?? '',
+        secondaryFilter: includeDeleted ? 'includeDeleted' : '',
         fetch: () => adminApi.getRoadmaps(
             page: page,
             limit: AdminPagedListMixin.limit,
             search: search,
-            status: status),
+            status: status,
+            includeDeleted: includeDeleted),
       );
 
   Future<void> nextPage() {
@@ -320,7 +328,8 @@ class AdminRoadmapsNotifier extends Notifier<AdminListState<AdminRoadmapRecord>>
     return load(
         page: state.pagination.page + 1,
         search: state.search,
-        status: state.filter);
+        status: state.filter,
+        includeDeleted: state.secondaryFilter == 'includeDeleted');
   }
 
   Future<void> prevPage() {
@@ -328,7 +337,8 @@ class AdminRoadmapsNotifier extends Notifier<AdminListState<AdminRoadmapRecord>>
     return load(
         page: state.pagination.page - 1,
         search: state.search,
-        status: state.filter);
+        status: state.filter,
+        includeDeleted: state.secondaryFilter == 'includeDeleted');
   }
 }
 
@@ -358,10 +368,12 @@ class AdminRoadmapDetailNotifier extends Notifier<AdminRoadmapDetailState> {
     return const AdminRoadmapDetailState();
   }
 
-  Future<void> load(String roadmapId) async {
+  Future<void> load(String roadmapId, {bool includeDeleted = false}) async {
     state = const AdminRoadmapDetailState(isLoading: true);
     try {
-      final roadmap = await safeRequest(() => _api.getRoadmap(roadmapId));
+      final roadmap = await safeRequest(
+        () => _api.getRoadmap(roadmapId, includeDeleted: includeDeleted),
+      );
       state = AdminRoadmapDetailState(roadmap: roadmap);
     } catch (e) {
       state = AdminRoadmapDetailState(error: getApiErrorMessage(e));
@@ -371,8 +383,8 @@ class AdminRoadmapDetailNotifier extends Notifier<AdminRoadmapDetailState> {
   Future<void> updateStatus(String roadmapId, String status) async {
     state = AdminRoadmapDetailState(roadmap: state.roadmap, isSaving: true);
     try {
-      final roadmap =
-          await safeRequest(() => _api.updateRoadmapStatus(roadmapId, status));
+      await safeRequest(() => _api.updateRoadmapStatus(roadmapId, status));
+      final roadmap = await safeRequest(() => _api.getRoadmap(roadmapId));
       state = AdminRoadmapDetailState(roadmap: roadmap);
     } catch (e) {
       state = AdminRoadmapDetailState(
@@ -606,6 +618,7 @@ class AdminChatState {
     this.modeSourceFilter,
     this.isLoading = false,
     this.isSaving = false,
+    this.remoteTyping = false,
     this.error,
   });
 
@@ -618,6 +631,7 @@ class AdminChatState {
   final String? modeSourceFilter;
   final bool isLoading;
   final bool isSaving;
+  final bool remoteTyping;
   final String? error;
 
   AdminChatState copyWith({
@@ -633,6 +647,7 @@ class AdminChatState {
     bool clearModeSourceFilter = false,
     bool? isLoading,
     bool? isSaving,
+    bool? remoteTyping,
     String? error,
     bool clearError = false,
   }) {
@@ -649,6 +664,7 @@ class AdminChatState {
           : (modeSourceFilter ?? this.modeSourceFilter),
       isLoading: isLoading ?? this.isLoading,
       isSaving: isSaving ?? this.isSaving,
+      remoteTyping: remoteTyping ?? this.remoteTyping,
       error: clearError ? null : (error ?? this.error),
     );
   }
@@ -728,7 +744,11 @@ class AdminChatNotifier extends Notifier<AdminChatState> {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final session = await safeRequest(() => _api.getChatSession(sessionId));
-      state = state.copyWith(selected: session, isLoading: false);
+      state = state.copyWith(
+        selected: session,
+        isLoading: false,
+        remoteTyping: false,
+      );
     } catch (e) {
       state = state.copyWith(isLoading: false, error: getApiErrorMessage(e));
     }
@@ -739,11 +759,11 @@ class AdminChatNotifier extends Notifier<AdminChatState> {
     if (state.selected?.status == 'closed') return;
     state = state.copyWith(isSaving: true, clearError: true);
     try {
-      await safeRequest(
+      final session = await safeRequest(
         () => _api.updateChatSessionMode(sessionId, mode, reason: reason),
       );
+      _applyRealtimeSession(_mergeServerSession(state.selected, session));
       state = state.copyWith(isSaving: false);
-      await selectSession(sessionId);
     } catch (e) {
       _saveError(e);
     }
@@ -753,27 +773,62 @@ class AdminChatNotifier extends Notifier<AdminChatState> {
     if (state.selected?.status == 'closed') return;
     state = state.copyWith(isSaving: true, clearError: true);
     try {
-      await safeRequest(() => _api.useGlobalChatMode(sessionId));
+      final session =
+          await safeRequest(() => _api.useGlobalChatMode(sessionId));
+      _applyRealtimeSession(_mergeServerSession(state.selected, session));
       state = state.copyWith(isSaving: false);
-      await selectSession(sessionId);
     } catch (e) {
       _saveError(e);
     }
   }
 
   Future<void> sendReply(String sessionId, String content) async {
-    if (state.selected?.status == 'closed') {
+    final selected = state.selected;
+    if (selected?.status == 'closed') {
       throw ApiException(
         'Session đã đóng, admin không thể trả lời.',
         code: 'CHAT_SESSION_CLOSED',
       );
     }
+    if (selected == null || selected.id != sessionId) return;
+
+    final optimistic = ChatMessageModel(
+      id: 'local-admin-${DateTime.now().microsecondsSinceEpoch}',
+      role: 'assistant',
+      senderType: 'ADMIN',
+      content: content,
+      timestamp: DateTime.now().toIso8601String(),
+    );
+    _applyRealtimeSession(
+      selected.copyWith(
+        messages: [...selected.messages, optimistic],
+        lastMessage: optimistic,
+        lastMessageText: optimistic.content,
+        lastMessageAt: optimistic.timestamp,
+      ),
+    );
     state = state.copyWith(isSaving: true, clearError: true);
     try {
       await safeRequest(() => _api.sendAdminChatMessage(sessionId, content));
       state = state.copyWith(isSaving: false);
-      await selectSession(sessionId);
     } catch (e) {
+      final current = state.selected;
+      if (current != null) {
+        final remaining = current.messages
+            .where((message) => message.id != optimistic.id)
+            .toList();
+        _applyRealtimeSession(
+          current.copyWith(
+            messages: remaining,
+            lastMessage: remaining.lastOrNull,
+            lastMessageText: remaining.lastOrNull?.content,
+            clearLastMessage: remaining.isEmpty,
+            clearLastMessageText: remaining.isEmpty,
+            lastMessageAt: remaining.lastOrNull?.timestamp,
+            clearLastMessageAt: remaining.isEmpty,
+          ),
+        );
+      }
       _saveError(e);
       rethrow;
     }
@@ -782,15 +837,130 @@ class AdminChatNotifier extends Notifier<AdminChatState> {
   Future<void> closeSession(String sessionId, {String? reason}) async {
     state = state.copyWith(isSaving: true, clearError: true);
     try {
-      await safeRequest(
+      final session = await safeRequest(
         () => _api.closeChatSession(sessionId, reason: reason),
       );
+      _applyRealtimeSession(_mergeServerSession(state.selected, session));
       state = state.copyWith(isSaving: false);
-      await selectSession(sessionId);
     } catch (e) {
       _saveError(e);
       rethrow;
     }
+  }
+
+  void applyRealtimeMessage(Map<String, dynamic> event) {
+    final selected = state.selected;
+    final raw = event['message'];
+    if (selected == null ||
+        event['sessionId']?.toString() != selected.id ||
+        raw is! Map) {
+      return;
+    }
+    final message = ChatMessageModel.fromJson(Map<String, dynamic>.from(raw));
+    if (selected.messages.any((item) => item.id == message.id)) return;
+    final messages = [...selected.messages];
+    final optimisticIndex = messages.indexWhere(
+      (item) =>
+          item.id.startsWith('local-admin-') &&
+          item.effectiveSenderType == 'ADMIN' &&
+          item.content == message.content,
+    );
+    if (optimisticIndex >= 0) {
+      messages[optimisticIndex] = message;
+    } else {
+      messages.add(message);
+    }
+    final updated = selected.copyWith(
+      messages: messages,
+      lastMessage: message,
+      lastMessageText: message.content,
+      lastMessageAt: message.timestamp,
+    );
+    _applyRealtimeSession(updated);
+  }
+
+  void applyRealtimeSessionUpdate(Map<String, dynamic> event) {
+    final selected = state.selected;
+    final raw = event['session'];
+    if (selected == null ||
+        event['sessionId']?.toString() != selected.id ||
+        raw is! Map) {
+      return;
+    }
+    final incoming = AdminChatSession.fromJson(Map<String, dynamic>.from(raw));
+    if (_isOlder(incoming.updatedAt, selected.updatedAt)) return;
+    _applyRealtimeSession(
+      selected.copyWith(
+        status: incoming.status,
+        mode: incoming.mode,
+        modeSource: incoming.modeSource,
+        effectiveMode: incoming.effectiveMode,
+        unreadByAdmin: incoming.unreadByAdmin,
+        unreadByUser: incoming.unreadByUser,
+        lastMessage: incoming.lastMessage,
+        lastMessageText: incoming.lastMessageText,
+        lastMessageAt: incoming.lastMessageAt,
+        manualReason: incoming.manualReason,
+        updatedAt: incoming.updatedAt,
+      ),
+    );
+  }
+
+  void applyRealtimeReadUpdate(Map<String, dynamic> event) {
+    final selected = state.selected;
+    final raw = event['session'];
+    if (selected == null || raw is! Map) return;
+    final map = Map<String, dynamic>.from(raw);
+    _applyRealtimeSession(
+      selected.copyWith(
+        unreadByAdmin: map['unreadByAdmin'] == true,
+        unreadByUser: map['unreadByUser'] == true,
+        updatedAt: map['updatedAt']?.toString(),
+      ),
+    );
+  }
+
+  void setRemoteTyping(bool value) {
+    if (state.remoteTyping == value) return;
+    state = state.copyWith(remoteTyping: value);
+  }
+
+  void _applyRealtimeSession(AdminChatSession session) {
+    state = state.copyWith(
+      selected: session,
+      sessions: state.sessions
+          .map((item) => item.id == session.id ? session : item)
+          .toList(),
+    );
+  }
+
+  AdminChatSession _mergeServerSession(
+    AdminChatSession? current,
+    AdminChatSession incoming,
+  ) {
+    if (current == null || current.id != incoming.id) return incoming;
+    return current.copyWith(
+      status: incoming.status,
+      mode: incoming.mode,
+      modeSource: incoming.modeSource,
+      effectiveMode: incoming.effectiveMode,
+      unreadByAdmin: incoming.unreadByAdmin,
+      unreadByUser: incoming.unreadByUser,
+      lastMessage: incoming.lastMessage,
+      lastMessageText: incoming.lastMessageText,
+      lastMessageAt: incoming.lastMessageAt,
+      manualReason: incoming.manualReason,
+      clearManualReason: incoming.effectiveMode != 'MANUAL',
+      updatedAt: incoming.updatedAt,
+    );
+  }
+
+  bool _isOlder(String? incoming, String? current) {
+    final incomingDate = DateTime.tryParse(incoming ?? '');
+    final currentDate = DateTime.tryParse(current ?? '');
+    return incomingDate != null &&
+        currentDate != null &&
+        incomingDate.isBefore(currentDate);
   }
 
   void _saveError(Object error) {
@@ -811,6 +981,7 @@ class AdminChatNotifier extends Notifier<AdminChatState> {
               unreadByAdmin: selected.unreadByAdmin,
               unreadByUser: selected.unreadByUser,
               lastMessage: selected.lastMessage,
+              lastMessageText: selected.lastMessageText,
               lastMessageAt: selected.lastMessageAt,
               manualReason: selected.manualReason,
             )

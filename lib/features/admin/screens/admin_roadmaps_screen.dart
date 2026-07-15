@@ -15,12 +15,14 @@ class AdminRoadmapsScreen extends ConsumerStatefulWidget {
   const AdminRoadmapsScreen({super.key});
 
   @override
-  ConsumerState<AdminRoadmapsScreen> createState() => _AdminRoadmapsScreenState();
+  ConsumerState<AdminRoadmapsScreen> createState() =>
+      _AdminRoadmapsScreenState();
 }
 
 class _AdminRoadmapsScreenState extends ConsumerState<AdminRoadmapsScreen> {
   final _search = TextEditingController();
   String? _statusFilter;
+  bool _includeDeleted = false;
   String? _updatingId;
 
   @override
@@ -35,28 +37,33 @@ class _AdminRoadmapsScreenState extends ConsumerState<AdminRoadmapsScreen> {
     super.dispose();
   }
 
-  Future<void> _reload({int? page}) => ref.read(adminRoadmapsProvider.notifier).load(
-        page: page ?? ref.read(adminRoadmapsProvider).pagination.page,
-        search: _search.text.trim(),
-        status: _statusFilter,
-      );
+  Future<void> _reload({int? page}) =>
+      ref.read(adminRoadmapsProvider.notifier).load(
+            page: page ?? ref.read(adminRoadmapsProvider).pagination.page,
+            search: _search.text.trim(),
+            status: _statusFilter,
+            includeDeleted: _includeDeleted,
+          );
 
   Future<void> _toggleStatus(String id, String currentStatus) async {
     final next = currentStatus == 'active' ? 'archived' : 'active';
     setState(() => _updatingId = id);
     try {
-      await safeRequest(() => ref.read(adminApiProvider).updateRoadmapStatus(id, next));
+      await safeRequest(
+          () => ref.read(adminApiProvider).updateRoadmapStatus(id, next));
       await _reload();
       if (mounted) {
         AppSnackbar.show(
           context,
-          message: next == 'archived' ? 'Đã ẩn roadmap' : 'Đã khôi phục roadmap',
+          message:
+              next == 'archived' ? 'Đã ẩn roadmap' : 'Đã khôi phục roadmap',
           variant: AppSnackVariant.success,
         );
       }
     } catch (e) {
       if (mounted) {
-        AppSnackbar.show(context, message: getApiErrorMessage(e), variant: AppSnackVariant.error);
+        AppSnackbar.show(context,
+            message: getApiErrorMessage(e), variant: AppSnackVariant.error);
       }
     } finally {
       if (mounted) setState(() => _updatingId = null);
@@ -78,7 +85,11 @@ class _AdminRoadmapsScreenState extends ConsumerState<AdminRoadmapsScreen> {
         AdminSearchField(
           controller: _search,
           hint: 'Tìm roadmap, mục tiêu hoặc người tạo...',
-          onSubmitted: (q) => ref.read(adminRoadmapsProvider.notifier).load(search: q.trim(), status: _statusFilter),
+          onSubmitted: (q) => ref.read(adminRoadmapsProvider.notifier).load(
+                search: q.trim(),
+                status: _statusFilter,
+                includeDeleted: _includeDeleted,
+              ),
         ),
         const SizedBox(height: 8),
         SingleChildScrollView(
@@ -89,14 +100,32 @@ class _AdminRoadmapsScreenState extends ConsumerState<AdminRoadmapsScreen> {
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
-                    label: Text(status == null ? 'Tất cả' : (status == 'active' ? 'Hoạt động' : 'Lưu trữ')),
+                    label: Text(status == null
+                        ? 'Tất cả'
+                        : (status == 'active' ? 'Hoạt động' : 'Lưu trữ')),
                     selected: _statusFilter == status,
                     onSelected: (_) {
                       setState(() => _statusFilter = status);
-                      ref.read(adminRoadmapsProvider.notifier).load(search: _search.text.trim(), status: status);
+                      ref.read(adminRoadmapsProvider.notifier).load(
+                            search: _search.text.trim(),
+                            status: status,
+                            includeDeleted: _includeDeleted,
+                          );
                     },
                   ),
                 ),
+              FilterChip(
+                label: const Text('Bao gồm đã xóa'),
+                selected: _includeDeleted,
+                onSelected: (value) {
+                  setState(() => _includeDeleted = value);
+                  ref.read(adminRoadmapsProvider.notifier).load(
+                        search: _search.text.trim(),
+                        status: _statusFilter,
+                        includeDeleted: value,
+                      );
+                },
+              ),
             ],
           ),
         ),
@@ -115,29 +144,52 @@ class _AdminRoadmapsScreenState extends ConsumerState<AdminRoadmapsScreen> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: AdminListTileCard(
                     title: r.title,
-                    subtitle: '${r.ownerName}${r.ownerEmail != null ? ' • ${r.ownerEmail}' : ''}',
+                    subtitle:
+                        '${r.ownerName}${r.ownerEmail != null ? ' • ${r.ownerEmail}' : ''} • ${r.progressSummary.overallProgress}%',
                     badges: [
                       adminStatusLabel(r.status),
-                      AppBadge(label: '${r.phaseCount} giai đoạn', variant: AppBadgeVariant.info),
-                      AppBadge(label: '${r.taskCount} việc học', variant: AppBadgeVariant.neutral),
-                      if (r.hourCount > 0) AppBadge(label: '${r.hourCount} giờ', variant: AppBadgeVariant.warning),
+                      if (r.isDeleted)
+                        const AppBadge(
+                            label: 'Đã xóa', variant: AppBadgeVariant.warning),
+                      AppBadge(
+                          label:
+                              '${r.progressSummary.completedItems} hoàn thành',
+                          variant: AppBadgeVariant.success),
+                      AppBadge(
+                          label:
+                              '${r.progressSummary.inProgressItems} đang học',
+                          variant: AppBadgeVariant.info),
+                      AppBadge(
+                          label: '${r.progressSummary.pendingItems} chờ học',
+                          variant: AppBadgeVariant.neutral),
                     ],
-                    onTap: () => context.push('/admin/roadmaps/${r.id}'),
+                    progress: r.progressSummary.overallProgress / 100,
+                    onTap: () => context.push(
+                      '/admin/roadmaps/${r.id}${r.isDeleted ? '?includeDeleted=true' : ''}',
+                    ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (_updatingId == r.id)
-                          const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-                        else
+                          const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                        else if (!r.isDeleted)
                           IconButton(
-                            tooltip: r.status == 'active' ? 'Ẩn roadmap' : 'Khôi phục',
+                            tooltip: r.status == 'active'
+                                ? 'Ẩn roadmap'
+                                : 'Khôi phục',
                             onPressed: () => _toggleStatus(r.id, r.status),
                             icon: Icon(
-                              r.status == 'active' ? Icons.archive_outlined : Icons.unarchive_outlined,
+                              r.status == 'active'
+                                  ? Icons.archive_outlined
+                                  : Icons.unarchive_outlined,
                               size: 20,
                             ),
                           ),
-                        Icon(Icons.chevron_right, color: context.appTextSecondary),
+                        Icon(Icons.chevron_right,
+                            color: context.appTextSecondary),
                       ],
                     ),
                   ),

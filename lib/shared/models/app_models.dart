@@ -529,6 +529,7 @@ class ChatSessionModel {
     this.updatedAt,
     this.lastMessageAt,
     this.lastMessage,
+    this.lastMessageText,
     this.manualReason,
     this.repositoryId,
     this.roadmapId,
@@ -553,6 +554,7 @@ class ChatSessionModel {
   final String? updatedAt;
   final String? lastMessageAt;
   final ChatMessageModel? lastMessage;
+  final String? lastMessageText;
   final String? manualReason;
   final String? repositoryId;
   final String? roadmapId;
@@ -573,6 +575,7 @@ class ChatSessionModel {
     String? updatedAt,
     String? lastMessageAt,
     ChatMessageModel? lastMessage,
+    String? lastMessageText,
     String? manualReason,
     String? repositoryId,
     String? roadmapId,
@@ -597,6 +600,7 @@ class ChatSessionModel {
       updatedAt: updatedAt ?? this.updatedAt,
       lastMessageAt: lastMessageAt ?? this.lastMessageAt,
       lastMessage: lastMessage ?? this.lastMessage,
+      lastMessageText: lastMessageText ?? this.lastMessageText,
       manualReason: manualReason ?? this.manualReason,
       repositoryId: repositoryId ?? this.repositoryId,
       roadmapId: roadmapId ?? this.roadmapId,
@@ -632,6 +636,9 @@ class ChatSessionModel {
               Map<String, dynamic>.from(lastMessageJson),
             )
           : null,
+      lastMessageText: lastMessageJson is Map
+          ? lastMessageJson['content']?.toString()
+          : lastMessageJson?.toString(),
       manualReason: json['manualReason']?.toString(),
       repositoryId: json['repositoryId']?.toString(),
       roadmapId: json['roadmapId']?.toString(),

@@ -80,8 +80,10 @@ class AdminChatSession {
     this.unreadByAdmin = false,
     this.unreadByUser = false,
     this.lastMessage,
+    this.lastMessageText,
     this.lastMessageAt,
     this.manualReason,
+    this.updatedAt,
   });
 
   final String id;
@@ -96,8 +98,52 @@ class AdminChatSession {
   final bool unreadByAdmin;
   final bool unreadByUser;
   final ChatMessageModel? lastMessage;
+  final String? lastMessageText;
   final String? lastMessageAt;
   final String? manualReason;
+  final String? updatedAt;
+
+  AdminChatSession copyWith({
+    String? status,
+    String? mode,
+    String? modeSource,
+    String? effectiveMode,
+    List<ChatMessageModel>? messages,
+    bool? unreadByAdmin,
+    bool? unreadByUser,
+    ChatMessageModel? lastMessage,
+    String? lastMessageText,
+    bool clearLastMessageText = false,
+    bool clearLastMessage = false,
+    String? lastMessageAt,
+    bool clearLastMessageAt = false,
+    String? manualReason,
+    bool clearManualReason = false,
+    String? updatedAt,
+  }) {
+    return AdminChatSession(
+      id: id,
+      title: title,
+      status: status ?? this.status,
+      mode: mode ?? this.mode,
+      modeSource: modeSource ?? this.modeSource,
+      effectiveMode: effectiveMode ?? this.effectiveMode,
+      messages: messages ?? this.messages,
+      user: user,
+      assignedAdminId: assignedAdminId,
+      unreadByAdmin: unreadByAdmin ?? this.unreadByAdmin,
+      unreadByUser: unreadByUser ?? this.unreadByUser,
+      lastMessage: clearLastMessage ? null : (lastMessage ?? this.lastMessage),
+      lastMessageText: clearLastMessageText
+          ? null
+          : (lastMessageText ?? this.lastMessageText),
+      lastMessageAt:
+          clearLastMessageAt ? null : (lastMessageAt ?? this.lastMessageAt),
+      manualReason:
+          clearManualReason ? null : (manualReason ?? this.manualReason),
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 
   factory AdminChatSession.fromJson(Map<String, dynamic> json) {
     final userJson = json['user'] ?? json['userId'];
@@ -127,8 +173,12 @@ class AdminChatSession {
               Map<String, dynamic>.from(lastMessageJson),
             )
           : null,
+      lastMessageText: lastMessageJson is Map
+          ? lastMessageJson['content']?.toString()
+          : lastMessageJson?.toString(),
       lastMessageAt: (json['lastMessageAt'] ?? json['updatedAt'])?.toString(),
       manualReason: json['manualReason']?.toString(),
+      updatedAt: json['updatedAt']?.toString(),
     );
   }
 }
@@ -560,34 +610,48 @@ class AdminFeedbackRecord {
 class AdminRoadmapRecord {
   const AdminRoadmapRecord({
     required this.id,
+    required this.title,
     required this.targetRole,
     required this.status,
-    required this.ownerName,
-    this.ownerEmail,
-    this.summary,
-    this.currentGithubDirection,
+    required this.progressSummary,
+    this.user,
+    this.repository,
+    this.isDeleted = false,
+    this.deletedAt,
+    this.requestedLevel,
+    this.effectiveLevel,
+    this.durationWeeks,
+    this.language,
     this.mainPath,
     this.supportingPaths = const [],
-    this.sourceContextSummary,
+    this.learningProgress,
     this.createdAt,
     this.updatedAt,
   });
 
   final String id;
+  final String title;
   final String targetRole;
   final String status;
-  final String ownerName;
-  final String? ownerEmail;
-  final String? summary;
-  final String? currentGithubDirection;
+  final AdminRoadmapUser? user;
+  final AdminRoadmapRepository? repository;
+  final bool isDeleted;
+  final String? deletedAt;
+  final String? requestedLevel;
+  final String? effectiveLevel;
+  final int? durationWeeks;
+  final String? language;
+  final AdminRoadmapProgressSummary progressSummary;
   final AdminRoadmapPath? mainPath;
   final List<AdminRoadmapPath> supportingPaths;
-  final AdminRoadmapSourceContext? sourceContextSummary;
+  final AdminRoadmapLearningProgress? learningProgress;
   final String? createdAt;
   final String? updatedAt;
 
-  String get title =>
-      mainPath?.title?.isNotEmpty == true ? mainPath!.title! : targetRole;
+  String get ownerName =>
+      user?.displayName.isNotEmpty == true ? user!.displayName : 'Unknown user';
+
+  String? get ownerEmail => user?.email.isNotEmpty == true ? user!.email : null;
 
   int get phaseCount => mainPath?.phases.length ?? 0;
 
@@ -597,25 +661,37 @@ class AdminRoadmapRecord {
   int get hourCount =>
       mainPath?.phases.fold<int>(0, (sum, p) => sum + p.estimatedHours) ?? 0;
 
-  int get repositoriesCount => sourceContextSummary?.repositoriesCount ?? 0;
+  int get repositoriesCount => repository == null ? 0 : 1;
 
   factory AdminRoadmapRecord.fromJson(Map<String, dynamic> json) {
-    final user = json['userId'];
+    final user = json['user'];
     final userMap = user is Map ? Map<String, dynamic>.from(user) : null;
-    final mainPathRaw = json['mainPath'];
-    final supportingRaw = json['supportingPaths'];
-    final contextRaw = json['sourceContextSummary'];
+    final repository = json['repository'];
+    final mainPathRaw = json['mainRoadmap'];
+    final supportingRaw = json['alternativeRoadmaps'];
+    final progressRaw = json['progressSummary'];
+    final learningRaw = json['learningProgress'];
+    final title = (json['title'] ?? '').toString();
 
     return AdminRoadmapRecord(
-      id: (json['_id'] ?? json['id'] ?? '').toString(),
+      id: (json['roadmapId'] ?? '').toString(),
+      title: title.isNotEmpty ? title : (json['targetRole'] ?? '-').toString(),
       targetRole: (json['targetRole'] ?? '-').toString(),
       status: (json['status'] ?? 'active').toString(),
-      ownerName: userMap?['name']?.toString() ??
-          userMap?['fullName']?.toString() ??
-          '—',
-      ownerEmail: userMap?['email']?.toString(),
-      summary: json['summary']?.toString(),
-      currentGithubDirection: json['currentGithubDirection']?.toString(),
+      user: userMap == null ? null : AdminRoadmapUser.fromJson(userMap),
+      repository: repository is Map
+          ? AdminRoadmapRepository.fromJson(
+              Map<String, dynamic>.from(repository))
+          : null,
+      isDeleted: json['isDeleted'] == true,
+      deletedAt: json['deletedAt']?.toString(),
+      requestedLevel: json['requestedLevel']?.toString(),
+      effectiveLevel: json['effectiveLevel']?.toString(),
+      durationWeeks: int.tryParse(json['durationWeeks']?.toString() ?? ''),
+      language: json['language']?.toString(),
+      progressSummary: AdminRoadmapProgressSummary.fromJson(
+        progressRaw is Map ? Map<String, dynamic>.from(progressRaw) : const {},
+      ),
       mainPath: mainPathRaw is Map
           ? AdminRoadmapPath.fromJson(Map<String, dynamic>.from(mainPathRaw))
           : null,
@@ -626,9 +702,9 @@ class AdminRoadmapRecord {
                   AdminRoadmapPath.fromJson(Map<String, dynamic>.from(e)))
               .toList()
           : const [],
-      sourceContextSummary: contextRaw is Map
-          ? AdminRoadmapSourceContext.fromJson(
-              Map<String, dynamic>.from(contextRaw))
+      learningProgress: learningRaw is Map
+          ? AdminRoadmapLearningProgress.fromJson(
+              Map<String, dynamic>.from(learningRaw))
           : null,
       createdAt: json['createdAt']?.toString(),
       updatedAt: json['updatedAt']?.toString(),
@@ -636,31 +712,187 @@ class AdminRoadmapRecord {
   }
 }
 
-class AdminRoadmapSourceContext {
-  const AdminRoadmapSourceContext({
-    this.repositoriesCount = 0,
-    this.detectedSkills = const [],
-    this.missingSkills = const [],
+class AdminRoadmapUser {
+  const AdminRoadmapUser({
+    required this.id,
+    required this.name,
+    required this.displayName,
+    required this.email,
+    required this.avatar,
+    required this.status,
+    required this.role,
   });
 
-  final int repositoriesCount;
-  final List<String> detectedSkills;
-  final List<String> missingSkills;
+  final String id;
+  final String name;
+  final String displayName;
+  final String email;
+  final String avatar;
+  final String status;
+  final String role;
 
-  factory AdminRoadmapSourceContext.fromJson(Map<String, dynamic> json) {
-    List<String> skills(dynamic value) {
-      if (value is! List) return const [];
-      return value.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
-    }
+  factory AdminRoadmapUser.fromJson(Map<String, dynamic> json) =>
+      AdminRoadmapUser(
+        id: (json['id'] ?? '').toString(),
+        name: (json['name'] ?? '').toString(),
+        displayName: (json['displayName'] ?? json['name'] ?? '').toString(),
+        email: (json['email'] ?? '').toString(),
+        avatar: (json['avatar'] ?? '').toString(),
+        status: (json['status'] ?? '').toString(),
+        role: (json['role'] ?? '').toString(),
+      );
+}
 
-    return AdminRoadmapSourceContext(
-      repositoriesCount: json['repositoriesCount'] is num
-          ? (json['repositoriesCount'] as num).toInt()
-          : 0,
-      detectedSkills: skills(json['detectedSkills']),
-      missingSkills: skills(json['missingSkills']),
+class AdminRoadmapRepository {
+  const AdminRoadmapRepository({
+    required this.id,
+    required this.name,
+    required this.fullName,
+    required this.htmlUrl,
+    required this.language,
+  });
+
+  final String id;
+  final String name;
+  final String fullName;
+  final String htmlUrl;
+  final String language;
+
+  factory AdminRoadmapRepository.fromJson(Map<String, dynamic> json) =>
+      AdminRoadmapRepository(
+        id: (json['id'] ?? '').toString(),
+        name: (json['name'] ?? '').toString(),
+        fullName: (json['fullName'] ?? '').toString(),
+        htmlUrl: (json['htmlUrl'] ?? '').toString(),
+        language: (json['language'] ?? '').toString(),
+      );
+}
+
+class AdminRoadmapProgressSummary {
+  const AdminRoadmapProgressSummary({
+    required this.totalItems,
+    required this.completedItems,
+    required this.inProgressItems,
+    required this.pendingItems,
+    required this.overallProgress,
+  });
+
+  final int totalItems;
+  final int completedItems;
+  final int inProgressItems;
+  final int pendingItems;
+  final int overallProgress;
+
+  factory AdminRoadmapProgressSummary.fromJson(Map<String, dynamic> json) {
+    int value(String key) => int.tryParse(json[key]?.toString() ?? '') ?? 0;
+    return AdminRoadmapProgressSummary(
+      totalItems: value('totalItems'),
+      completedItems: value('completedItems'),
+      inProgressItems: value('inProgressItems'),
+      pendingItems: value('pendingItems'),
+      overallProgress: value('overallProgress'),
     );
   }
+}
+
+class AdminRoadmapLearningProgress {
+  const AdminRoadmapLearningProgress({
+    this.currentTask,
+    this.recentlyCompleted = const [],
+    this.nextRecommendedTask,
+    this.completedTasks = const [],
+    this.inProgressTasks = const [],
+    this.pendingTasks = const [],
+    this.orphanProgressItems = const [],
+    this.items = const [],
+  });
+
+  final AdminRoadmapLearningItem? currentTask;
+  final List<AdminRoadmapLearningItem> recentlyCompleted;
+  final AdminRoadmapLearningItem? nextRecommendedTask;
+  final List<AdminRoadmapLearningItem> completedTasks;
+  final List<AdminRoadmapLearningItem> inProgressTasks;
+  final List<AdminRoadmapLearningItem> pendingTasks;
+  final List<AdminRoadmapLearningItem> orphanProgressItems;
+  final List<AdminRoadmapLearningItem> items;
+
+  factory AdminRoadmapLearningProgress.fromJson(Map<String, dynamic> json) {
+    AdminRoadmapLearningItem? item(dynamic value) => value is Map &&
+            value.isNotEmpty
+        ? AdminRoadmapLearningItem.fromJson(Map<String, dynamic>.from(value))
+        : null;
+    List<AdminRoadmapLearningItem> items(dynamic value) => value is List
+        ? value
+            .whereType<Map>()
+            .map((e) =>
+                AdminRoadmapLearningItem.fromJson(Map<String, dynamic>.from(e)))
+            .toList()
+        : const [];
+
+    return AdminRoadmapLearningProgress(
+      currentTask: item(json['currentTask']),
+      recentlyCompleted: items(json['recentlyCompleted']),
+      nextRecommendedTask: item(json['nextRecommendedTask']),
+      completedTasks: items(json['completedTasks']),
+      inProgressTasks: items(json['inProgressTasks']),
+      pendingTasks: items(json['pendingTasks']),
+      orphanProgressItems: items(json['orphanProgressItems']),
+      items: items(json['items']),
+    );
+  }
+}
+
+class AdminRoadmapLearningItem {
+  const AdminRoadmapLearningItem({
+    required this.itemId,
+    required this.title,
+    required this.status,
+    required this.progressPercent,
+    this.description,
+    this.skillName,
+    this.canonicalSkillName,
+    this.category,
+    this.priority,
+    this.week,
+    this.phase,
+    this.estimatedHours,
+    this.startedAt,
+    this.completedAt,
+  });
+
+  final String itemId;
+  final String title;
+  final String? description;
+  final String? skillName;
+  final String? canonicalSkillName;
+  final String? category;
+  final String? priority;
+  final int? week;
+  final String? phase;
+  final int? estimatedHours;
+  final String status;
+  final int progressPercent;
+  final String? startedAt;
+  final String? completedAt;
+
+  factory AdminRoadmapLearningItem.fromJson(Map<String, dynamic> json) =>
+      AdminRoadmapLearningItem(
+        itemId: (json['itemId'] ?? '').toString(),
+        title: (json['title'] ?? json['itemId'] ?? 'Unknown task').toString(),
+        description: json['description']?.toString(),
+        skillName: json['skillName']?.toString(),
+        canonicalSkillName: json['canonicalSkillName']?.toString(),
+        category: json['category']?.toString(),
+        priority: json['priority']?.toString(),
+        week: int.tryParse(json['week']?.toString() ?? ''),
+        phase: json['phase']?.toString(),
+        estimatedHours: int.tryParse(json['estimatedHours']?.toString() ?? ''),
+        status: (json['status'] ?? 'not_started').toString(),
+        progressPercent:
+            int.tryParse(json['progressPercent']?.toString() ?? '') ?? 0,
+        startedAt: json['startedAt']?.toString(),
+        completedAt: json['completedAt']?.toString(),
+      );
 }
 
 class AdminRoadmapPath {

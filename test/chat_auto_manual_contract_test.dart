@@ -1,8 +1,10 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitanalyzer_flutter/core/network/app_api.dart';
 import 'package:gitanalyzer_flutter/core/network/normalizers.dart';
 import 'package:gitanalyzer_flutter/features/admin/data/admin_api.dart';
+import 'package:gitanalyzer_flutter/features/admin/providers/admin_provider.dart';
 import 'package:gitanalyzer_flutter/shared/models/app_models.dart';
 
 void main() {
@@ -16,6 +18,7 @@ void main() {
           'modeSource': 'SESSION',
           'effectiveMode': 'MANUAL',
           'status': 'answered',
+          'lastMessage': 'Admin reply preview',
           'unreadByUser': true,
         },
         'messages': [
@@ -37,6 +40,7 @@ void main() {
 
     expect(session.effectiveMode, 'MANUAL');
     expect(session.modeSource, 'SESSION');
+    expect(session.lastMessageText, 'Admin reply preview');
     expect(session.messages.last.isAdmin, isTrue);
     expect(session.messages.last.isUser, isFalse);
   });
@@ -309,5 +313,99 @@ void main() {
     expect(requests[4].data, {'content': 'Admin reply'});
     expect(requests[5].path, '/admin/chat/sessions/session-1/close');
     expect(requests[5].data, {'reason': 'Resolved'});
+  });
+
+  test('admin reply is shown immediately and reconciled with socket id',
+      () async {
+    final dio = Dio(BaseOptions(baseUrl: 'https://example.test'));
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          handler.resolve(
+            Response<dynamic>(
+              requestOptions: options,
+              statusCode: 200,
+              data: options.method == 'GET'
+                  ? {
+                      'success': true,
+                      'data': {
+                        'session': <String, dynamic>{
+                          '_id': 'session-1',
+                          'title': 'Support',
+                          'status': 'waiting_admin',
+                          'mode': 'MANUAL',
+                          'modeSource': 'SESSION',
+                          'effectiveMode': 'MANUAL',
+                          'lastMessage': 'Previous reply',
+                        },
+                        'messages': <dynamic>[],
+                      },
+                    }
+                  : options.method == 'PATCH'
+                      ? {
+                          'success': true,
+                          'data': {
+                            'session': <String, dynamic>{
+                              '_id': 'session-1',
+                              'title': 'Support',
+                              'status': 'answered',
+                              'mode': 'AI_AUTO',
+                              'modeSource': 'SESSION',
+                              'effectiveMode': 'AI_AUTO',
+                            },
+                          },
+                        }
+                      : {
+                          'success': true,
+                          'data': <String, dynamic>{},
+                        },
+            ),
+          );
+        },
+      ),
+    );
+    final container = ProviderContainer(
+      overrides: [
+        adminApiProvider.overrideWithValue(AdminApi(dio)),
+      ],
+    );
+    addTearDown(container.dispose);
+    final notifier = container.read(adminChatProvider.notifier);
+
+    await notifier.selectSession('session-1');
+    expect(
+      container.read(adminChatProvider).selected,
+      isNotNull,
+      reason: container.read(adminChatProvider).error,
+    );
+    expect(
+      container.read(adminChatProvider).selected?.lastMessageText,
+      'Previous reply',
+    );
+    await notifier.sendReply('session-1', 'Admin reply');
+
+    var state = container.read(adminChatProvider);
+    expect(state.selected?.messages.single.content, 'Admin reply');
+    expect(state.selected?.messages.single.id, startsWith('local-admin-'));
+
+    notifier.applyRealtimeMessage({
+      'sessionId': 'session-1',
+      'message': {
+        '_id': 'message-1',
+        'role': 'assistant',
+        'senderType': 'ADMIN',
+        'content': 'Admin reply',
+        'createdAt': '2026-07-15T00:00:00.000Z',
+      },
+    });
+
+    state = container.read(adminChatProvider);
+    expect(state.selected?.messages, hasLength(1));
+    expect(state.selected?.messages.single.id, 'message-1');
+
+    await notifier.setSessionMode('session-1', 'AI_AUTO');
+    state = container.read(adminChatProvider);
+    expect(state.selected?.effectiveMode, 'AI_AUTO');
+    expect(state.selected?.messages.single.id, 'message-1');
   });
 }

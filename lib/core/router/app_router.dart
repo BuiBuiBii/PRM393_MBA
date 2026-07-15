@@ -149,7 +149,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/admin/roadmaps/:roadmapId',
             builder: (_, state) => AdminRoadmapDetailScreen(
-                roadmapId: state.pathParameters['roadmapId']!),
+              roadmapId: state.pathParameters['roadmapId']!,
+              includeDeleted:
+                  state.uri.queryParameters['includeDeleted'] == 'true',
+            ),
           ),
           GoRoute(
               path: '/admin/chat', builder: (_, __) => const AdminChatScreen()),

@@ -121,7 +121,8 @@ class _AdminChatScreenState extends ConsumerState<AdminChatScreen> {
           child: Column(
             children: state.sessions.map((session) {
               final user = session.user;
-              final preview = session.lastMessage?.content ?? '';
+              final preview =
+                  session.lastMessage?.content ?? session.lastMessageText ?? '';
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: AdminListTileCard(
@@ -132,18 +133,20 @@ class _AdminChatScreenState extends ConsumerState<AdminChatScreen> {
                   ].join(' • '),
                   badges: [
                     AppBadge(
-                      label: session.effectiveMode == 'MANUAL'
-                          ? 'Manual'
-                          : 'AI Auto',
-                      variant: session.effectiveMode == 'MANUAL'
+                      label: 'Mode: ${session.mode}',
+                      variant: session.mode == 'MANUAL'
                           ? AppBadgeVariant.warning
                           : AppBadgeVariant.success,
                     ),
                     AppBadge(
-                      label: session.modeSource == 'SESSION'
-                          ? 'Override'
-                          : 'Global',
+                      label: 'Nguồn: ${session.modeSource}',
                       variant: AppBadgeVariant.neutral,
+                    ),
+                    AppBadge(
+                      label: 'Hiệu lực: ${session.effectiveMode}',
+                      variant: session.effectiveMode == 'MANUAL'
+                          ? AppBadgeVariant.warning
+                          : AppBadgeVariant.success,
                     ),
                     if (session.unreadByAdmin)
                       const AppBadge(

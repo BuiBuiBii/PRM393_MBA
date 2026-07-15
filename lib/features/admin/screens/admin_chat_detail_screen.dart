@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/realtime/chat_socket_client.dart';
 import '../../../shared/widgets/app_feedback.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../chat/widgets/chat_message_bubble.dart';
@@ -20,19 +23,32 @@ class AdminChatDetailScreen extends ConsumerStatefulWidget {
 
 class _AdminChatDetailScreenState extends ConsumerState<AdminChatDetailScreen> {
   final _reply = TextEditingController();
+  final _scrollController = ScrollController();
+  Timer? _outgoingTypingTimer;
+  Timer? _remoteTypingTimer;
+  ChatSocketBinding? _socketBinding;
+  String? _socketIssue;
 
   @override
   void initState() {
     super.initState();
+    _reply.addListener(_onInputChanged);
     Future.microtask(
-      () =>
-          ref.read(adminChatProvider.notifier).selectSession(widget.sessionId),
+      () {
+        ref.read(adminChatProvider.notifier).selectSession(widget.sessionId);
+        _bindRealtime();
+      },
     );
   }
 
   @override
   void dispose() {
+    ref.read(chatSocketClientProvider).sendTyping(widget.sessionId, false);
+    _socketBinding?.dispose();
+    _outgoingTypingTimer?.cancel();
+    _remoteTypingTimer?.cancel();
     _reply.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -40,6 +56,18 @@ class _AdminChatDetailScreenState extends ConsumerState<AdminChatDetailScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(adminChatProvider);
     final session = state.selected;
+    final socketStatus = ref.watch(chatSocketStatusProvider).asData?.value;
+    ref.listen(
+      adminChatProvider.select((value) => value.selected?.messages.length),
+      (_, __) => _scrollToBottom(),
+    );
+    ref.listen(chatSocketStatusProvider, (_, next) {
+      if (next.asData?.value == ChatSocketStatus.connected &&
+          _socketIssue != null &&
+          mounted) {
+        setState(() => _socketIssue = null);
+      }
+    });
     if (session == null && state.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -52,6 +80,7 @@ class _AdminChatDetailScreenState extends ConsumerState<AdminChatDetailScreen> {
       children: [
         Expanded(
           child: ListView(
+            controller: _scrollController,
             padding: appScreenPadding(context),
             children: [
               AdminSectionHeader(
@@ -61,6 +90,14 @@ class _AdminChatDetailScreenState extends ConsumerState<AdminChatDetailScreen> {
               if (state.error != null) ...[
                 const SizedBox(height: 8),
                 BannerMessage(message: state.error!, isError: true),
+              ],
+              if (_socketIssue != null ||
+                  socketStatus == ChatSocketStatus.reconnecting) ...[
+                const SizedBox(height: 8),
+                BannerMessage(
+                  message: _socketIssue ?? 'Đang kết nối lại realtime chat...',
+                  isError: _socketIssue != null,
+                ),
               ],
               if (isClosed) ...[
                 const SizedBox(height: 8),
@@ -79,18 +116,20 @@ class _AdminChatDetailScreenState extends ConsumerState<AdminChatDetailScreen> {
                       runSpacing: 8,
                       children: [
                         AppBadge(
-                          label: session.effectiveMode == 'MANUAL'
-                              ? 'Manual'
-                              : 'AI Auto',
-                          variant: session.effectiveMode == 'MANUAL'
+                          label: 'Mode: ${session.mode}',
+                          variant: session.mode == 'MANUAL'
                               ? AppBadgeVariant.warning
                               : AppBadgeVariant.success,
                         ),
                         AppBadge(
-                          label: session.modeSource == 'SESSION'
-                              ? 'Override'
-                              : 'Global',
+                          label: 'Nguồn: ${session.modeSource}',
                           variant: AppBadgeVariant.neutral,
+                        ),
+                        AppBadge(
+                          label: 'Hiệu lực: ${session.effectiveMode}',
+                          variant: session.effectiveMode == 'MANUAL'
+                              ? AppBadgeVariant.warning
+                              : AppBadgeVariant.success,
                         ),
                         AppBadge(
                           label: isClosed ? 'Đã đóng' : session.status,
@@ -148,6 +187,8 @@ class _AdminChatDetailScreenState extends ConsumerState<AdminChatDetailScreen> {
                   adminPerspective: true,
                 ),
               ),
+              if (state.remoteTyping)
+                const SizedBox(height: 42, child: ChatTypingIndicator()),
             ],
           ),
         ),
@@ -256,6 +297,8 @@ class _AdminChatDetailScreenState extends ConsumerState<AdminChatDetailScreen> {
           .read(adminChatProvider.notifier)
           .sendReply(widget.sessionId, content);
       _reply.clear();
+      ref.read(chatSocketClientProvider).sendTyping(widget.sessionId, false);
+      _scrollToBottom();
       if (mounted) {
         AppSnackbar.show(
           context,
@@ -264,5 +307,79 @@ class _AdminChatDetailScreenState extends ConsumerState<AdminChatDetailScreen> {
         );
       }
     } catch (_) {}
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  Future<void> _bindRealtime() async {
+    if (_socketIssue != null && mounted) {
+      setState(() => _socketIssue = null);
+    }
+    final binding = await ref.read(chatSocketClientProvider).bindSession(
+          sessionId: widget.sessionId,
+          onMessageCreated: (event) {
+            if (mounted) {
+              ref.read(adminChatProvider.notifier).applyRealtimeMessage(event);
+            }
+          },
+          onSessionUpdated: (event) {
+            if (mounted) {
+              ref
+                  .read(adminChatProvider.notifier)
+                  .applyRealtimeSessionUpdate(event);
+            }
+          },
+          onTyping: (event) {
+            if (!mounted) return;
+            final typing = event['isTyping'] == true;
+            ref.read(adminChatProvider.notifier).setRemoteTyping(typing);
+            _remoteTypingTimer?.cancel();
+            if (typing) {
+              _remoteTypingTimer = Timer(const Duration(seconds: 4), () {
+                if (mounted) {
+                  ref.read(adminChatProvider.notifier).setRemoteTyping(false);
+                }
+              });
+            }
+          },
+          onReadUpdated: (event) {
+            if (mounted) {
+              ref
+                  .read(adminChatProvider.notifier)
+                  .applyRealtimeReadUpdate(event);
+            }
+          },
+          onError: (issue) {
+            if (mounted) {
+              setState(() => _socketIssue = '${issue.code}: ${issue.message}');
+            }
+          },
+        );
+    if (!mounted) {
+      binding?.dispose();
+      return;
+    }
+    _socketBinding = binding;
+  }
+
+  void _onInputChanged() {
+    final socket = ref.read(chatSocketClientProvider);
+    final typing = _reply.text.trim().isNotEmpty;
+    socket.sendTyping(widget.sessionId, typing);
+    _outgoingTypingTimer?.cancel();
+    if (typing) {
+      _outgoingTypingTimer = Timer(const Duration(seconds: 2), () {
+        socket.sendTyping(widget.sessionId, false);
+      });
+    }
   }
 }

@@ -223,6 +223,7 @@ ChatSessionModel mergeChatSession(
     updatedAt: next.updatedAt ?? base.updatedAt,
     lastMessageAt: next.lastMessageAt ?? base.lastMessageAt,
     lastMessage: next.lastMessage ?? base.lastMessage,
+    lastMessageText: next.lastMessageText ?? base.lastMessageText,
     manualReason: next.manualReason ?? base.manualReason,
     repositoryId: next.repositoryId ?? base.repositoryId,
     roadmapId: next.roadmapId ?? base.roadmapId,

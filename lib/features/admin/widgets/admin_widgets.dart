@@ -5,7 +5,8 @@ import '../../../shared/widgets/app_widgets.dart';
 import '../models/admin_models.dart';
 
 class AdminSectionHeader extends StatelessWidget {
-  const AdminSectionHeader({super.key, required this.title, this.subtitle, this.trailing});
+  const AdminSectionHeader(
+      {super.key, required this.title, this.subtitle, this.trailing});
 
   final String title;
   final String? subtitle;
@@ -55,7 +56,11 @@ class AdminPaginationBar extends StatelessWidget {
 }
 
 class AdminSearchField extends StatelessWidget {
-  const AdminSearchField({super.key, required this.controller, required this.hint, required this.onSubmitted});
+  const AdminSearchField(
+      {super.key,
+      required this.controller,
+      required this.hint,
+      required this.onSubmitted});
 
   final TextEditingController controller;
   final String hint;
@@ -68,11 +73,16 @@ class AdminSearchField extends StatelessWidget {
       style: TextStyle(color: context.appTextPrimary),
       decoration: InputDecoration(
         hintText: hint,
-        prefixIcon: Icon(Icons.search, size: 20, color: context.appTextSecondary),
+        prefixIcon:
+            Icon(Icons.search, size: 20, color: context.appTextSecondary),
         filled: true,
         fillColor: Theme.of(context).inputDecorationTheme.fillColor,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: context.appBorderColor)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: context.appBorderColor)),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: context.appBorderColor)),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: context.appBorderColor)),
       ),
       textInputAction: TextInputAction.search,
       onSubmitted: onSubmitted,
@@ -87,6 +97,7 @@ class AdminListTileCard extends StatelessWidget {
     this.subtitle,
     this.trailing,
     this.badges = const [],
+    this.progress,
     this.onTap,
   });
 
@@ -94,6 +105,7 @@ class AdminListTileCard extends StatelessWidget {
   final String? subtitle;
   final Widget? trailing;
   final List<Widget> badges;
+  final double? progress;
   final VoidCallback? onTap;
 
   @override
@@ -107,7 +119,8 @@ class AdminListTileCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: context.appSectionTitleStyle.copyWith(fontSize: 15)),
+                Text(title,
+                    style: context.appSectionTitleStyle.copyWith(fontSize: 15)),
                 if (subtitle != null) ...[
                   const SizedBox(height: 4),
                   Text(subtitle!, style: context.appCaptionStyle),
@@ -115,6 +128,10 @@ class AdminListTileCard extends StatelessWidget {
                 if (badges.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Wrap(spacing: 6, runSpacing: 6, children: badges),
+                ],
+                if (progress != null) ...[
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(value: progress!.clamp(0, 1)),
                 ],
               ],
             ),
@@ -153,7 +170,8 @@ AppBadge adminStatusLabel(String status) {
     'rejected': 'Từ chối',
     'archived': 'Lưu trữ',
   };
-  return AppBadge(label: labels[status] ?? status, variant: adminStatusBadge(status));
+  return AppBadge(
+      label: labels[status] ?? status, variant: adminStatusBadge(status));
 }
 
 AppBadge adminRoleBadge(String role) {
@@ -209,7 +227,9 @@ class AdminQuickNavCard extends StatelessWidget {
             ),
           ),
           if (count != null) ...[
-            Text(count!, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 18)),
+            Text(count!,
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, color: color, fontSize: 18)),
             const SizedBox(width: 4),
           ],
           Icon(Icons.chevron_right, color: context.appTextSecondary),

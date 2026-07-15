@@ -157,29 +157,33 @@ class AdminApi {
     int limit = 20,
     String? search,
     String? status,
+    bool includeDeleted = false,
   }) async {
     final res = await _dio.get('/admin/roadmaps', queryParameters: {
       'page': page,
       'limit': limit,
       if (search != null && search.isNotEmpty) 'search': search,
       if (status != null && status.isNotEmpty) 'status': status,
+      if (includeDeleted) 'includeDeleted': true,
     });
     return _parsePage(res.data, AdminRoadmapRecord.fromJson);
   }
 
-  Future<AdminRoadmapRecord> getRoadmap(String roadmapId) async {
-    final res = await _dio.get('/admin/roadmaps/$roadmapId');
+  Future<AdminRoadmapRecord> getRoadmap(
+    String roadmapId, {
+    bool includeDeleted = false,
+  }) async {
+    final res = await _dio.get(
+      '/admin/roadmaps/$roadmapId',
+      queryParameters: {if (includeDeleted) 'includeDeleted': true},
+    );
     final map = _unwrapMap(res.data);
-    return AdminRoadmapRecord.fromJson(
-        toRecord(map['roadmap'] ?? map['item'] ?? map['detail'] ?? map));
+    return AdminRoadmapRecord.fromJson(toRecord(map['roadmap']));
   }
 
-  Future<AdminRoadmapRecord> updateRoadmapStatus(
-      String roadmapId, String status) async {
-    final res = await _dio
+  Future<void> updateRoadmapStatus(String roadmapId, String status) async {
+    await _dio
         .patch('/admin/roadmaps/$roadmapId/status', data: {'status': status});
-    final map = _unwrapMap(res.data);
-    return AdminRoadmapRecord.fromJson(toRecord(map['roadmap'] ?? map));
   }
 
   Future<AdminAnalysisRecord> getAnalysis(String analysisId) async {

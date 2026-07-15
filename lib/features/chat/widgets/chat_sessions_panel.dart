@@ -129,8 +129,12 @@ class ChatSessionsPanel extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text(
-                        session.lastMessage?.content.isNotEmpty == true
-                            ? session.lastMessage!.content
+                        (session.lastMessage?.content ??
+                                    session.lastMessageText ??
+                                    '')
+                                .isNotEmpty
+                            ? (session.lastMessage?.content ??
+                                session.lastMessageText!)
                             : formatRelativeTime(timestamp),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

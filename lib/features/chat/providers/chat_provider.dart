@@ -5,6 +5,7 @@ import '../../../core/demo/demo_service.dart';
 import '../data/chat_repository.dart';
 import '../../../core/network/api_utils.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../core/network/normalizers.dart';
 import '../../../shared/models/app_models.dart';
 
 class ChatState {
@@ -18,6 +19,7 @@ class ChatState {
     this.roadmapId,
     this.analysisId,
     this.snapshotId,
+    this.remoteTyping = false,
   });
 
   final List<ChatSessionModel> sessions;
@@ -29,6 +31,7 @@ class ChatState {
   final String? roadmapId;
   final String? analysisId;
   final String? snapshotId;
+  final bool remoteTyping;
 
   ChatState copyWith({
     List<ChatSessionModel>? sessions,
@@ -43,6 +46,7 @@ class ChatState {
     String? analysisId,
     String? snapshotId,
     bool replaceContext = false,
+    bool? remoteTyping,
   }) {
     return ChatState(
       sessions: sessions ?? this.sessions,
@@ -55,6 +59,7 @@ class ChatState {
       roadmapId: replaceContext ? roadmapId : (roadmapId ?? this.roadmapId),
       analysisId: replaceContext ? analysisId : (analysisId ?? this.analysisId),
       snapshotId: replaceContext ? snapshotId : (snapshotId ?? this.snapshotId),
+      remoteTyping: remoteTyping ?? this.remoteTyping,
     );
   }
 }
@@ -194,6 +199,7 @@ class ChatNotifier extends Notifier<ChatState> {
       state = state.copyWith(
         current: session,
         sessions: state.sessions.map((s) => s.id == id ? session : s).toList(),
+        remoteTyping: false,
       );
     } catch (e) {
       state = state.copyWith(error: getApiErrorMessage(e));
@@ -254,8 +260,14 @@ class ChatNotifier extends Notifier<ChatState> {
           ),
         );
         final responseMessages = result.messages;
+        final latestMessages = state.current?.id == session.id
+            ? state.current!.messages
+            : session.messages;
         final messages = <ChatMessageModel>[
-          ...session.messages,
+          ...latestMessages.where(
+            (message) =>
+                result.userMessage == null || !message.id.startsWith('local-'),
+          ),
           if (result.userMessage == null) optimistic,
           ...responseMessages,
         ];
@@ -286,14 +298,6 @@ class ChatNotifier extends Notifier<ChatState> {
               session.contextSelectionReason,
           context: result.context ?? session.context,
         );
-
-        try {
-          final detail =
-              await safeRequest(() => _repository.getChatSession(session!.id));
-          if (detail.messages.length >= nextSession.messages.length) {
-            nextSession = detail;
-          }
-        } catch (_) {}
       }
 
       state = state.copyWith(
@@ -322,6 +326,78 @@ class ChatNotifier extends Notifier<ChatState> {
       );
       rethrow;
     }
+  }
+
+  void applyRealtimeMessage(Map<String, dynamic> event) {
+    final current = state.current;
+    final raw = event['message'];
+    if (current == null ||
+        event['sessionId']?.toString() != current.id ||
+        raw is! Map) {
+      return;
+    }
+    final message = ChatMessageModel.fromJson(Map<String, dynamic>.from(raw));
+    if (current.messages.any((item) => item.id == message.id)) return;
+    final withoutMatchingOptimistic = current.messages.where((item) {
+      return !(item.id.startsWith('local-') &&
+          message.effectiveSenderType == 'USER' &&
+          item.content == message.content);
+    }).toList();
+    final updated = current.copyWith(
+      messages: [...withoutMatchingOptimistic, message],
+      lastMessage: message,
+      lastMessageAt: message.timestamp,
+    );
+    _applyRealtimeSession(updated);
+  }
+
+  void applyRealtimeSessionUpdate(Map<String, dynamic> event) {
+    final current = state.current;
+    final raw = event['session'];
+    if (current == null ||
+        event['sessionId']?.toString() != current.id ||
+        raw is! Map) {
+      return;
+    }
+    final incoming = ChatSessionModel.fromJson(Map<String, dynamic>.from(raw));
+    final incomingDate = DateTime.tryParse(incoming.updatedAt ?? '');
+    final currentDate = DateTime.tryParse(current.updatedAt ?? '');
+    if (incomingDate != null &&
+        currentDate != null &&
+        incomingDate.isBefore(currentDate)) {
+      return;
+    }
+    _applyRealtimeSession(mergeChatSession(current, incoming));
+  }
+
+  void applyRealtimeReadUpdate(Map<String, dynamic> event) {
+    final current = state.current;
+    final raw = event['session'];
+    if (current == null || raw is! Map) return;
+    final map = Map<String, dynamic>.from(raw);
+    _applyRealtimeSession(
+      current.copyWith(
+        unreadByAdmin: map['unreadByAdmin'] == true,
+        unreadByUser: map['unreadByUser'] == true,
+        updatedAt: map['updatedAt']?.toString(),
+      ),
+    );
+  }
+
+  void setRemoteTyping(bool value) {
+    if (state.remoteTyping == value) return;
+    state = state.copyWith(remoteTyping: value);
+  }
+
+  void _applyRealtimeSession(ChatSessionModel session) {
+    state = state.copyWith(
+      current: session,
+      sessions: state.sessions.any((item) => item.id == session.id)
+          ? state.sessions
+              .map((item) => item.id == session.id ? session : item)
+              .toList()
+          : [session, ...state.sessions],
+    );
   }
 }
 

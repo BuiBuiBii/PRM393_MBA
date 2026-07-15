@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/realtime/chat_socket_client.dart';
 import '../../feature_providers.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/widgets/app_feedback.dart';
@@ -35,7 +36,11 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  Timer? _manualPollTimer;
+  Timer? _outgoingTypingTimer;
+  Timer? _remoteTypingTimer;
+  ChatSocketBinding? _socketBinding;
+  String? _boundSessionId;
+  String? _socketIssue;
 
   static const _repositoryPrompts = [
     'Tại sao tôi hợp role này?',
@@ -60,6 +65,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    _controller.addListener(_onInputChanged);
     Future.microtask(() {
       ref.read(chatProvider.notifier).setContext(
             repositoryId: widget.repositoryId,
@@ -71,23 +77,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ref.read(repositoryProvider.notifier).fetchRepositories();
       ref.read(repositoryProvider.notifier).fetchMyAnalyses();
     });
-    _manualPollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
-      final chat = ref.read(chatProvider);
-      final session = chat.current;
-      if (session != null &&
-          session.status == 'waiting_admin' &&
-          !chat.isLoading &&
-          !chat.isSending) {
-        ref.read(chatProvider.notifier).selectSession(session.id);
-      }
-    });
   }
 
   @override
   void dispose() {
+    if (_boundSessionId != null) {
+      ref.read(chatSocketClientProvider).sendTyping(_boundSessionId!, false);
+    }
+    _socketBinding?.dispose();
+    _outgoingTypingTimer?.cancel();
+    _remoteTypingTimer?.cancel();
     _controller.dispose();
     _scrollController.dispose();
-    _manualPollTimer?.cancel();
     super.dispose();
   }
 
@@ -106,6 +107,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     _controller.clear();
+    if (_boundSessionId != null) {
+      ref.read(chatSocketClientProvider).sendTyping(_boundSessionId!, false);
+    }
     try {
       await ref.read(chatProvider.notifier).sendMessage(text);
       _scrollToBottom();
@@ -233,11 +237,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final chat = ref.watch(chatProvider);
     final session = chat.current;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final socketStatus = ref.watch(chatSocketStatusProvider).asData?.value;
+
+    if (_boundSessionId != session?.id) {
+      Future.microtask(() => _bindRealtime(session?.id));
+    }
 
     ref.listen(
       chatProvider.select((state) => state.current?.messages.length),
       (_, __) => _scrollToBottom(),
     );
+    ref.listen(chatSocketStatusProvider, (_, next) {
+      if (next.asData?.value == ChatSocketStatus.connected &&
+          _socketIssue != null &&
+          mounted) {
+        setState(() => _socketIssue = null);
+      }
+    });
 
     return Column(
       children: [
@@ -245,6 +261,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
             child: BannerMessage(message: chat.error!, isError: true),
+          ),
+        if (_socketIssue != null ||
+            socketStatus == ChatSocketStatus.reconnecting)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: BannerMessage(
+              message: _socketIssue ?? 'Đang kết nối lại realtime chat...',
+              isError: _socketIssue != null,
+            ),
           ),
         ChatHeader(
           session: session,
@@ -255,6 +280,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ref.read(chatProvider.notifier).selectSession(id),
         ),
         Expanded(child: _buildMessages(chat, session)),
+        if (chat.remoteTyping)
+          const SizedBox(height: 42, child: ChatTypingIndicator()),
         if (session != null && session.status != 'closed')
           _SuggestedPromptBar(
             prompts: _promptsFor(session),
@@ -292,6 +319,78 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
       ],
     );
+  }
+
+  Future<void> _bindRealtime(String? sessionId) async {
+    if (_boundSessionId == sessionId) return;
+    final previous = _boundSessionId;
+    _boundSessionId = sessionId;
+    if (previous != null) {
+      ref.read(chatSocketClientProvider).sendTyping(previous, false);
+    }
+    _socketBinding?.dispose();
+    _socketBinding = null;
+    if (_socketIssue != null && mounted) {
+      setState(() => _socketIssue = null);
+    }
+    ref.read(chatProvider.notifier).setRemoteTyping(false);
+    if (sessionId == null) return;
+
+    final binding = await ref.read(chatSocketClientProvider).bindSession(
+          sessionId: sessionId,
+          onMessageCreated: (event) {
+            if (mounted) {
+              ref.read(chatProvider.notifier).applyRealtimeMessage(event);
+            }
+          },
+          onSessionUpdated: (event) {
+            if (mounted) {
+              ref.read(chatProvider.notifier).applyRealtimeSessionUpdate(event);
+            }
+          },
+          onTyping: (event) {
+            if (!mounted) return;
+            final typing = event['isTyping'] == true;
+            ref.read(chatProvider.notifier).setRemoteTyping(typing);
+            _remoteTypingTimer?.cancel();
+            if (typing) {
+              _remoteTypingTimer = Timer(const Duration(seconds: 4), () {
+                if (mounted) {
+                  ref.read(chatProvider.notifier).setRemoteTyping(false);
+                }
+              });
+            }
+          },
+          onReadUpdated: (event) {
+            if (mounted) {
+              ref.read(chatProvider.notifier).applyRealtimeReadUpdate(event);
+            }
+          },
+          onError: (issue) {
+            if (mounted) {
+              setState(() => _socketIssue = '${issue.code}: ${issue.message}');
+            }
+          },
+        );
+    if (!mounted || _boundSessionId != sessionId) {
+      binding?.dispose();
+      return;
+    }
+    _socketBinding = binding;
+  }
+
+  void _onInputChanged() {
+    final sessionId = _boundSessionId;
+    if (sessionId == null) return;
+    final socket = ref.read(chatSocketClientProvider);
+    final typing = _controller.text.trim().isNotEmpty;
+    socket.sendTyping(sessionId, typing);
+    _outgoingTypingTimer?.cancel();
+    if (typing) {
+      _outgoingTypingTimer = Timer(const Duration(seconds: 2), () {
+        socket.sendTyping(sessionId, false);
+      });
+    }
   }
 
   Widget _buildMessages(ChatState chat, ChatSessionModel? session) {
