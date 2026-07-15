@@ -6,35 +6,66 @@ import '../../../shared/utils/format_utils.dart';
 import '../../../shared/widgets/app_widgets.dart';
 
 class ChatMessageBubble extends StatelessWidget {
-  const ChatMessageBubble({super.key, required this.message});
+  const ChatMessageBubble({
+    super.key,
+    required this.message,
+    this.adminPerspective = false,
+  });
 
   final ChatMessageModel message;
+  final bool adminPerspective;
 
   @override
   Widget build(BuildContext context) {
-    final isUser = message.role == 'user';
+    final isUser = message.isUser;
+    final isOwnMessage = adminPerspective ? !isUser : isUser;
+    final showSenderLabel = !isUser || adminPerspective;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isOwnMessage ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
-          if (!isUser) const ChatMentorAvatar(size: 32),
-          if (!isUser) const SizedBox(width: 8),
+          if (!isOwnMessage)
+            adminPerspective && isUser
+                ? const ChatUserAvatar(size: 32)
+                : const ChatMentorAvatar(size: 32),
+          if (!isOwnMessage) const SizedBox(width: 8),
           Flexible(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: isUser ? AppColors.primary : context.appBubbleAiBg,
+                color: isOwnMessage ? AppColors.primary : context.appBubbleAiBg,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (showSenderLabel) ...[
+                    Text(
+                      isUser
+                          ? 'User'
+                          : message.isAdmin
+                              ? 'Admin / Support'
+                              : 'AI Mentor',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: isOwnMessage
+                            ? Colors.white70
+                            : message.isAdmin
+                                ? AppColors.amber
+                                : AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
                   Text(
                     message.content,
                     style: TextStyle(
-                      color: isUser ? Colors.white : context.appTextPrimary,
+                      color:
+                          isOwnMessage ? Colors.white : context.appTextPrimary,
                       height: 1.45,
                       fontSize: 14,
                     ),
@@ -44,7 +75,9 @@ class ChatMessageBubble extends StatelessWidget {
                     formatRelativeTime(message.timestamp),
                     style: TextStyle(
                       fontSize: 11,
-                      color: isUser ? Colors.white70 : context.appTextSecondary,
+                      color: isOwnMessage
+                          ? Colors.white70
+                          : context.appTextSecondary,
                     ),
                   ),
                 ],
@@ -53,6 +86,26 @@ class ChatMessageBubble extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class ChatUserAvatar extends StatelessWidget {
+  const ChatUserAvatar({super.key, required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.primary.withValues(alpha: 0.14),
+      ),
+      child: Icon(Icons.person_outline,
+          color: AppColors.primary, size: size * 0.6),
     );
   }
 }
@@ -67,9 +120,9 @@ class ChatMentorAvatar extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         shape: BoxShape.circle,
-        gradient: const LinearGradient(colors: [AppColors.primary, AppColors.purple]),
+        gradient: LinearGradient(colors: [AppColors.primary, AppColors.purple]),
       ),
       child: Icon(Icons.auto_awesome, color: Colors.white, size: size * 0.5),
     );
@@ -119,13 +172,16 @@ class _TypingDot extends StatefulWidget {
   State<_TypingDot> createState() => _TypingDotState();
 }
 
-class _TypingDotState extends State<_TypingDot> with SingleTickerProviderStateMixin {
+class _TypingDotState extends State<_TypingDot>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+    _controller = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 900))
+      ..repeat(reverse: true);
     Future.delayed(Duration(milliseconds: widget.delayMs), () {
       if (mounted) _controller.forward();
     });
@@ -144,7 +200,8 @@ class _TypingDotState extends State<_TypingDot> with SingleTickerProviderStateMi
       child: Container(
         width: 8,
         height: 8,
-        decoration: BoxDecoration(color: context.appTextSecondary, shape: BoxShape.circle),
+        decoration: BoxDecoration(
+            color: context.appTextSecondary, shape: BoxShape.circle),
       ),
     );
   }

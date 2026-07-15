@@ -36,7 +36,8 @@ List<RoadmapModel> applyStoredNodeProgress(
   }
 
   return roadmaps.map((roadmap) {
-    final nodeStatuses = storedStatuses[roadmap.id] ?? storedStatuses[roadmap.slug] ?? {};
+    final nodeStatuses =
+        storedStatuses[roadmap.id] ?? storedStatuses[roadmap.slug] ?? {};
     if (nodeStatuses.isEmpty && bookmarkIds.isEmpty) {
       return _syncRoadmapProgress(roadmap);
     }

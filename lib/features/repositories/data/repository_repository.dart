@@ -12,15 +12,23 @@ class RepositoryRepository {
 
   Future<List<RepositoryModel>> syncRepositories() => _api.syncRepositories();
 
-  Future<List<RepositoryModel>> getCachedRepositories() => _api.getCachedRepositories();
+  Future<List<RepositoryModel>> getCachedRepositories() =>
+      _api.getCachedRepositories();
 
   Future<List<AnalysisModel>> getMyAnalyses() => _api.getMyAnalyses();
 
   Future<RepositoryModel> getRepository(String id) => _api.getRepository(id);
 
-  Future<AnalysisModel> analyzeRepository(String id) => _api.analyzeRepository(id);
+  Future<AnalysisModel> analyzeRepository(String id) =>
+      _api.analyzeRepository(id);
 
   Future<AnalysisModel?> getAnalysis(String id) => _api.getAnalysis(id);
+
+  Future<RepoAnalysisSnapshotModel?> getSnapshot(String id) =>
+      _api.getSnapshot(id);
+
+  Future<List<RepoAnalysisSnapshotModel>> getSnapshots(String repoId) =>
+      _api.getSnapshots(repoId);
 
   Future<RoleMatchModel?> calculateRoleMatches({
     required String sourceMode,
@@ -42,19 +50,33 @@ class RepositoryRepository {
   }) =>
       _api.getRoleMatches(repoId, limit: limit, includeDetails: includeDetails);
 
-  Future<AiFeedbackModel?> getAiFeedback(String repoId) => _api.getAiFeedback(repoId);
+  Future<AiFeedbackModel?> getAiFeedback(String repoId, {String? roadmapId}) =>
+      _api.getAiFeedback(repoId, roadmapId: roadmapId);
 
   Future<List<AiFeedbackModel>> getMyAiFeedback() => _api.getMyAiFeedback();
 
-  Future<AiFeedbackModel> generateAiFeedback(String repoId) => _api.generateAiFeedback(repoId);
+  Future<AiFeedbackModel> generateAiFeedback(
+    String repoId, {
+    String? roadmapId,
+    String? analysisId,
+    String? snapshotId,
+  }) =>
+      _api.generateAiFeedback(
+        repoId,
+        roadmapId: roadmapId,
+        analysisId: analysisId,
+        snapshotId: snapshotId,
+      );
 
   Future<List<dynamic>> syncPackages(String id) => _api.syncPackages(id);
 
-  Future<List<dynamic>> getCachedPackages(String id) => _api.getCachedPackages(id);
+  Future<List<dynamic>> getCachedPackages(String id) =>
+      _api.getCachedPackages(id);
 
   Future<List<dynamic>> syncCommits(String id) => _api.syncCommits(id);
 
-  Future<List<dynamic>> getCachedCommits(String id) => _api.getCachedCommits(id);
+  Future<List<dynamic>> getCachedCommits(String id) =>
+      _api.getCachedCommits(id);
 }
 
 final repositoryRepositoryProvider = Provider<RepositoryRepository>(

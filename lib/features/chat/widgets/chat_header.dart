@@ -22,6 +22,20 @@ class ChatHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final chatContext = session?.context;
+    final provenance = chatContext?.hasComparisonContext == true
+        ? 'Đang so sánh ${chatContext!.comparedRepoCount} repo'
+        : chatContext?.repoName?.isNotEmpty == true
+            ? 'AI đang dùng dữ liệu từ repo: ${chatContext!.repoName}'
+            : (chatContext?.roadmapId?.isNotEmpty == true ||
+                    session?.roadmapId?.isNotEmpty == true)
+                ? 'AI đang dùng ngữ cảnh roadmap'
+                : chatContext?.contextSelectionReason ==
+                            'latest_user_analysis' ||
+                        session?.contextSelectionReason ==
+                            'latest_user_analysis'
+                    ? 'AI đang dùng phân tích mới nhất của bạn'
+                    : 'Chưa có dữ liệu phân tích rõ ràng';
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
       decoration: BoxDecoration(
@@ -33,7 +47,10 @@ class ChatHeader extends StatelessWidget {
         children: [
           Row(
             children: [
-              IconButton(onPressed: onOpenSessions, icon: const Icon(Icons.history_rounded), tooltip: 'Lịch sử'),
+              IconButton(
+                  onPressed: onOpenSessions,
+                  icon: const Icon(Icons.history_rounded),
+                  tooltip: 'Lịch sử'),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +80,37 @@ class ChatHeader extends StatelessWidget {
           ),
           if (session?.repositoryContext != null) ...[
             const SizedBox(height: 6),
-            AppBadge(label: 'Context: ${session!.repositoryContext}', variant: AppBadgeVariant.info),
+            AppBadge(
+                label: 'Context: ${session!.repositoryContext}',
+                variant: AppBadgeVariant.info),
+          ],
+          if (session != null) ...[
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                AppBadge(
+                  label:
+                      session!.effectiveMode == 'MANUAL' ? 'Manual' : 'AI Auto',
+                  variant: session!.effectiveMode == 'MANUAL'
+                      ? AppBadgeVariant.warning
+                      : AppBadgeVariant.success,
+                ),
+                AppBadge(
+                  label:
+                      session!.modeSource == 'SESSION' ? 'Override' : 'Global',
+                  variant: AppBadgeVariant.neutral,
+                ),
+                if (session!.status == 'closed')
+                  const AppBadge(
+                    label: 'Đã đóng',
+                    variant: AppBadgeVariant.warning,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(provenance, style: context.appCaptionStyle),
           ],
           if (sessions.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -80,13 +127,18 @@ class ChatHeader extends StatelessWidget {
                     onTap: () => onSelectSession(item.id),
                     borderRadius: BorderRadius.circular(999),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: selected
-                            ? AppColors.primary.withValues(alpha: context.isDarkMode ? 0.22 : 0.1)
+                            ? AppColors.primary.withValues(
+                                alpha: context.isDarkMode ? 0.22 : 0.1)
                             : context.appCardColor,
                         borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: selected ? AppColors.primary : context.appBorderColor),
+                        border: Border.all(
+                            color: selected
+                                ? AppColors.primary
+                                : context.appBorderColor),
                       ),
                       child: Text(
                         item.title,
@@ -94,8 +146,11 @@ class ChatHeader extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 12,
-                          color: selected ? AppColors.primary : context.appTextSecondary,
-                          fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                          color: selected
+                              ? AppColors.primary
+                              : context.appTextSecondary,
+                          fontWeight:
+                              selected ? FontWeight.w600 : FontWeight.w500,
                         ),
                       ),
                     ),

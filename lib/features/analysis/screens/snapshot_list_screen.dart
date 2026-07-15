@@ -47,7 +47,8 @@ class _SnapshotListScreenState extends ConsumerState<SnapshotListScreen> {
             child: Align(
               alignment: Alignment.centerRight,
               child: TextButton.icon(
-                onPressed: () => context.push('/repositories/${widget.repoId}/progress'),
+                onPressed: () =>
+                    context.push('/repositories/${widget.repoId}/progress'),
                 icon: const Icon(Icons.compare_arrows, size: 18),
                 label: const Text('So sánh tiến độ'),
               ),
@@ -63,7 +64,7 @@ class _SnapshotListScreenState extends ConsumerState<SnapshotListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.history, size: 64, color: AppColors.slate300),
+          const Icon(Icons.history, size: 64, color: AppColors.slate300),
           const SizedBox(height: 16),
           Text(
             'Chưa có lịch sử phân tích nào.',
@@ -105,9 +106,11 @@ class _SnapshotListScreenState extends ConsumerState<SnapshotListScreen> {
                     children: [
                       Text(
                         'Lần phân tích ngày $formattedDate',
-                        style: context.appSectionTitleStyle.copyWith(fontSize: 15),
+                        style:
+                            context.appSectionTitleStyle.copyWith(fontSize: 15),
                       ),
-                      const Icon(Icons.chevron_right, color: AppColors.slate400),
+                      const Icon(Icons.chevron_right,
+                          color: AppColors.slate400),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -132,14 +135,16 @@ class _SnapshotListScreenState extends ConsumerState<SnapshotListScreen> {
                       runSpacing: 6,
                       children: snap.missingSkills.take(3).map<Widget>((s) {
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: AppColors.amber.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             s,
-                            style: TextStyle(fontSize: 11, color: Colors.amber.shade800),
+                            style: TextStyle(
+                                fontSize: 11, color: Colors.amber.shade800),
                           ),
                         );
                       }).toList(),
@@ -156,8 +161,9 @@ class _SnapshotListScreenState extends ConsumerState<SnapshotListScreen> {
 
   Widget _buildStatBadge(String label, int score) {
     Color color = AppColors.emerald;
-    if (score < 50) color = AppColors.rose;
-    else if (score < 75) color = AppColors.amber;
+    if (score < 50) {
+      color = AppColors.rose;
+    } else if (score < 75) color = AppColors.amber;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -174,7 +180,8 @@ class _SnapshotListScreenState extends ConsumerState<SnapshotListScreen> {
           ),
           Text(
             score.toString(),
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color),
+            style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.bold, color: color),
           ),
         ],
       ),

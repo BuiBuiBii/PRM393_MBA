@@ -1,4 +1,4 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/app_config.dart';
 import '../data/roadmap_repository.dart';
@@ -10,6 +10,7 @@ import '../../../core/storage/roadmap_progress_storage.dart';
 import '../../../shared/models/app_models.dart';
 import '../data/roadmap_mock_data.dart';
 import '../utils/roadmap_progress_utils.dart';
+
 class RoadmapFilters {
   const RoadmapFilters({
     this.search = '',
@@ -23,7 +24,11 @@ class RoadmapFilters {
   final String difficulty;
   final String duration;
 
-  RoadmapFilters copyWith({String? search, String? category, String? difficulty, String? duration}) {
+  RoadmapFilters copyWith(
+      {String? search,
+      String? category,
+      String? difficulty,
+      String? duration}) {
     return RoadmapFilters(
       search: search ?? this.search,
       category: category ?? this.category,
@@ -45,8 +50,13 @@ class RoadmapState {
     this.isLoading = false,
     this.isGenerating = false,
     this.isArchiving = false,
+    this.deletingRoadmapId,
     this.error,
     this.selectedTargetRole = '',
+    this.learningByItemId = const {},
+    this.openingLearningItemId,
+    this.generatingLearningItemId,
+    this.learningError,
   });
 
   final List<RoadmapModel> roadmaps;
@@ -59,8 +69,13 @@ class RoadmapState {
   final bool isLoading;
   final bool isGenerating;
   final bool isArchiving;
+  final String? deletingRoadmapId;
   final String? error;
   final String selectedTargetRole;
+  final Map<String, LearningContentModel> learningByItemId;
+  final String? openingLearningItemId;
+  final String? generatingLearningItemId;
+  final String? learningError;
 
   RoadmapState copyWith({
     List<RoadmapModel>? roadmaps,
@@ -73,9 +88,18 @@ class RoadmapState {
     bool? isLoading,
     bool? isGenerating,
     bool? isArchiving,
+    String? deletingRoadmapId,
+    bool clearDeletingRoadmapId = false,
     String? error,
     bool clearError = false,
     String? selectedTargetRole,
+    Map<String, LearningContentModel>? learningByItemId,
+    String? openingLearningItemId,
+    bool clearOpeningLearningItemId = false,
+    String? generatingLearningItemId,
+    bool clearGeneratingLearningItemId = false,
+    String? learningError,
+    bool clearLearningError = false,
   }) {
     return RoadmapState(
       roadmaps: roadmaps ?? this.roadmaps,
@@ -88,8 +112,20 @@ class RoadmapState {
       isLoading: isLoading ?? this.isLoading,
       isGenerating: isGenerating ?? this.isGenerating,
       isArchiving: isArchiving ?? this.isArchiving,
+      deletingRoadmapId: clearDeletingRoadmapId
+          ? null
+          : (deletingRoadmapId ?? this.deletingRoadmapId),
       error: clearError ? null : (error ?? this.error),
       selectedTargetRole: selectedTargetRole ?? this.selectedTargetRole,
+      learningByItemId: learningByItemId ?? this.learningByItemId,
+      openingLearningItemId: clearOpeningLearningItemId
+          ? null
+          : (openingLearningItemId ?? this.openingLearningItemId),
+      generatingLearningItemId: clearGeneratingLearningItemId
+          ? null
+          : (generatingLearningItemId ?? this.generatingLearningItemId),
+      learningError:
+          clearLearningError ? null : (learningError ?? this.learningError),
     );
   }
 }
@@ -109,16 +145,8 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
     return (user?['id'] ?? user?['_id'] ?? 'guest').toString();
   }
 
-  Future<List<RoadmapModel>> _mergeLocalProgress(List<RoadmapModel> roadmaps) async {
-    if (AppConfig.demoMode) return roadmaps;
-    final storage = await _storage();
-    final scope = await _userScope();
-    final statuses = await storage.loadNodeStatuses(scope);
-    final bookmarks = await storage.loadBookmarks(scope);
-    return applyStoredNodeProgress(roadmaps, statuses, bookmarkIds: bookmarks);
-  }
-
-  Future<void> _persistRoadmapsState(List<RoadmapModel> roadmaps, {Set<String>? bookmarks}) async {
+  Future<void> _persistRoadmapsState(List<RoadmapModel> roadmaps,
+      {Set<String>? bookmarks}) async {
     final bookmarkIds = bookmarks ?? state.bookmarkedNodeIds;
     final stats = computeLearningStats(roadmaps);
     state = state.copyWith(
@@ -143,9 +171,11 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
     return const RoadmapState();
   }
 
-  void setFilters(RoadmapFilters filters) => state = state.copyWith(filters: filters);
+  void setFilters(RoadmapFilters filters) =>
+      state = state.copyWith(filters: filters);
 
-  void setTargetRole(String role) => state = state.copyWith(selectedTargetRole: role);
+  void setTargetRole(String role) =>
+      state = state.copyWith(selectedTargetRole: role);
 
   Future<void> setStatusFilter(String status) async {
     if (status == state.statusFilter) return;
@@ -172,7 +202,8 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
     );
 
     _loadInFlightStatus = effectiveStatus;
-    _loadInFlight = _loadRoadmapsTask(effectiveStatus, showLoading: showLoading);
+    _loadInFlight =
+        _loadRoadmapsTask(effectiveStatus, showLoading: showLoading);
     try {
       await _loadInFlight;
     } finally {
@@ -181,7 +212,8 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
     }
   }
 
-  Future<void> _loadRoadmapsTask(String effectiveStatus, {required bool showLoading}) async {
+  Future<void> _loadRoadmapsTask(String effectiveStatus,
+      {required bool showLoading}) async {
     try {
       if (AppConfig.demoMode) {
         final items = effectiveStatus == 'archived'
@@ -196,9 +228,8 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
         );
         return;
       }
-      final roadmaps = await _mergeLocalProgress(
-        await safeRequest(() => _repository.getMyRoadmaps(status: effectiveStatus)),
-      );
+      final roadmaps = await safeRequest(
+          () => _repository.getMyRoadmaps(status: effectiveStatus));
       final storage = await _storage();
       final scope = await _userScope();
       final bookmarks = await storage.loadBookmarks(scope);
@@ -219,14 +250,16 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
     required RoadmapGenerateParams params,
   }) async {
     final role = params.targetRole;
-    state = state.copyWith(isGenerating: true, clearError: true, selectedTargetRole: role);
+    state = state.copyWith(
+        isGenerating: true, clearError: true, selectedTargetRole: role);
     try {
       if (AppConfig.demoMode) {
         await Future<void>.delayed(const Duration(milliseconds: 800));
         state = state.copyWith(isGenerating: false);
         return mockRoadmaps.first;
       }
-      final roadmap = await safeRequest(() => _repository.generateRoadmap(params));
+      final roadmap =
+          await safeRequest(() => _repository.generateRoadmap(params));
       _applyGeneratedRoadmap(roadmap);
       return roadmap;
     } catch (e) {
@@ -252,7 +285,8 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
     state = state.copyWith(
       roadmaps: roadmaps,
       aiRecommendation: normalizeAiRecommendation(roadmap),
-      learningStats: stats.copyWith(bookmarkedNodeIds: state.bookmarkedNodeIds.toList()),
+      learningStats:
+          stats.copyWith(bookmarkedNodeIds: state.bookmarkedNodeIds.toList()),
       skillProgress: computeSkillProgress(roadmaps),
       isGenerating: false,
     );
@@ -267,10 +301,12 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
   Future<RoadmapModel?> _recoverAfterGenerateFailure(String targetRole) async {
     try {
       var roadmaps = await safeRequest(
-        () => _repository.getMyRoadmaps(status: 'active', targetRole: targetRole),
+        () =>
+            _repository.getMyRoadmaps(status: 'active', targetRole: targetRole),
       );
       if (roadmaps.isEmpty) {
-        roadmaps = await safeRequest(() => _repository.getMyRoadmaps(status: 'active'));
+        roadmaps = await safeRequest(
+            () => _repository.getMyRoadmaps(status: 'active'));
       }
       for (final r in roadmaps) {
         if (r.careerOutcome == targetRole || r.tags.contains(targetRole)) {
@@ -287,16 +323,23 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
     final cached = getById(id);
     if (cached != null) return cached;
     if (AppConfig.demoMode) return null;
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
       final roadmap = await safeRequest(() => _repository.getRoadmap(id));
-      final merged = await _mergeLocalProgress([roadmap]);
-      final withProgress = merged.first;
+      final withProgress = roadmap;
       await _persistRoadmapsState([
         withProgress,
         ...state.roadmaps.where((r) => r.id != withProgress.id),
       ]);
+      state = state.copyWith(isLoading: false);
       return withProgress;
-    } catch (_) {
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e is ApiException && e.statusCode == 404
+            ? 'Roadmap không tồn tại hoặc đã bị xóa.'
+            : getApiErrorMessage(e),
+      );
       return null;
     }
   }
@@ -308,7 +351,8 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
     return null;
   }
 
-  ({int completed, int total, int hoursRemaining}) progressFor(RoadmapModel? roadmap) {
+  ({int completed, int total, int hoursRemaining}) progressFor(
+      RoadmapModel? roadmap) {
     if (roadmap == null) return (completed: 0, total: 0, hoursRemaining: 0);
     var completed = 0;
     var total = 0;
@@ -330,9 +374,11 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
     state = state.copyWith(isArchiving: true, clearError: true);
     try {
       if (!AppConfig.demoMode) {
-        final archived = await safeRequest(() => _repository.archiveRoadmap(id));
+        final archived =
+            await safeRequest(() => _repository.archiveRoadmap(id));
         state = state.copyWith(
-          roadmaps: state.roadmaps.map((r) => r.id == id ? archived : r).toList(),
+          roadmaps:
+              state.roadmaps.map((r) => r.id == id ? archived : r).toList(),
         );
       } else {
         state = state.copyWith(
@@ -344,6 +390,35 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
       state = state.copyWith(isArchiving: false, error: getApiErrorMessage(e));
       rethrow;
     }
+  }
+
+  Future<void> deleteRoadmap(String id) async {
+    state = state.copyWith(deletingRoadmapId: id, clearError: true);
+    try {
+      if (!AppConfig.demoMode) {
+        await safeRequest(() => _repository.deleteRoadmap(id));
+      }
+    } catch (e) {
+      if (e is! ApiException || e.statusCode != 404) {
+        state = state.copyWith(
+          clearDeletingRoadmapId: true,
+          error: getApiErrorMessage(e),
+        );
+        rethrow;
+      }
+    }
+
+    final remaining =
+        state.roadmaps.where((roadmap) => roadmap.id != id).toList();
+    state = state.copyWith(
+      roadmaps: remaining,
+      clearDeletingRoadmapId: true,
+      learningByItemId: const {},
+      clearOpeningLearningItemId: true,
+      clearGeneratingLearningItemId: true,
+      clearLearningError: true,
+    );
+    await _persistRoadmapsState(remaining);
   }
 
   void toggleBookmark(String nodeId) {
@@ -364,7 +439,26 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
 
   bool isBookmarked(String nodeId) => state.bookmarkedNodeIds.contains(nodeId);
 
-  Future<void> updateNodeStatus(String roadmapId, String nodeId, String status) async {
+  Future<void> updateNodeStatus(
+      String roadmapId, String nodeId, String status) async {
+    if (nodeId.isEmpty) {
+      state = state.copyWith(
+          error: 'Roadmap task không có itemId hợp lệ. Hãy tải lại roadmap.');
+      return;
+    }
+
+    if (!AppConfig.demoMode) {
+      try {
+        final payload = await safeRequest(
+            () => _repository.updateProgress(roadmapId, nodeId, status));
+        _applyAuthoritativeProgress(roadmapId, payload);
+        return;
+      } catch (e) {
+        state = state.copyWith(error: getApiErrorMessage(e));
+        rethrow;
+      }
+    }
+
     final roadmaps = state.roadmaps.map((roadmap) {
       if (roadmap.id != roadmapId && roadmap.slug != roadmapId) return roadmap;
 
@@ -388,12 +482,99 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
     }).toList();
 
     await _persistRoadmapsState(roadmaps);
+  }
 
-    if (!AppConfig.demoMode) {
-      final storage = await _storage();
-      await storage.saveNodeStatus(await _userScope(), roadmapId, nodeId, status);
+  void _applyAuthoritativeProgress(
+      String roadmapId, Map<String, dynamic> payload) {
+    final summary = payload['progressSummary'] is Map
+        ? Map<String, dynamic>.from(payload['progressSummary'] as Map)
+        : <String, dynamic>{};
+    final statuses = <String, String>{};
+    for (final item
+        in (payload['items'] as List? ?? const []).whereType<Map>()) {
+      final itemId = (item['itemId'] ?? '').toString();
+      if (itemId.isNotEmpty) {
+        statuses[itemId] = (item['status'] ?? 'not_started').toString();
+      }
+    }
+
+    final roadmaps = state.roadmaps.map((roadmap) {
+      if (roadmap.id != roadmapId && roadmap.slug != roadmapId) return roadmap;
+      final modules = roadmap.modules.map((module) {
+        final nodes = module.nodes.map((node) {
+          final nextStatus = statuses[node.id];
+          return nextStatus == null
+              ? node
+              : node.copyWith(status: mapRoadmapTaskStatus(nextStatus));
+        }).toList();
+        return RoadmapModuleModel(
+          id: module.id,
+          title: module.title,
+          description: module.description,
+          nodes: nodes,
+        );
+      }).toList();
+      final overall =
+          int.tryParse(summary['overallProgress']?.toString() ?? '') ??
+              roadmapProgressPercent(roadmap.copyWith(modules: modules));
+      return roadmap.copyWith(
+          modules: modules, progress: overall, progressSummary: summary);
+    }).toList();
+    _persistRoadmapsState(roadmaps);
+  }
+
+  Future<LearningContentModel> openLearning(
+      String roadmapId, String itemId) async {
+    if (itemId.isEmpty) {
+      throw ApiException('Task không có itemId hợp lệ. Hãy tải lại roadmap.');
+    }
+    final cached = state.learningByItemId[itemId];
+    if (cached != null) return cached;
+
+    state = state.copyWith(
+      openingLearningItemId: itemId,
+      clearGeneratingLearningItemId: true,
+      clearLearningError: true,
+    );
+    try {
+      final availability = await safeRequest(
+          () => _repository.getLearningAvailability(roadmapId));
+      final learningStatus = availability[itemId];
+      if (learningStatus == null) {
+        throw ApiException(
+            'Không tìm thấy itemId trong danh sách learning của roadmap.');
+      }
+
+      final LearningContentModel learning;
+      if (learningStatus == 'available') {
+        learning =
+            await safeRequest(() => _repository.getLearning(roadmapId, itemId));
+      } else {
+        state = state.copyWith(
+          generatingLearningItemId: itemId,
+          clearOpeningLearningItemId: true,
+        );
+        learning = await safeRequest(
+            () => _repository.generateLearning(roadmapId, itemId));
+      }
+      state = state.copyWith(
+        learningByItemId: {...state.learningByItemId, itemId: learning},
+        clearOpeningLearningItemId: true,
+        clearGeneratingLearningItemId: true,
+        clearLearningError: true,
+      );
+      return learning;
+    } catch (e) {
+      final message = getApiErrorMessage(e);
+      state = state.copyWith(
+        clearOpeningLearningItemId: true,
+        clearGeneratingLearningItemId: true,
+        learningError: message,
+      );
+      rethrow;
     }
   }
 }
 
-final roadmapProvider = NotifierProvider<RoadmapNotifier, RoadmapState>(RoadmapNotifier.new);
+final roadmapProvider =
+    NotifierProvider<RoadmapNotifier, RoadmapState>(RoadmapNotifier.new);

@@ -33,6 +33,16 @@ String? _extractErrorCode(Map data) {
   return null;
 }
 
+String? getApiErrorCode(Object error) {
+  if (error is ApiException) return error.code;
+  if (error is DioException && error.response?.data is Map) {
+    return _extractErrorCode(
+      Map<String, dynamic>.from(error.response!.data as Map),
+    );
+  }
+  return null;
+}
+
 String _mapDev2VecMessage(String? code, String? fallback) {
   if (code != null && _dev2VecErrorMessages.containsKey(code)) {
     return _dev2VecErrorMessages[code]!;
@@ -46,7 +56,8 @@ String getApiErrorMessage(Object error) {
     if (data is Map) {
       final code = _extractErrorCode(Map<String, dynamic>.from(data));
       final message = data['message'] ?? data['error'];
-      final fallback = message is Map ? message['message']?.toString() : message?.toString();
+      final fallback =
+          message is Map ? message['message']?.toString() : message?.toString();
       return _mapDev2VecMessage(code, fallback);
     }
     return error.message ?? 'Đã có lỗi xảy ra';
@@ -83,7 +94,13 @@ T extractApiResource<T>(dynamic payload, List<String> keys) {
 String? findToken(dynamic payload) {
   if (payload is! Map) return null;
 
-  for (final key in ['token', 'accessToken', 'access_token', 'jwt', 'jwtToken']) {
+  for (final key in [
+    'token',
+    'accessToken',
+    'access_token',
+    'jwt',
+    'jwtToken'
+  ]) {
     final value = payload[key];
     if (value is String && value.isNotEmpty) return value;
   }

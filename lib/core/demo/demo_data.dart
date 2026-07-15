@@ -7,7 +7,7 @@ class DemoData {
   static const demoEmail = 'demo@gitanalyzer.vn';
   static const demoPassword = 'demo123';
 
-  static final demoUser = UserModel(
+  static final demoUser = const UserModel(
     id: '1',
     email: demoEmail,
     name: 'Nguyễn Minh',
@@ -17,7 +17,7 @@ class DemoData {
     createdAt: '2024-01-15T10:00:00Z',
   );
 
-  static final demoProfile = ProfileModel(
+  static final demoProfile = const ProfileModel(
     fullName: 'Nguyễn Minh',
     university: 'Đại học Bách Khoa',
     major: 'Công nghệ thông tin',
@@ -32,7 +32,8 @@ class DemoData {
       id: '1',
       name: 'ecommerce-platform',
       fullName: 'alexjohnson/ecommerce-platform',
-      description: 'Nền tảng thương mại điện tử full-stack xây dựng bằng React, Node.js và PostgreSQL',
+      description:
+          'Nền tảng thương mại điện tử full-stack xây dựng bằng React, Node.js và PostgreSQL',
       language: 'TypeScript',
       stars: 127,
       forks: 23,
@@ -47,7 +48,8 @@ class DemoData {
       id: '2',
       name: 'task-manager-app',
       fullName: 'alexjohnson/task-manager-app',
-      description: 'Ứng dụng quản lý công việc hiện đại có cộng tác thời gian thực',
+      description:
+          'Ứng dụng quản lý công việc hiện đại có cộng tác thời gian thực',
       language: 'JavaScript',
       stars: 45,
       forks: 8,
@@ -90,7 +92,8 @@ class DemoData {
       id: '5',
       name: 'portfolio-website',
       fullName: 'alexjohnson/portfolio-website',
-      description: 'Website portfolio cá nhân xây dựng bằng Next.js và Tailwind CSS',
+      description:
+          'Website portfolio cá nhân xây dựng bằng Next.js và Tailwind CSS',
       language: 'TypeScript',
       stars: 12,
       forks: 2,
@@ -103,14 +106,22 @@ class DemoData {
   ];
 
   static final demoAnalyses = <AnalysisModel>[
-    AnalysisModel(
+    const AnalysisModel(
       id: 'analysis-1',
       repositoryId: '1',
       repositoryName: 'ecommerce-platform',
       createdAt: '2024-05-21T10:00:00Z',
       projectType: 'Ứng dụng web full-stack',
-      techStack: ['React', 'TypeScript', 'Node.js', 'Express', 'PostgreSQL', 'Docker', 'Redis'],
-      scores: const AnalysisScores(
+      techStack: [
+        'React',
+        'TypeScript',
+        'Node.js',
+        'Express',
+        'PostgreSQL',
+        'Docker',
+        'Redis'
+      ],
+      scores: AnalysisScores(
         architecture: 85,
         completeness: 78,
         commitQuality: 82,
@@ -118,7 +129,7 @@ class DemoData {
         codeConvention: 88,
         overall: 82,
       ),
-      strengths: const [
+      strengths: [
         'Monorepo có cấu trúc tốt và phân tách trách nhiệm rõ ràng',
         'Sử dụng TypeScript đầy đủ với định nghĩa kiểu hợp lý',
         'Độ phủ test tốt (78%) với unit test và integration test',
@@ -126,14 +137,14 @@ class DemoData {
         'Commit message rõ ràng theo conventional commits',
         'Có tài liệu API bằng Swagger/OpenAPI',
       ],
-      weaknesses: const [
+      weaknesses: [
         'Thiếu end-to-end test cho các luồng người dùng quan trọng',
         'Một số component nên được refactor để tái sử dụng tốt hơn',
         'Xử lý lỗi trong API cần nhất quán hơn',
         'Thiếu cấu hình monitoring và logging',
         'Chưa tìm thấy cấu hình CI/CD pipeline',
       ],
-      recommendations: const [
+      recommendations: [
         'Triển khai End-to-End Testing',
         'Thiết lập CI/CD Pipeline',
         'Bổ sung giải pháp monitoring',
@@ -142,14 +153,20 @@ class DemoData {
       ],
       careerDirection: 'Full-Stack Engineer',
     ),
-    AnalysisModel(
+    const AnalysisModel(
       id: 'analysis-2',
       repositoryId: '2',
       repositoryName: 'task-manager-app',
       createdAt: '2024-05-16T14:30:00Z',
       projectType: 'Ứng dụng web frontend',
-      techStack: ['React', 'JavaScript', 'Firebase', 'Material-UI', 'Socket.io'],
-      scores: const AnalysisScores(
+      techStack: [
+        'React',
+        'JavaScript',
+        'Firebase',
+        'Material-UI',
+        'Socket.io'
+      ],
+      scores: AnalysisScores(
         architecture: 72,
         completeness: 68,
         commitQuality: 75,
@@ -157,20 +174,20 @@ class DemoData {
         codeConvention: 70,
         overall: 70,
       ),
-      strengths: const [
+      strengths: [
         'Tính năng cộng tác thời gian thực hoạt động mượt',
         'Responsive design hiển thị tốt trên thiết bị di động',
         'Sử dụng React hooks tốt cho quản lý state',
         'Giao diện sạch và dễ sử dụng',
       ],
-      weaknesses: const [
+      weaknesses: [
         'Chưa dùng TypeScript nên thiếu type safety',
         'Độ phủ test còn thấp (chỉ 35%)',
         'Một số chỗ bị prop-drilling trong cây component',
         'Thiếu error boundary phù hợp',
         'Form chưa có input validation',
       ],
-      recommendations: const [
+      recommendations: [
         'Chuyển sang TypeScript',
         'Cải thiện quản lý state',
         'Thêm form validation',
@@ -180,12 +197,12 @@ class DemoData {
   ];
 
   static final demoChatSessions = <ChatSessionModel>[
-    ChatSessionModel(
+    const ChatSessionModel(
       id: 'chat-1',
       title: 'Cải thiện dự án thương mại điện tử như thế nào?',
       createdAt: '2024-05-22T09:00:00Z',
       repositoryContext: 'ecommerce-platform',
-      messages: const [
+      messages: [
         ChatMessageModel(
           id: 'msg-1',
           role: 'user',
@@ -201,15 +218,16 @@ class DemoData {
         ),
       ],
     ),
-    ChatSessionModel(
+    const ChatSessionModel(
       id: 'chat-2',
       title: 'Tư vấn nghề nghiệp cho full-stack developer',
       createdAt: '2024-05-20T15:30:00Z',
-      messages: const [
+      messages: [
         ChatMessageModel(
           id: 'msg-5',
           role: 'user',
-          content: 'Tôi nên tập trung kỹ năng nào để trở thành senior full-stack developer?',
+          content:
+              'Tôi nên tập trung kỹ năng nào để trở thành senior full-stack developer?',
           timestamp: '2024-05-20T15:30:00Z',
         ),
         ChatMessageModel(
@@ -234,7 +252,8 @@ class DemoData {
     const NotificationModel(
       id: 'notif-1',
       title: 'Phân tích repository hoàn tất',
-      message: 'Kết quả phân tích cho ecommerce-platform đã sẵn sàng. Điểm tổng: 82/100.',
+      message:
+          'Kết quả phân tích cho ecommerce-platform đã sẵn sàng. Điểm tổng: 82/100.',
       type: 'GITHUB_ANALYSIS_REMINDER',
       read: false,
       createdAt: '2024-05-21T10:05:00Z',
@@ -242,7 +261,8 @@ class DemoData {
     const NotificationModel(
       id: 'notif-2',
       title: 'Nhắc học tuần này',
-      message: 'Bạn còn 2 node chưa hoàn thành trong lộ trình Full-Stack Engineer.',
+      message:
+          'Bạn còn 2 node chưa hoàn thành trong lộ trình Full-Stack Engineer.',
       type: 'ROADMAP_TASK_REMINDER',
       read: false,
       createdAt: '2024-05-20T08:00:00Z',
@@ -250,7 +270,8 @@ class DemoData {
     const NotificationModel(
       id: 'notif-3',
       title: 'Gợi ý cải thiện portfolio',
-      message: 'Thêm E2E test và CI/CD cho task-manager-app để tăng điểm portfolio readiness.',
+      message:
+          'Thêm E2E test và CI/CD cho task-manager-app để tăng điểm portfolio readiness.',
       type: 'REPOSITORY_IMPROVEMENT',
       read: true,
       createdAt: '2024-05-18T14:20:00Z',
@@ -258,7 +279,8 @@ class DemoData {
     const NotificationModel(
       id: 'notif-4',
       title: 'Chào mừng GitAnalyzer AI',
-      message: 'Kết nối GitHub và phân tích repository đầu tiên để nhận roadmap cá nhân hóa.',
+      message:
+          'Kết nối GitHub và phân tích repository đầu tiên để nhận roadmap cá nhân hóa.',
       type: 'SYSTEM',
       read: true,
       createdAt: '2024-05-15T09:00:00Z',

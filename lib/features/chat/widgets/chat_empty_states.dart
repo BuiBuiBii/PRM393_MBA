@@ -26,7 +26,10 @@ class ChatNoSessionEmpty extends StatelessWidget {
               style: context.appBodyStyle,
             ),
             const SizedBox(height: 16),
-            PrimaryButton(label: 'Tạo cuộc trò chuyện', icon: Icons.add, onPressed: onCreateSession),
+            PrimaryButton(
+                label: 'Tạo cuộc trò chuyện',
+                icon: Icons.add,
+                onPressed: onCreateSession),
           ],
         ),
       ),
@@ -35,7 +38,8 @@ class ChatNoSessionEmpty extends StatelessWidget {
 }
 
 class ChatPromptEmpty extends StatelessWidget {
-  const ChatPromptEmpty({super.key, required this.prompts, required this.onPrompt});
+  const ChatPromptEmpty(
+      {super.key, required this.prompts, required this.onPrompt});
 
   final List<String> prompts;
   final ValueChanged<String> onPrompt;
@@ -56,7 +60,8 @@ class ChatPromptEmpty extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: AppCard(
                   onTap: () => onPrompt(p),
-                  child: Text(p, style: context.appBodyStyle.copyWith(fontSize: 13)),
+                  child: Text(p,
+                      style: context.appBodyStyle.copyWith(fontSize: 13)),
                 ),
               ),
             ),

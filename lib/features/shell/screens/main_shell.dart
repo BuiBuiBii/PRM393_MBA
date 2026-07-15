@@ -9,7 +9,6 @@ import '../../../shared/widgets/app_app_bar.dart';
 import '../../../shared/widgets/app_image_assets.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../widgets/app_drawer.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../../feature_providers.dart';
 
 class MainShell extends ConsumerStatefulWidget {
@@ -33,15 +32,26 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 
   static const _navItems = [
-    ShellNavItem(path: '/dashboard', label: 'Tổng quan', icon: Icons.dashboard_outlined),
-    ShellNavItem(path: '/repositories', label: 'Repositories', icon: Icons.folder_outlined),
-    ShellNavItem(path: '/snapshots', label: 'Snapshots', icon: Icons.history_edu),
-    ShellNavItem(path: '/ai-feedback', label: 'AI Feedback', icon: Icons.auto_awesome_outlined),
+    ShellNavItem(
+        path: '/dashboard', label: 'Tổng quan', icon: Icons.dashboard_outlined),
+    ShellNavItem(
+        path: '/repositories',
+        label: 'Repositories',
+        icon: Icons.folder_outlined),
+    ShellNavItem(
+        path: '/snapshots', label: 'Snapshots', icon: Icons.history_edu),
+    ShellNavItem(
+        path: '/ai-feedback',
+        label: 'AI Feedback',
+        icon: Icons.auto_awesome_outlined),
     ShellNavItem(path: '/profile', label: 'Hồ sơ', icon: Icons.person_outline),
-    ShellNavItem(path: '/roadmaps', label: 'Lộ trình', icon: Icons.route_outlined),
-    ShellNavItem(path: '/chat', label: 'AI Mentor', icon: Icons.chat_bubble_outline),
+    ShellNavItem(
+        path: '/roadmaps', label: 'Lộ trình', icon: Icons.route_outlined),
+    ShellNavItem(
+        path: '/chat', label: 'AI Mentor', icon: Icons.chat_bubble_outline),
     ShellNavItem(path: '/github/connect', label: 'GitHub', icon: Icons.code),
-    ShellNavItem(path: '/settings', label: 'Cài đặt', icon: Icons.settings_outlined),
+    ShellNavItem(
+        path: '/settings', label: 'Cài đặt', icon: Icons.settings_outlined),
   ];
 
   static const _rootPaths = {
@@ -61,7 +71,8 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   bool get _isRootRoute => _rootPaths.contains(_location);
 
-  bool get _shellCanPop => mainShellNavigatorKey.currentState?.canPop() ?? false;
+  bool get _shellCanPop =>
+      mainShellNavigatorKey.currentState?.canPop() ?? false;
 
   bool get _showBackButton {
     if (!_isRootRoute) return true;
@@ -80,7 +91,10 @@ class _MainShellState extends ConsumerState<MainShell> {
       '/profile' => 'Về Hồ sơ',
       '/notifications' => 'Về Thông báo',
       '/github/connect' => 'Về GitHub',
-      _ when parent.startsWith('/repositories/') && parent.split('/').length == 3 => 'Về Repository',
+      _
+          when parent.startsWith('/repositories/') &&
+              parent.split('/').length == 3 =>
+        'Về Repository',
       _ when parent.endsWith('/snapshots') => 'Về lịch sử phân tích',
       _ => 'Quay lại',
     };
@@ -151,7 +165,9 @@ class _MainShellState extends ConsumerState<MainShell> {
       case 'profile':
         return '/dashboard';
       case 'github':
-        if (segments.length >= 2 && segments[1] == 'connect') return '/settings';
+        if (segments.length >= 2 && segments[1] == 'connect') {
+          return '/settings';
+        }
         return '/dashboard';
       default:
         return null;
@@ -223,21 +239,25 @@ class _MainShellState extends ConsumerState<MainShell> {
               IconButton(
                 tooltip: 'Admin Console',
                 onPressed: () => _navigateTo('/admin'),
-                icon: const Icon(Icons.admin_panel_settings_outlined, color: Color(0xFF312E81)),
+                icon: const Icon(Icons.admin_panel_settings_outlined,
+                    color: Color(0xFF312E81)),
               ),
             IconButton(
               tooltip: 'Thông báo',
               onPressed: _openNotifications,
               icon: Icon(
                 Icons.notifications_outlined,
-                color: _routeActive('/notifications') ? AppColors.primary : context.appTextSecondary,
+                color: _routeActive('/notifications')
+                    ? AppColors.primary
+                    : context.appTextSecondary,
               ),
             ),
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: GestureDetector(
                 onTap: () => _navigateTo('/profile'),
-                child: UserAvatar(imageUrl: user?.avatar, name: user?.name, size: 30),
+                child: UserAvatar(
+                    imageUrl: user?.avatar, name: user?.name, size: 30),
               ),
             ),
           ],
@@ -253,7 +273,8 @@ class _MainShellState extends ConsumerState<MainShell> {
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: BannerMessage(
-                  message: 'Đang chạy chế độ demo — dữ liệu mẫu, không cần backend.',
+                  message:
+                      'Đang chạy chế độ demo — dữ liệu mẫu, không cần backend.',
                   isWarning: true,
                 ),
               ),

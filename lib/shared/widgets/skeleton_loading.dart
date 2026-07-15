@@ -11,13 +11,16 @@ class SkeletonShimmer extends StatefulWidget {
   State<SkeletonShimmer> createState() => _SkeletonShimmerState();
 }
 
-class _SkeletonShimmerState extends State<SkeletonShimmer> with SingleTickerProviderStateMixin {
+class _SkeletonShimmerState extends State<SkeletonShimmer>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
+    _controller = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1200))
+      ..repeat();
   }
 
   @override
@@ -30,7 +33,8 @@ class _SkeletonShimmerState extends State<SkeletonShimmer> with SingleTickerProv
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final base = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    final highlight = isDark ? const Color(0xFF475569) : const Color(0xFFF1F5F9);
+    final highlight =
+        isDark ? const Color(0xFF475569) : const Color(0xFFF1F5F9);
 
     return AnimatedBuilder(
       animation: _controller,
@@ -54,7 +58,8 @@ class _SkeletonShimmerState extends State<SkeletonShimmer> with SingleTickerProv
 }
 
 class SkeletonBox extends StatelessWidget {
-  const SkeletonBox({super.key, this.width, this.height = 14, this.borderRadius = 8});
+  const SkeletonBox(
+      {super.key, this.width, this.height = 14, this.borderRadius = 8});
 
   final double? width;
   final double height;
@@ -69,7 +74,8 @@ class SkeletonBox extends StatelessWidget {
       child: Container(
         width: width,
         height: height,
-        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(borderRadius)),
+        decoration: BoxDecoration(
+            color: color, borderRadius: BorderRadius.circular(borderRadius)),
       ),
     );
   }
@@ -80,17 +86,17 @@ class SkeletonListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SkeletonBox(width: 40, height: 40, borderRadius: 12),
-          const SizedBox(width: 12),
+          SkeletonBox(width: 40, height: 40, borderRadius: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 SkeletonBox(width: double.infinity, height: 14),
                 SizedBox(height: 8),
                 SkeletonBox(width: 180, height: 12),
@@ -108,10 +114,10 @@ class SkeletonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
+    return const AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           SkeletonBox(width: 120, height: 12),
           SizedBox(height: 12),
           SkeletonBox(width: double.infinity, height: 14),

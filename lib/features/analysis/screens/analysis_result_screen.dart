@@ -6,6 +6,7 @@ import '../../feature_providers.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/widgets/scroll_list_hints.dart';
 import '../../../shared/widgets/app_widgets.dart';
+import '../../../shared/widgets/app_feedback.dart';
 import '../widgets/analysis_list_card.dart';
 import '../widgets/analysis_readiness_section.dart';
 import '../widgets/analysis_score_section.dart';
@@ -20,7 +21,8 @@ class AnalysisResultScreen extends ConsumerStatefulWidget {
   final String repoId;
 
   @override
-  ConsumerState<AnalysisResultScreen> createState() => _AnalysisResultScreenState();
+  ConsumerState<AnalysisResultScreen> createState() =>
+      _AnalysisResultScreenState();
 }
 
 class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
@@ -32,7 +34,14 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
     Future.microtask(() {
       final repoId = widget.repoId;
       final notifier = ref.read(repositoryProvider.notifier);
-      if (notifier.getAnalysisById(repoId) == null) notifier.fetchAnalysis(repoId);
+      final cachedAnalysis = notifier.getAnalysisById(repoId);
+      if (cachedAnalysis == null) {
+        notifier.fetchAnalysis(repoId);
+      } else if (!cachedAnalysis.hasCompleteNarrative) {
+        notifier.fetchAnalysis(
+          cachedAnalysis.id.isNotEmpty ? cachedAnalysis.id : repoId,
+        );
+      }
       notifier.fetchAiFeedback(repoId);
       notifier.calculateRoleMatches(sourceMode: 'single_repo', repoId: repoId);
     });
@@ -41,23 +50,46 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(repositoryProvider);
-    final analysis = state.analyses.where((a) => a.repositoryId == widget.repoId || a.id == widget.repoId).firstOrNull;
+    final analysis = state.analyses
+        .where((a) => a.repositoryId == widget.repoId || a.id == widget.repoId)
+        .firstOrNull;
     final feedback = state.feedbackFor(widget.repoId);
+    final strengths = analysis?.strengths.isNotEmpty == true
+        ? analysis!.strengths
+        : feedback?.strengthFeedback ?? const <String>[];
+    final weaknesses = analysis?.weaknesses.isNotEmpty == true
+        ? analysis!.weaknesses
+        : feedback?.weaknessFeedback ?? const <String>[];
+    final recommendations = analysis?.recommendations.isNotEmpty == true
+        ? analysis!.recommendations
+        : [
+            ...?feedback?.nextSteps,
+            if (feedback?.learningAdvice.isNotEmpty == true)
+              feedback!.learningAdvice,
+          ];
     final roleMatch = state.roleMatchFor(widget.repoId);
     final isLoadingRoleMatch = state.isLoadingRoleMatch(widget.repoId);
     final roleMatchError = isLoadingRoleMatch
         ? null
-        : ref.read(repositoryProvider.notifier).roleMatchErrorForKey(widget.repoId);
+        : ref
+            .read(repositoryProvider.notifier)
+            .roleMatchErrorForKey(widget.repoId);
 
     if (analysis == null) {
       return ScrollListHints(
         child: ListView(
           padding: appScreenPadding(context),
           children: [
+            if (state.error != null) ...[
+              BannerMessage(message: state.error!, isError: true),
+              const SizedBox(height: 12),
+            ],
             AppCard(
               child: Column(
                 children: [
-                  const Text('Repository này chưa được phân tích', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                  const Text('Repository này chưa được phân tích',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 12),
                   PrimaryButton(
                     label: 'Chạy phân tích',
@@ -67,15 +99,28 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
                         ? null
                         : () async {
                             try {
-                              await ref.read(repositoryProvider.notifier).analyzeRepository(widget.repoId);
-                              if (mounted) {
-                                ref.read(repositoryProvider.notifier).calculateRoleMatches(
+                              await ref
+                                  .read(repositoryProvider.notifier)
+                                  .analyzeRepository(widget.repoId);
+                              if (context.mounted) {
+                                ref
+                                    .read(repositoryProvider.notifier)
+                                    .calculateRoleMatches(
                                       sourceMode: 'single_repo',
                                       repoId: widget.repoId,
                                       forceRefresh: true,
                                     );
                               }
-                            } catch (_) {}
+                            } catch (_) {
+                              if (context.mounted) {
+                                AppSnackbar.show(
+                                  context,
+                                  message: ref.read(repositoryProvider).error ??
+                                      'Không thể phân tích repository.',
+                                  variant: AppSnackVariant.error,
+                                );
+                              }
+                            }
                           },
                   ),
                 ],
@@ -94,11 +139,33 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
           const SizedBox(height: 12),
           AnalysisReadinessSection(analysis: analysis),
           const SizedBox(height: 12),
-          AnalysisListCard(title: 'Điểm mạnh', items: analysis.strengths, icon: Icons.check_circle, color: AppColors.emerald),
+          if (state.loadingAnalysisFor == widget.repoId ||
+              state.loadingAnalysisFor == analysis.id) ...[
+            const LinearProgressIndicator(),
+            const SizedBox(height: 8),
+            Text(
+              'Đang tải đầy đủ kết quả phân tích đã lưu...',
+              style: context.appCaptionStyle,
+            ),
+            const SizedBox(height: 12),
+          ],
+          AnalysisListCard(
+              title: 'Điểm mạnh',
+              items: strengths,
+              icon: Icons.check_circle,
+              color: AppColors.emerald),
           const SizedBox(height: 12),
-          AnalysisListCard(title: 'Điểm yếu', items: analysis.weaknesses, icon: Icons.warning_amber, color: AppColors.amber),
+          AnalysisListCard(
+              title: 'Điểm yếu',
+              items: weaknesses,
+              icon: Icons.warning_amber,
+              color: AppColors.amber),
           const SizedBox(height: 12),
-          AnalysisListCard(title: 'Đề xuất', items: analysis.recommendations, icon: Icons.lightbulb_outline, color: AppColors.primary),
+          AnalysisListCard(
+              title: 'Đề xuất',
+              items: recommendations,
+              icon: Icons.lightbulb_outline,
+              color: AppColors.primary),
           const SizedBox(height: 12),
           RoleMatchCard(
             analysis: analysis,
@@ -106,12 +173,14 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
             isLoading: isLoadingRoleMatch,
             errorMessage: roleMatchError,
             onCreateRoadmap: _openCreateRoadmapSheet,
-            onRetry: () => ref.read(repositoryProvider.notifier).calculateRoleMatches(
-                  sourceMode: 'single_repo',
-                  repoId: widget.repoId,
-                  forceRefresh: true,
-                ),
-            onSelectMatch: (match) => setState(() => _selectedRoleMatch = match),
+            onRetry: () =>
+                ref.read(repositoryProvider.notifier).calculateRoleMatches(
+                      sourceMode: 'single_repo',
+                      repoId: widget.repoId,
+                      forceRefresh: true,
+                    ),
+            onSelectMatch: (match) =>
+                setState(() => _selectedRoleMatch = match),
           ),
           const SizedBox(height: 12),
           _AiFeedbackCard(
@@ -119,12 +188,18 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
             isGenerating: state.isGeneratingFeedback(widget.repoId),
             onGenerate: () async {
               try {
-                await ref.read(repositoryProvider.notifier).generateAiFeedback(widget.repoId);
+                await ref
+                    .read(repositoryProvider.notifier)
+                    .generateAiFeedback(widget.repoId);
               } catch (_) {}
             },
           ),
           const SizedBox(height: 16),
-          PrimaryButton(label: 'Hỏi AI Mentor', icon: Icons.chat, expand: true, onPressed: () => context.go('/chat')),
+          PrimaryButton(
+              label: 'Hỏi AI Mentor',
+              icon: Icons.chat,
+              expand: true,
+              onPressed: () => context.go('/chat')),
         ],
       ),
     );
@@ -179,7 +254,9 @@ class _AiFeedbackCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(child: Text('AI Feedback', style: TextStyle(fontWeight: FontWeight.w600))),
+              const Expanded(
+                  child: Text('AI Feedback',
+                      style: TextStyle(fontWeight: FontWeight.w600))),
               PrimaryButton(
                 label: feedback == null ? 'Tạo feedback' : 'Tạo lại',
                 outlined: true,
@@ -202,7 +279,8 @@ class _AiFeedbackCard extends StatelessWidget {
           ] else
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text('Chưa có AI feedback cho repository này.', style: context.appCaptionStyle),
+              child: Text('Chưa có AI feedback cho repository này.',
+                  style: context.appCaptionStyle),
             ),
         ],
       ),

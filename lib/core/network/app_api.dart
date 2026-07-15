@@ -56,7 +56,8 @@ class AppApi {
     return normalizeRepoPayloadList(res.data);
   }
 
-  Future<void> completeGitHubOAuthCallback(Map<String, String> queryParams) async {
+  Future<void> completeGitHubOAuthCallback(
+      Map<String, String> queryParams) async {
     await _dio.get('/github/oauth/callback', queryParameters: queryParams);
   }
 
@@ -65,16 +66,15 @@ class AppApi {
     String view = 'detail',
     bool includeEvidence = false,
   }) async {
-    await syncPackages(id);
-    await syncCommits(id);
     final res = await _dio.post(
       '/analysis/repositories/$id',
       queryParameters: {
         'view': view,
         'includeEvidence': includeEvidence,
       },
+      options: Options(receiveTimeout: const Duration(minutes: 3)),
     );
-    return normalizeAnalysis(res.data);
+    return normalizeAnalysis(res.data, repositoryId: id);
   }
 
   Future<AnalysisModel?> getAnalysis(String id) async {
@@ -97,7 +97,8 @@ class AppApi {
     final res = await _dio.post('/analysis/role-matches', data: body);
     final data = unwrapResponse<dynamic>(res.data);
     if (data == null) return null;
-    return RoleMatchModel.fromJson(Map<String, dynamic>.from(data as Map? ?? {}));
+    return RoleMatchModel.fromJson(
+        Map<String, dynamic>.from(data as Map? ?? {}));
   }
 
   /// Legacy single-repo — fallback nếu POST lỗi.
@@ -111,13 +112,15 @@ class AppApi {
       '/analysis/repositories/$repoId/role-matches',
       queryParameters: {
         if (limit != null) 'limit': limit,
-        if (targetRole != null && targetRole.isNotEmpty) 'targetRole': targetRole,
+        if (targetRole != null && targetRole.isNotEmpty)
+          'targetRole': targetRole,
         'includeDetails': includeDetails,
       },
     );
     final data = unwrapResponse<dynamic>(res.data);
     if (data == null) return null;
-    return RoleMatchModel.fromJson(Map<String, dynamic>.from(data as Map? ?? {}));
+    return RoleMatchModel.fromJson(
+        Map<String, dynamic>.from(data as Map? ?? {}));
   }
 
   Future<List<Dev2VecRole>> getRoleCatalog() async {
@@ -146,7 +149,8 @@ class AppApi {
     return normalizeSnapshot(res.data);
   }
 
-  Future<SnapshotCompareResultModel> compareSnapshots(String fromId, String toId) async {
+  Future<SnapshotCompareResultModel> compareSnapshots(
+      String fromId, String toId) async {
     final res = await _dio.post('/snapshots/compare', data: {
       'fromSnapshotId': fromId,
       'toSnapshotId': toId,
@@ -154,18 +158,34 @@ class AppApi {
     return normalizeSnapshotCompare(res.data);
   }
 
-  Future<SnapshotCompareResultModel> getProgressComparison(String repoId) async {
+  Future<SnapshotCompareResultModel> getProgressComparison(
+      String repoId) async {
     final res = await _dio.get('/repositories/$repoId/progress-comparison');
     return normalizeSnapshotCompare(res.data);
   }
 
-  Future<AiFeedbackModel> generateAiFeedback(String repoId) async {
-    final res = await _dio.post('/ai-feedback/repositories/$repoId');
+  Future<AiFeedbackModel> generateAiFeedback(
+    String repoId, {
+    String? roadmapId,
+    String? analysisId,
+    String? snapshotId,
+  }) async {
+    final res = await _dio.post('/ai-feedback/repositories/$repoId', data: {
+      if (roadmapId != null && roadmapId.isNotEmpty) 'roadmapId': roadmapId,
+      if (analysisId != null && analysisId.isNotEmpty) 'analysisId': analysisId,
+      if (snapshotId != null && snapshotId.isNotEmpty) 'snapshotId': snapshotId,
+    });
     return normalizeAiFeedback(res.data);
   }
 
-  Future<AiFeedbackModel?> getAiFeedback(String repoId) async {
-    final res = await _dio.get('/ai-feedback/results/$repoId');
+  Future<AiFeedbackModel?> getAiFeedback(String repoId,
+      {String? roadmapId}) async {
+    final res = await _dio.get(
+      '/ai-feedback/results/$repoId',
+      queryParameters: {
+        if (roadmapId != null && roadmapId.isNotEmpty) 'roadmapId': roadmapId,
+      },
+    );
     return normalizeAiFeedback(res.data);
   }
 
@@ -174,18 +194,21 @@ class AppApi {
     return normalizeAiFeedbacks(res.data);
   }
 
-  Future<Map<String, dynamic>> getGitHubOAuthUrl({required String redirectUrl}) async {
-    final res = await _dio.get('/github/oauth', queryParameters: {'redirectUrl': redirectUrl});
+  Future<Map<String, dynamic>> getGitHubOAuthUrl(
+      {required String redirectUrl}) async {
+    final res = await _dio
+        .get('/github/oauth', queryParameters: {'redirectUrl': redirectUrl});
     return Map<String, dynamic>.from(unwrapResponse(res.data) as Map? ?? {});
   }
 
   Future<Map<String, dynamic>> getGitHubAccount() async {
-    final res = await _dio.get('/github/me');
+    final res = await _dio.get('/github/account');
     return Map<String, dynamic>.from(unwrapResponse(res.data) as Map? ?? {});
   }
 
-  Future<void> disconnectGitHub() async {
-    await _dio.delete('/github/disconnect');
+  Future<Map<String, dynamic>> disconnectGitHub() async {
+    final res = await _dio.delete('/github/account');
+    return Map<String, dynamic>.from(unwrapResponse(res.data) as Map? ?? {});
   }
 
   Future<List<ChatSessionModel>> getChatSessions() async {
@@ -193,9 +216,31 @@ class AppApi {
     return normalizeChatSessions(res.data);
   }
 
-  Future<ChatSessionModel> createChatSession(String title) async {
-    final res = await _dio.post('/chat/sessions', data: {'title': title});
+  Future<ChatSessionModel> createChatSession(
+    Object payload, {
+    String? repositoryId,
+    String? roadmapId,
+    String? analysisId,
+    String? snapshotId,
+  }) async {
+    final data = switch (payload) {
+      ChatSessionCreatePayload value => value.toJson(),
+      String title => ChatSessionCreatePayload(
+          title: title,
+          repositoryId: repositoryId,
+          roadmapId: roadmapId,
+          analysisId: analysisId,
+          snapshotId: snapshotId,
+        ).toJson(),
+      Map value => Map<String, dynamic>.from(value),
+      _ => throw ArgumentError('Unsupported chat session payload'),
+    };
+    final res = await _dio.post('/chat/sessions', data: data);
     return normalizeChatSession(res.data);
+  }
+
+  Future<void> deleteChatSession(String sessionId) async {
+    await _dio.delete('/chat/sessions/$sessionId');
   }
 
   Future<ChatSessionModel> getChatSession(String id) async {
@@ -203,12 +248,27 @@ class AppApi {
     return normalizeChatSessionDetail(res.data);
   }
 
-  Future<dynamic> sendChatMessage(String sessionId, String message) async {
-    final res = await _dio.post('/chat/sessions/$sessionId/messages', data: {'message': message});
-    return unwrapResponse(res.data);
+  Future<ChatSendResult> sendChatMessage(
+    String sessionId,
+    String message, {
+    String? repositoryId,
+    String? roadmapId,
+    String? analysisId,
+    String? snapshotId,
+  }) async {
+    final res = await _dio.post('/chat/sessions/$sessionId/messages', data: {
+      'message': message,
+      if (repositoryId != null && repositoryId.isNotEmpty)
+        'repositoryId': repositoryId,
+      if (roadmapId != null && roadmapId.isNotEmpty) 'roadmapId': roadmapId,
+      if (analysisId != null && analysisId.isNotEmpty) 'analysisId': analysisId,
+      if (snapshotId != null && snapshotId.isNotEmpty) 'snapshotId': snapshotId,
+    });
+    return normalizeChatSendResult(res.data);
   }
 
-  Future<List<NotificationModel>> getNotifications({bool unreadOnly = false, String? type}) async {
+  Future<List<NotificationModel>> getNotifications(
+      {bool unreadOnly = false, String? type}) async {
     final res = await _dio.get('/notifications/me', queryParameters: {
       'page': 1,
       'limit': 20,
@@ -218,8 +278,12 @@ class AppApi {
     return normalizeNotifications(res.data);
   }
 
-  Future<void> createNotification({required String title, required String message, String type = 'SYSTEM'}) async {
-    await _dio.post('/notifications', data: {'title': title, 'message': message, 'type': type});
+  Future<void> createNotification(
+      {required String title,
+      required String message,
+      String type = 'SYSTEM'}) async {
+    await _dio.post('/notifications',
+        data: {'title': title, 'message': message, 'type': type});
   }
 
   Future<void> markNotificationRead(String id) async {
@@ -235,7 +299,8 @@ class AppApi {
     return normalizeProfile(res.data);
   }
 
-  Future<ProfileModel> saveProfile(ProfileModel profile, {bool exists = false}) async {
+  Future<ProfileModel> saveProfile(ProfileModel profile,
+      {bool exists = false}) async {
     final res = exists
         ? await _dio.patch('/profiles/me', data: profile.toJson())
         : await _dio.post('/profiles', data: profile.toJson());
@@ -254,7 +319,8 @@ class AppApi {
     });
   }
 
-  Future<List<RoadmapModel>> getMyRoadmaps({String? status, String? targetRole}) async {
+  Future<List<RoadmapModel>> getMyRoadmaps(
+      {String? status, String? targetRole}) async {
     final res = await _dio.get('/roadmaps/me', queryParameters: {
       if (status != null && status.isNotEmpty) 'status': status,
       if (targetRole != null && targetRole.isNotEmpty) 'targetRole': targetRole,
@@ -293,9 +359,63 @@ class AppApi {
     return normalizeRoadmap(res.data);
   }
 
+  Future<Map<String, String>> getRoadmapLearningAvailability(
+      String roadmapId) async {
+    final res = await _dio.get('/roadmaps/$roadmapId/learning');
+    final data = toRecord(unwrapResponse<dynamic>(res.data));
+    final items = data['items'] as List? ?? const [];
+    return {
+      for (final item in items.whereType<Map>())
+        if ((item['itemId'] ?? '').toString().isNotEmpty)
+          item['itemId'].toString():
+              (item['learningStatus'] ?? 'missing').toString(),
+    };
+  }
+
+  Future<LearningContentModel> getRoadmapLearning(
+      String roadmapId, String itemId) async {
+    final res = await _dio.get(
+      '/roadmaps/$roadmapId/learning/items/$itemId',
+      queryParameters: const {'includeResources': true},
+    );
+    final data = toRecord(unwrapResponse<dynamic>(res.data));
+    return LearningContentModel.fromJson(toRecord(data['learning']));
+  }
+
+  Future<LearningContentModel> generateRoadmapLearning(
+      String roadmapId, String itemId) async {
+    final res = await _dio.post(
+      '/roadmaps/$roadmapId/learning/items/$itemId/generate',
+      data: const {'forceRegenerate': false, 'includeResources': true},
+    );
+    final data = toRecord(unwrapResponse<dynamic>(res.data));
+    return LearningContentModel.fromJson(toRecord(data['learning']));
+  }
+
+  Future<Map<String, dynamic>> updateRoadmapProgress(
+    String roadmapId,
+    String itemId,
+    String status,
+  ) async {
+    final res = await _dio.patch(
+      '/roadmaps/$roadmapId/progress/items',
+      data: {'itemId': itemId, 'status': status},
+    );
+    return toRecord(unwrapResponse<dynamic>(res.data));
+  }
+
+  Future<Map<String, dynamic>> getRoadmapProgress(String roadmapId) async {
+    final res = await _dio.get('/roadmaps/$roadmapId/progress');
+    return toRecord(unwrapResponse<dynamic>(res.data));
+  }
+
   Future<RoadmapModel> archiveRoadmap(String id) async {
     final res = await _dio.patch('/roadmaps/$id/archive');
     return normalizeRoadmap(res.data);
+  }
+
+  Future<void> deleteRoadmap(String id) async {
+    await _dio.delete('/roadmaps/$id');
   }
 
   Future<Map<String, dynamic>> getMyProgress() async {
@@ -318,7 +438,8 @@ class AppApi {
       'reason': reason,
       if (targetType != null && targetType.isNotEmpty) 'targetType': targetType,
       if (targetId != null && targetId.isNotEmpty) 'targetId': targetId,
-      if (description != null && description.isNotEmpty) 'description': description,
+      if (description != null && description.isNotEmpty)
+        'description': description,
     });
   }
 }

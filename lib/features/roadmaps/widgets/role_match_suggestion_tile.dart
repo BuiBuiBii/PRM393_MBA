@@ -33,7 +33,9 @@ class RoleMatchSuggestionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? AppColors.primary.withValues(alpha: 0.08) : context.appCardColor,
+      color: selected
+          ? AppColors.primary.withValues(alpha: 0.08)
+          : context.appCardColor,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -59,7 +61,9 @@ class RoleMatchSuggestionTile extends StatelessWidget {
                       children: [
                         AppBadge(label: badge, variant: AppBadgeVariant.info),
                         const SizedBox(height: 6),
-                        Text(title, style: context.appSectionTitleStyle.copyWith(fontSize: 14)),
+                        Text(title,
+                            style: context.appSectionTitleStyle
+                                .copyWith(fontSize: 14)),
                         if (subtitle.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(subtitle, style: context.appLabelStyle),
@@ -68,14 +72,19 @@ class RoleMatchSuggestionTile extends StatelessWidget {
                     ),
                   ),
                   if (loading)
-                    const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2))
                   else
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
                           '${matchScore.toStringAsFixed(0)}%',
-                          style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary),
                         ),
                         if (matchLevelLabel.isNotEmpty)
                           Text(matchLevelLabel, style: context.appCaptionStyle),
@@ -90,7 +99,8 @@ class RoleMatchSuggestionTile extends StatelessWidget {
                   runSpacing: 6,
                   children: matchedSkills
                       .take(4)
-                      .map((s) => AppBadge(label: s, variant: AppBadgeVariant.success))
+                      .map((s) =>
+                          AppBadge(label: s, variant: AppBadgeVariant.success))
                       .toList(),
                 ),
               ],
@@ -101,7 +111,8 @@ class RoleMatchSuggestionTile extends StatelessWidget {
                   runSpacing: 6,
                   children: missingSkills
                       .take(3)
-                      .map((s) => AppBadge(label: s, variant: AppBadgeVariant.warning))
+                      .map((s) =>
+                          AppBadge(label: s, variant: AppBadgeVariant.warning))
                       .toList(),
                 ),
               ],
