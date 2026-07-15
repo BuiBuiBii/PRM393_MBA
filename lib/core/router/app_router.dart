@@ -8,6 +8,8 @@ import '../../features/admin/screens/admin_analysis_detail_screen.dart';
 import '../../features/admin/screens/admin_analysis_screen.dart';
 import '../../features/admin/screens/admin_ai_feedback_detail_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
+import '../../features/admin/screens/admin_chat_detail_screen.dart';
+import '../../features/admin/screens/admin_chat_screen.dart';
 import '../../features/admin/screens/admin_report_detail_screen.dart';
 import '../../features/admin/screens/admin_reports_screen.dart';
 import '../../features/admin/screens/admin_repositories_screen.dart';
@@ -69,10 +71,12 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (isBootstrapping) return null;
       if (!isAuthenticated && !isPublicRoute) return '/login';
-      if (isAuthenticated && isAuthRoute)
+      if (isAuthenticated && isAuthRoute) {
         return getDefaultAuthenticatedPath(auth.user);
-      if (isAdminRoute && !isAdminDenied && isAuthenticated && !isAdmin)
+      }
+      if (isAdminRoute && !isAdminDenied && isAuthenticated && !isAdmin) {
         return '/admin/denied';
+      }
       return null;
     },
     routes: [
@@ -146,6 +150,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/admin/roadmaps/:roadmapId',
             builder: (_, state) => AdminRoadmapDetailScreen(
                 roadmapId: state.pathParameters['roadmapId']!),
+          ),
+          GoRoute(
+              path: '/admin/chat', builder: (_, __) => const AdminChatScreen()),
+          GoRoute(
+            path: '/admin/chat/:sessionId',
+            builder: (_, state) => AdminChatDetailScreen(
+              sessionId: state.pathParameters['sessionId']!,
+            ),
           ),
         ],
       ),

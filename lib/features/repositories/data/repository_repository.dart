@@ -24,6 +24,12 @@ class RepositoryRepository {
 
   Future<AnalysisModel?> getAnalysis(String id) => _api.getAnalysis(id);
 
+  Future<RepoAnalysisSnapshotModel?> getSnapshot(String id) =>
+      _api.getSnapshot(id);
+
+  Future<List<RepoAnalysisSnapshotModel>> getSnapshots(String repoId) =>
+      _api.getSnapshots(repoId);
+
   Future<RoleMatchModel?> calculateRoleMatches({
     required String sourceMode,
     String? repoId,

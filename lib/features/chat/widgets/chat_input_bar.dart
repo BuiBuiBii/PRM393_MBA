@@ -34,8 +34,11 @@ class ChatInputBar extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: 'Nhập câu hỏi...',
                 filled: true,
-                fillColor: context.isDarkMode ? AppTheme.darkSurface : const Color(0xFFF8FAFC),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                fillColor: context.isDarkMode
+                    ? AppTheme.darkSurface
+                    : const Color(0xFFF8FAFC),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: context.appBorderColor),
@@ -55,7 +58,8 @@ class ChatInputBar extends StatelessWidget {
             style: FilledButton.styleFrom(
               minimumSize: const Size(48, 48),
               padding: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
             child: const Icon(Icons.send_rounded, size: 20),
           ),

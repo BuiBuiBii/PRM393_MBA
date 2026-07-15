@@ -73,47 +73,56 @@ RepositoryModel normalizeRepository(dynamic payload) {
 
 List<AnalysisModel> normalizeAnalyses(dynamic payload) {
   return asMapList(payload, ['analyses', 'results', 'items'])
-      .map(AnalysisModel.fromJson)
+      .map((item) => normalizeAnalysis(item))
       .toList();
 }
 
 AnalysisModel normalizeAnalysis(dynamic payload, {String? repositoryId}) {
   final unwrapped = unwrapResponse<dynamic>(payload);
   final envelope = toRecord(unwrapped);
-  Map<String, dynamic> record = envelope;
-  for (final key in [
+  final record = <String, dynamic>{};
+  const containerKeys = [
     'analysis',
     'analysisResult',
     'result',
     'item',
-    'detail'
-  ]) {
-    final candidate = toRecord(envelope[key]);
-    if (candidate.isNotEmpty) {
-      record = Map<String, dynamic>.from(candidate);
-      break;
+    'detail',
+    'snapshot',
+    'data',
+  ];
+
+  bool hasValue(dynamic value) {
+    if (value == null) return false;
+    if (value is String) return value.trim().isNotEmpty;
+    if (value is Iterable) return value.isNotEmpty;
+    if (value is Map) return value.isNotEmpty;
+    return true;
+  }
+
+  void mergeRecord(Map<String, dynamic> source, [int depth = 0]) {
+    if (depth > 4) return;
+    for (final entry in source.entries) {
+      if (containerKeys.contains(entry.key) || !hasValue(entry.value)) continue;
+      final existing = record[entry.key];
+      if (existing is Map && entry.value is Map) {
+        record[entry.key] = {
+          ...Map<String, dynamic>.from(existing),
+          ...Map<String, dynamic>.from(entry.value as Map),
+        };
+      } else {
+        record[entry.key] = entry.value;
+      }
+    }
+    for (final key in containerKeys) {
+      final nested = toRecord(source[key]);
+      if (nested.isNotEmpty) mergeRecord(nested, depth + 1);
     }
   }
-  for (final key in [
-    'analysisId',
-    'snapshotId',
-    'repoAnalysisSnapshotId',
-    'repositoryId',
-    'repoId',
-    'repository',
-    'analysisScope',
-    'summary',
-    'strengths',
-    'weaknesses',
-    'recommendations',
-    'topSkills',
-    'missingSkills',
-    'createdAt',
-  ]) {
-    if (record[key] == null && envelope[key] != null) {
-      record[key] = envelope[key];
-    }
-  }
+
+  // API list/detail/analyze responses use different wrapper shapes. Merge the
+  // known wrappers so narrative fields are not lost when metadata is under
+  // `analysis` while strengths/weaknesses/recommendations are under `result`.
+  mergeRecord(envelope);
   if ((record['repositoryId'] ?? record['repoId'] ?? '').toString().isEmpty &&
       repositoryId != null &&
       repositoryId.isNotEmpty) {
@@ -149,9 +158,14 @@ List<ChatSessionModel> normalizeChatSessions(dynamic payload) {
 }
 
 ChatSessionModel normalizeChatSession(dynamic payload) {
+  final record = toRecord(unwrapResponse<dynamic>(payload));
   final map = extractApiResource<Map<String, dynamic>>(
-      payload, ['session', 'chatSession']);
-  return ChatSessionModel.fromJson(toRecord(map.isNotEmpty ? map : payload));
+      record, ['session', 'chatSession']);
+  final sessionJson = Map<String, dynamic>.from(
+    toRecord(map.isNotEmpty ? map : record),
+  );
+  if (record['context'] is Map) sessionJson['context'] = record['context'];
+  return ChatSessionModel.fromJson(sessionJson);
 }
 
 ChatSessionModel normalizeChatSessionDetail(dynamic payload) {
@@ -160,6 +174,11 @@ ChatSessionModel normalizeChatSessionDetail(dynamic payload) {
       record, ['session', 'chatSession']);
   var session = ChatSessionModel.fromJson(
       toRecord(sessionMap.isNotEmpty ? sessionMap : record));
+  if (record['context'] is Map) {
+    session = session.copyWith(
+      context: ChatContextModel.fromJson(toRecord(record['context'])),
+    );
+  }
 
   final messagesRaw = record['messages'] is List
       ? record['messages'] as List
@@ -195,6 +214,47 @@ ChatSessionModel mergeChatSession(
     createdAt: next.createdAt.isNotEmpty ? next.createdAt : base.createdAt,
     messages: merged,
     repositoryContext: next.repositoryContext ?? base.repositoryContext,
+    status: next.status,
+    mode: next.mode,
+    modeSource: next.modeSource,
+    effectiveMode: next.effectiveMode,
+    unreadByUser: next.unreadByUser,
+    unreadByAdmin: next.unreadByAdmin,
+    updatedAt: next.updatedAt ?? base.updatedAt,
+    lastMessageAt: next.lastMessageAt ?? base.lastMessageAt,
+    lastMessage: next.lastMessage ?? base.lastMessage,
+    manualReason: next.manualReason ?? base.manualReason,
+    repositoryId: next.repositoryId ?? base.repositoryId,
+    roadmapId: next.roadmapId ?? base.roadmapId,
+    analysisId: next.analysisId ?? base.analysisId,
+    snapshotId: next.snapshotId ?? base.snapshotId,
+    contextSelectionReason:
+        next.contextSelectionReason ?? base.contextSelectionReason,
+    contextPinnedAt: next.contextPinnedAt ?? base.contextPinnedAt,
+    context: next.context ?? base.context,
+  );
+}
+
+ChatSendResult normalizeChatSendResult(dynamic payload) {
+  final record = toRecord(unwrapResponse<dynamic>(payload));
+
+  ChatMessageModel? message(String key) {
+    final value = toRecord(record[key]);
+    return value.isEmpty ? null : normalizeChatMessage(value);
+  }
+
+  return ChatSendResult(
+    mode: (record['mode'] ?? 'AI_AUTO').toString(),
+    effectiveMode:
+        (record['effectiveMode'] ?? record['mode'] ?? 'AI_AUTO').toString(),
+    modeSource: (record['modeSource'] ?? 'GLOBAL').toString(),
+    status: (record['status'] ?? 'active').toString(),
+    userMessage: message('userMessage'),
+    aiMessage: message('aiMessage'),
+    adminMessage: message('adminMessage'),
+    context: record['context'] is Map
+        ? ChatContextModel.fromJson(toRecord(record['context']))
+        : null,
   );
 }
 
@@ -273,8 +333,9 @@ ChatMessageModel? pickAssistantMessage(dynamic payload) {
   if (messages != null) {
     for (final item in messages.reversed) {
       final message = normalizeChatMessage(item);
-      if (message.role == 'assistant' && message.content.isNotEmpty)
+      if (message.role == 'assistant' && message.content.isNotEmpty) {
         return message;
+      }
     }
   }
   return null;
@@ -282,6 +343,7 @@ ChatMessageModel? pickAssistantMessage(dynamic payload) {
 
 ChatMessageModel normalizeChatMessage(dynamic payload) {
   final json = toRecord(payload);
+  final senderType = (json['senderType'] ?? '').toString().toUpperCase();
   final rawRole = (json['role'] ??
           json['sender'] ??
           json['type'] ??
@@ -289,7 +351,9 @@ ChatMessageModel normalizeChatMessage(dynamic payload) {
           'assistant')
       .toString()
       .toLowerCase();
-  final role = ['user', 'human'].contains(rawRole) ? 'user' : 'assistant';
+  final role = senderType == 'USER' || ['user', 'human'].contains(rawRole)
+      ? 'user'
+      : 'assistant';
   final content = [
     json['content'],
     json['message'],
@@ -313,6 +377,7 @@ ChatMessageModel normalizeChatMessage(dynamic payload) {
             json['createdAt'] ??
             DateTime.now().toIso8601String())
         .toString(),
+    senderType: senderType,
   );
 }
 
@@ -389,10 +454,12 @@ String categoryFromTargetRole(String targetRole) {
   if (targetRole.contains('Backend')) return 'Backend';
   if (targetRole.contains('Mobile')) return 'Mobile';
   if (targetRole.contains('DevOps')) return 'DevOps';
-  if (targetRole.contains('Tester') || targetRole.contains('QA'))
+  if (targetRole.contains('Tester') || targetRole.contains('QA')) {
     return 'Testing';
-  if (targetRole.contains('AI') || targetRole.contains('Machine Learning'))
+  }
+  if (targetRole.contains('AI') || targetRole.contains('Machine Learning')) {
     return 'AI/ML';
+  }
   if (targetRole.contains('Data')) return 'Data';
   return 'Fullstack';
 }

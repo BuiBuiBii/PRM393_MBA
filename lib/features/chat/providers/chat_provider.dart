@@ -5,7 +5,6 @@ import '../../../core/demo/demo_service.dart';
 import '../data/chat_repository.dart';
 import '../../../core/network/api_utils.dart';
 import '../../../core/network/dio_client.dart';
-import '../../../core/network/normalizers.dart';
 import '../../../shared/models/app_models.dart';
 
 class ChatState {
@@ -13,6 +12,7 @@ class ChatState {
     this.sessions = const [],
     this.current,
     this.isLoading = false,
+    this.isSending = false,
     this.error,
     this.repositoryId,
     this.roadmapId,
@@ -23,6 +23,7 @@ class ChatState {
   final List<ChatSessionModel> sessions;
   final ChatSessionModel? current;
   final bool isLoading;
+  final bool isSending;
   final String? error;
   final String? repositoryId;
   final String? roadmapId;
@@ -32,7 +33,9 @@ class ChatState {
   ChatState copyWith({
     List<ChatSessionModel>? sessions,
     ChatSessionModel? current,
+    bool clearCurrent = false,
     bool? isLoading,
+    bool? isSending,
     String? error,
     bool clearError = false,
     String? repositoryId,
@@ -43,8 +46,9 @@ class ChatState {
   }) {
     return ChatState(
       sessions: sessions ?? this.sessions,
-      current: current ?? this.current,
+      current: clearCurrent ? null : (current ?? this.current),
       isLoading: isLoading ?? this.isLoading,
+      isSending: isSending ?? this.isSending,
       error: clearError ? null : (error ?? this.error),
       repositoryId:
           replaceContext ? repositoryId : (repositoryId ?? this.repositoryId),
@@ -111,7 +115,13 @@ class ChatNotifier extends Notifier<ChatState> {
     }
   }
 
-  Future<void> createSession(String title) async {
+  Future<ChatSessionModel> createSession(
+    String title, {
+    String? repositoryId,
+    String? roadmapId,
+    String? analysisId,
+    String? snapshotId,
+  }) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final sessionTitle =
@@ -119,7 +129,16 @@ class ChatNotifier extends Notifier<ChatState> {
       final session = AppConfig.demoMode
           ? await DemoService.instance.createChatSession(sessionTitle)
           : await safeRequest(
-              () => _repository.createChatSession(sessionTitle));
+              () => _repository.createChatSession(
+                ChatSessionCreatePayload(
+                  title: sessionTitle,
+                  repositoryId: repositoryId,
+                  roadmapId: roadmapId,
+                  analysisId: analysisId,
+                  snapshotId: snapshotId,
+                ),
+              ),
+            );
       if (session.id.isEmpty) {
         throw ApiException('Backend không trả session id');
       }
@@ -127,17 +146,47 @@ class ChatNotifier extends Notifier<ChatState> {
         sessions: [session, ...state.sessions.where((s) => s.id != session.id)],
         current: session,
         isLoading: false,
+        repositoryId: null,
+        roadmapId: null,
+        analysisId: null,
+        snapshotId: null,
+        replaceContext: true,
       );
+      return session;
     } catch (e) {
       state = state.copyWith(isLoading: false, error: getApiErrorMessage(e));
       rethrow;
     }
   }
 
+  Future<void> deleteSession(String id) async {
+    try {
+      if (!AppConfig.demoMode) {
+        await safeRequest(() => _repository.deleteChatSession(id));
+      }
+    } catch (e) {
+      if (e is! ApiException || e.statusCode != 404) rethrow;
+    }
+
+    final remaining =
+        state.sessions.where((session) => session.id != id).toList();
+    final wasCurrent = state.current?.id == id;
+    state = state.copyWith(
+      sessions: remaining,
+      current: wasCurrent && remaining.isNotEmpty ? remaining.first : null,
+      clearCurrent: wasCurrent && remaining.isEmpty,
+      clearError: true,
+    );
+    if (wasCurrent && remaining.isNotEmpty) {
+      await selectSession(remaining.first.id);
+    }
+  }
+
   Future<void> selectSession(String id) async {
     final cached = state.sessions.where((s) => s.id == id).firstOrNull;
-    if (cached != null)
+    if (cached != null) {
       state = state.copyWith(current: cached, clearError: true);
+    }
     try {
       final session = AppConfig.demoMode
           ? await DemoService.instance.getChatSession(id)
@@ -162,16 +211,26 @@ class ChatNotifier extends Notifier<ChatState> {
           error: 'Chat session không có id. Hãy tạo session mới.');
       return;
     }
+    if (session.status == 'closed') {
+      state = state.copyWith(
+        error: 'Session đã đóng, bạn không thể gửi thêm tin nhắn.',
+      );
+      throw ApiException(
+        'Session đã đóng, bạn không thể gửi thêm tin nhắn.',
+        code: 'CHAT_SESSION_CLOSED',
+      );
+    }
 
     final optimistic = ChatMessageModel(
       id: 'local-${DateTime.now().millisecondsSinceEpoch}',
       role: 'user',
+      senderType: 'USER',
       content: content,
       timestamp: DateTime.now().toIso8601String(),
     );
     final updated =
         session.copyWith(messages: [...session.messages, optimistic]);
-    state = state.copyWith(current: updated, isLoading: true, clearError: true);
+    state = state.copyWith(current: updated, isSending: true, clearError: true);
 
     try {
       ChatSessionModel nextSession;
@@ -179,31 +238,54 @@ class ChatNotifier extends Notifier<ChatState> {
         nextSession =
             await DemoService.instance.sendChatMessage(session.id, content);
       } else {
-        final payload = await safeRequest(
+        final sessionHasPinnedContext =
+            session.repositoryId?.isNotEmpty == true ||
+                session.roadmapId?.isNotEmpty == true ||
+                session.analysisId?.isNotEmpty == true ||
+                session.snapshotId?.isNotEmpty == true;
+        final result = await safeRequest(
           () => _repository.sendChatMessage(
             session!.id,
             content,
-            repositoryId: state.repositoryId,
-            roadmapId: state.roadmapId,
-            analysisId: state.analysisId,
-            snapshotId: state.snapshotId,
+            repositoryId: sessionHasPinnedContext ? null : state.repositoryId,
+            roadmapId: sessionHasPinnedContext ? null : state.roadmapId,
+            analysisId: sessionHasPinnedContext ? null : state.analysisId,
+            snapshotId: sessionHasPinnedContext ? null : state.snapshotId,
           ),
         );
-        final record = toRecord(unwrapResponse<dynamic>(payload));
-        final hasMessages = record['messages'] is List;
-        final responseSession =
-            hasMessages ? normalizeChatSessionDetail(payload) : null;
-        final assistant =
-            responseSession == null ? pickAssistantMessage(payload) : null;
-
-        if (responseSession != null) {
-          nextSession = mergeChatSession(updated, responseSession);
-        } else if (assistant != null) {
-          nextSession =
-              updated.copyWith(messages: [...updated.messages, assistant]);
-        } else {
-          nextSession = updated;
+        final responseMessages = result.messages;
+        final messages = <ChatMessageModel>[
+          ...session.messages,
+          if (result.userMessage == null) optimistic,
+          ...responseMessages,
+        ];
+        final uniqueMessages = <ChatMessageModel>[];
+        for (final message in messages) {
+          final index =
+              uniqueMessages.indexWhere((item) => item.id == message.id);
+          if (index >= 0) {
+            uniqueMessages[index] = message;
+          } else {
+            uniqueMessages.add(message);
+          }
         }
+        nextSession = session.copyWith(
+          messages: uniqueMessages,
+          status: result.status,
+          mode: result.mode,
+          modeSource: result.modeSource,
+          effectiveMode: result.effectiveMode,
+          unreadByUser: false,
+          lastMessage: uniqueMessages.lastOrNull,
+          lastMessageAt: uniqueMessages.lastOrNull?.timestamp,
+          repositoryId: result.context?.repositoryId ?? session.repositoryId,
+          roadmapId: result.context?.roadmapId ?? session.roadmapId,
+          analysisId: result.context?.analysisId ?? session.analysisId,
+          snapshotId: result.context?.snapshotId ?? session.snapshotId,
+          contextSelectionReason: result.context?.contextSelectionReason ??
+              session.contextSelectionReason,
+          context: result.context ?? session.context,
+        );
 
         try {
           final detail =
@@ -221,10 +303,23 @@ class ChatNotifier extends Notifier<ChatState> {
                 .map((s) => s.id == session!.id ? nextSession : s)
                 .toList()
             : [nextSession, ...state.sessions],
-        isLoading: false,
+        isSending: false,
       );
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: getApiErrorMessage(e));
+      final isClosed = e is ApiException && e.code == 'CHAT_SESSION_CLOSED';
+      final failedSession = session.copyWith(
+        status: isClosed ? 'closed' : session.status,
+      );
+      state = state.copyWith(
+        current: failedSession,
+        sessions: state.sessions
+            .map((item) => item.id == session!.id ? failedSession : item)
+            .toList(),
+        isSending: false,
+        error: isClosed
+            ? 'Session đã đóng, bạn không thể gửi thêm tin nhắn.'
+            : getApiErrorMessage(e),
+      );
       rethrow;
     }
   }

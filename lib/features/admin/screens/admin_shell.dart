@@ -23,13 +23,30 @@ class _AdminShellState extends ConsumerState<AdminShell> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
 
   static const _navItems = [
-    _AdminNavItem(path: '/admin', label: 'Tổng quan', icon: Icons.dashboard_outlined),
-    _AdminNavItem(path: '/admin/users', label: 'Người dùng', icon: Icons.people_outline),
-    _AdminNavItem(path: '/admin/reports', label: 'Báo cáo', icon: Icons.flag_outlined),
-    _AdminNavItem(path: '/admin/repositories', label: 'Repositories', icon: Icons.folder_copy_outlined),
-    _AdminNavItem(path: '/admin/analysis', label: 'Phân tích', icon: Icons.analytics_outlined),
-    _AdminNavItem(path: '/admin/ai-feedback', label: 'AI Feedback', icon: Icons.auto_awesome_outlined),
-    _AdminNavItem(path: '/admin/roadmaps', label: 'Roadmaps', icon: Icons.route_outlined),
+    _AdminNavItem(
+        path: '/admin', label: 'Tổng quan', icon: Icons.dashboard_outlined),
+    _AdminNavItem(
+        path: '/admin/users', label: 'Người dùng', icon: Icons.people_outline),
+    _AdminNavItem(
+        path: '/admin/reports', label: 'Báo cáo', icon: Icons.flag_outlined),
+    _AdminNavItem(
+        path: '/admin/repositories',
+        label: 'Repositories',
+        icon: Icons.folder_copy_outlined),
+    _AdminNavItem(
+        path: '/admin/analysis',
+        label: 'Phân tích',
+        icon: Icons.analytics_outlined),
+    _AdminNavItem(
+        path: '/admin/ai-feedback',
+        label: 'AI Feedback',
+        icon: Icons.auto_awesome_outlined),
+    _AdminNavItem(
+        path: '/admin/roadmaps', label: 'Roadmaps', icon: Icons.route_outlined),
+    _AdminNavItem(
+        path: '/admin/chat',
+        label: 'Quản lý chat',
+        icon: Icons.support_agent_outlined),
   ];
 
   String get _location => GoRouterState.of(context).matchedLocation;
@@ -46,9 +63,11 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     return 'Admin';
   }
 
-  bool get _isDetailRoute => GoRouterState.of(context).uri.pathSegments.length > 2;
+  bool get _isDetailRoute =>
+      GoRouterState.of(context).uri.pathSegments.length > 2;
 
-  bool get _shellCanPop => adminShellNavigatorKey.currentState?.canPop() ?? false;
+  bool get _shellCanPop =>
+      adminShellNavigatorKey.currentState?.canPop() ?? false;
 
   bool get _showBackButton {
     if (_isDetailRoute) return true;
@@ -92,7 +111,9 @@ class _AdminShellState extends ConsumerState<AdminShell> {
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
     final isDark = context.isDarkMode;
-    final appBarBg = isDark ? AppTheme.darkCard.withValues(alpha: 0.98) : const Color(0xFF1E1B4B).withValues(alpha: 0.95);
+    final appBarBg = isDark
+        ? AppTheme.darkCard.withValues(alpha: 0.98)
+        : const Color(0xFF1E1B4B).withValues(alpha: 0.95);
     final appBarFg = isDark ? context.appTextPrimary : Colors.white;
 
     return AppGradientBackground(
@@ -119,7 +140,8 @@ class _AdminShellState extends ConsumerState<AdminShell> {
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: UserAvatar(imageUrl: user?.avatar, name: user?.name, size: 30),
+              child: UserAvatar(
+                  imageUrl: user?.avatar, name: user?.name, size: 30),
             ),
           ],
         ),
@@ -138,10 +160,19 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      const AppBadge(label: 'Quản trị hệ thống', variant: AppBadgeVariant.info),
+                      const AppBadge(
+                          label: 'Quản trị hệ thống',
+                          variant: AppBadgeVariant.info),
                       const SizedBox(height: 8),
-                      Text(user?.name ?? 'Admin', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                      Text(user?.email ?? '', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12)),
+                      Text(user?.name ?? 'Admin',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18)),
+                      Text(user?.email ?? '',
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.8),
+                              fontSize: 12)),
                     ],
                   ),
                 ),
@@ -154,18 +185,24 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                       ListTile(
                         leading: Icon(
                           item.icon,
-                          color: _active(item.path) ? AppColors.primary : context.appTextSecondary,
+                          color: _active(item.path)
+                              ? AppColors.primary
+                              : context.appTextSecondary,
                         ),
                         title: Text(
                           item.label,
                           style: TextStyle(
                             fontWeight: FontWeight.w500,
-                            color: _active(item.path) ? AppColors.primary : context.appTextPrimary,
+                            color: _active(item.path)
+                                ? AppColors.primary
+                                : context.appTextPrimary,
                           ),
                         ),
                         selected: _active(item.path),
-                        selectedTileColor: AppColors.primary.withValues(alpha: isDark ? 0.22 : 0.1),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        selectedTileColor: AppColors.primary
+                            .withValues(alpha: isDark ? 0.22 : 0.1),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         onTap: () {
                           Navigator.pop(context);
                           context.go(item.path);
@@ -177,7 +214,8 @@ class _AdminShellState extends ConsumerState<AdminShell> {
               const Divider(height: 1),
               ListTile(
                 leading: Icon(Icons.logout, color: context.appTextSecondary),
-                title: Text('Đăng xuất', style: TextStyle(color: context.appTextPrimary)),
+                title: Text('Đăng xuất',
+                    style: TextStyle(color: context.appTextPrimary)),
                 onTap: () async {
                   await ref.read(authProvider.notifier).logout();
                   if (context.mounted) context.go('/login');
@@ -205,7 +243,8 @@ class _AdminShellState extends ConsumerState<AdminShell> {
 }
 
 class _AdminNavItem {
-  const _AdminNavItem({required this.path, required this.label, required this.icon});
+  const _AdminNavItem(
+      {required this.path, required this.label, required this.icon});
   final String path;
   final String label;
   final IconData icon;

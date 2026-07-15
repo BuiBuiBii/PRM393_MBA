@@ -65,7 +65,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             _passwordController.text,
             _nameController.text.trim(),
           );
-      if (mounted) context.go(getDefaultAuthenticatedPath(ref.read(authProvider).user));
+      if (mounted) {
+        context.go(getDefaultAuthenticatedPath(ref.read(authProvider).user));
+      }
     } catch (_) {}
   }
 
@@ -80,7 +82,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         children: [
           const Center(child: AppBrandLogo(size: 48, withBackground: true)),
           const SizedBox(height: 16),
-          const Center(child: AppBadge(label: 'Tạo workspace', variant: AppBadgeVariant.info)),
+          const Center(
+              child: AppBadge(
+                  label: 'Tạo workspace', variant: AppBadgeVariant.info)),
           const SizedBox(height: 8),
           Text(
             'Tạo tài khoản',
@@ -114,7 +118,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       icon: Icons.person_outline,
                       placeholder: 'Nguyễn Minh',
                       validator: (value) =>
-                          value == null || value.trim().isEmpty ? 'Vui lòng nhập họ và tên' : null,
+                          value == null || value.trim().isEmpty
+                              ? 'Vui lòng nhập họ và tên'
+                              : null,
                     ),
                     const SizedBox(height: 16),
                     LabeledInput(
@@ -124,7 +130,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       keyboardType: TextInputType.emailAddress,
                       placeholder: 'you@example.com',
                       validator: (value) =>
-                          value == null || value.trim().isEmpty ? 'Vui lòng nhập email' : null,
+                          value == null || value.trim().isEmpty
+                              ? 'Vui lòng nhập email'
+                              : null,
                     ),
                     const SizedBox(height: 16),
                     LabeledInput(
@@ -163,28 +171,37 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           width: 24,
                           child: Checkbox(
                             value: _acceptedTerms,
-                            onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
+                            onChanged: (v) =>
+                                setState(() => _acceptedTerms = v ?? false),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text.rich(
                             TextSpan(
-                              style: TextStyle(fontSize: 14, color: context.appTextSecondary),
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  color: context.appTextSecondary),
                               children: [
                                 const TextSpan(text: 'Tôi đồng ý với '),
                                 TextSpan(
                                   text: 'Điều khoản sử dụng',
-                                  style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500),
+                                  style: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w500),
                                   recognizer: TapGestureRecognizer()
-                                    ..onTap = () => _showLegalNotice(context, 'Điều khoản sử dụng'),
+                                    ..onTap = () => _showLegalNotice(
+                                        context, 'Điều khoản sử dụng'),
                                 ),
                                 const TextSpan(text: ' và '),
                                 TextSpan(
                                   text: 'Chính sách bảo mật',
-                                  style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500),
+                                  style: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w500),
                                   recognizer: TapGestureRecognizer()
-                                    ..onTap = () => _showLegalNotice(context, 'Chính sách bảo mật'),
+                                    ..onTap = () => _showLegalNotice(
+                                        context, 'Chính sách bảo mật'),
                                 ),
                               ],
                             ),
@@ -203,7 +220,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     SocialLoginPanel(
                       dividerLabel: 'Hoặc đăng ký với',
                       onSuccess: () {
-                        if (mounted) context.go(getDefaultAuthenticatedPath(ref.read(authProvider).user));
+                        if (mounted) {
+                          context.go(getDefaultAuthenticatedPath(
+                              ref.read(authProvider).user));
+                        }
                       },
                     ),
                   ],
@@ -224,7 +244,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text('Đăng nhập', style: TextStyle(fontWeight: FontWeight.w500)),
+                child: const Text('Đăng nhập',
+                    style: TextStyle(fontWeight: FontWeight.w500)),
               ),
             ],
           ),

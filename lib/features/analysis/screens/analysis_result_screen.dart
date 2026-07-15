@@ -54,6 +54,19 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
         .where((a) => a.repositoryId == widget.repoId || a.id == widget.repoId)
         .firstOrNull;
     final feedback = state.feedbackFor(widget.repoId);
+    final strengths = analysis?.strengths.isNotEmpty == true
+        ? analysis!.strengths
+        : feedback?.strengthFeedback ?? const <String>[];
+    final weaknesses = analysis?.weaknesses.isNotEmpty == true
+        ? analysis!.weaknesses
+        : feedback?.weaknessFeedback ?? const <String>[];
+    final recommendations = analysis?.recommendations.isNotEmpty == true
+        ? analysis!.recommendations
+        : [
+            ...?feedback?.nextSteps,
+            if (feedback?.learningAdvice.isNotEmpty == true)
+              feedback!.learningAdvice,
+          ];
     final roleMatch = state.roleMatchFor(widget.repoId);
     final isLoadingRoleMatch = state.isLoadingRoleMatch(widget.repoId);
     final roleMatchError = isLoadingRoleMatch
@@ -126,21 +139,31 @@ class _AnalysisResultScreenState extends ConsumerState<AnalysisResultScreen> {
           const SizedBox(height: 12),
           AnalysisReadinessSection(analysis: analysis),
           const SizedBox(height: 12),
+          if (state.loadingAnalysisFor == widget.repoId ||
+              state.loadingAnalysisFor == analysis.id) ...[
+            const LinearProgressIndicator(),
+            const SizedBox(height: 8),
+            Text(
+              'Đang tải đầy đủ kết quả phân tích đã lưu...',
+              style: context.appCaptionStyle,
+            ),
+            const SizedBox(height: 12),
+          ],
           AnalysisListCard(
               title: 'Điểm mạnh',
-              items: analysis.strengths,
+              items: strengths,
               icon: Icons.check_circle,
               color: AppColors.emerald),
           const SizedBox(height: 12),
           AnalysisListCard(
               title: 'Điểm yếu',
-              items: analysis.weaknesses,
+              items: weaknesses,
               icon: Icons.warning_amber,
               color: AppColors.amber),
           const SizedBox(height: 12),
           AnalysisListCard(
               title: 'Đề xuất',
-              items: analysis.recommendations,
+              items: recommendations,
               icon: Icons.lightbulb_outline,
               color: AppColors.primary),
           const SizedBox(height: 12),

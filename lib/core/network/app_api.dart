@@ -216,9 +216,31 @@ class AppApi {
     return normalizeChatSessions(res.data);
   }
 
-  Future<ChatSessionModel> createChatSession(String title) async {
-    final res = await _dio.post('/chat/sessions', data: {'title': title});
+  Future<ChatSessionModel> createChatSession(
+    Object payload, {
+    String? repositoryId,
+    String? roadmapId,
+    String? analysisId,
+    String? snapshotId,
+  }) async {
+    final data = switch (payload) {
+      ChatSessionCreatePayload value => value.toJson(),
+      String title => ChatSessionCreatePayload(
+          title: title,
+          repositoryId: repositoryId,
+          roadmapId: roadmapId,
+          analysisId: analysisId,
+          snapshotId: snapshotId,
+        ).toJson(),
+      Map value => Map<String, dynamic>.from(value),
+      _ => throw ArgumentError('Unsupported chat session payload'),
+    };
+    final res = await _dio.post('/chat/sessions', data: data);
     return normalizeChatSession(res.data);
+  }
+
+  Future<void> deleteChatSession(String sessionId) async {
+    await _dio.delete('/chat/sessions/$sessionId');
   }
 
   Future<ChatSessionModel> getChatSession(String id) async {
@@ -226,7 +248,7 @@ class AppApi {
     return normalizeChatSessionDetail(res.data);
   }
 
-  Future<dynamic> sendChatMessage(
+  Future<ChatSendResult> sendChatMessage(
     String sessionId,
     String message, {
     String? repositoryId,
@@ -242,7 +264,7 @@ class AppApi {
       if (analysisId != null && analysisId.isNotEmpty) 'analysisId': analysisId,
       if (snapshotId != null && snapshotId.isNotEmpty) 'snapshotId': snapshotId,
     });
-    return unwrapResponse(res.data);
+    return normalizeChatSendResult(res.data);
   }
 
   Future<List<NotificationModel>> getNotifications(
@@ -390,6 +412,10 @@ class AppApi {
   Future<RoadmapModel> archiveRoadmap(String id) async {
     final res = await _dio.patch('/roadmaps/$id/archive');
     return normalizeRoadmap(res.data);
+  }
+
+  Future<void> deleteRoadmap(String id) async {
+    await _dio.delete('/roadmaps/$id');
   }
 
   Future<Map<String, dynamic>> getMyProgress() async {

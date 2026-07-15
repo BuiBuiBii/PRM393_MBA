@@ -1,4 +1,6 @@
 /// Barrel export — import providers từ đây thay vì `app_providers.dart`.
+library;
+
 export 'auth/providers/auth_provider.dart';
 export 'chat/providers/chat_provider.dart';
 export 'dashboard/providers/dashboard_provider.dart';

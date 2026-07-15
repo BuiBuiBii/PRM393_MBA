@@ -234,6 +234,36 @@ class AnalysisModel {
       weaknesses.isNotEmpty &&
       recommendations.isNotEmpty;
 
+  AnalysisModel withNarrative({
+    List<String>? strengths,
+    List<String>? weaknesses,
+    List<String>? recommendations,
+  }) {
+    return AnalysisModel(
+      id: id,
+      repositoryId: repositoryId,
+      repositoryName: repositoryName,
+      createdAt: createdAt,
+      projectType: projectType,
+      techStack: techStack,
+      scores: scores,
+      strengths: strengths ?? this.strengths,
+      weaknesses: weaknesses ?? this.weaknesses,
+      recommendations: recommendations ?? this.recommendations,
+      careerDirection: careerDirection,
+      userReadinessScore: userReadinessScore,
+      userLevel: userLevel,
+      topSkills: topSkills,
+      missingSkills: missingSkills,
+      scoreBreakdown: scoreBreakdown,
+      confidence: confidence,
+      snapshotId: snapshotId,
+      githubRepoId: githubRepoId,
+      topSkillDetails: topSkillDetails,
+      analysisScope: analysisScope,
+    );
+  }
+
   factory AnalysisModel.fromJson(Map<String, dynamic> json) {
     final summary = json['summary'] is Map
         ? Map<String, dynamic>.from(json['summary'] as Map)
@@ -360,12 +390,23 @@ class ChatMessageModel {
     required this.role,
     required this.content,
     required this.timestamp,
+    this.senderType = '',
   });
 
   final String id;
   final String role;
   final String content;
   final String timestamp;
+  final String senderType;
+
+  String get effectiveSenderType {
+    final explicit = senderType.trim().toUpperCase();
+    if (explicit.isNotEmpty) return explicit;
+    return role.toLowerCase() == 'user' ? 'USER' : 'AI';
+  }
+
+  bool get isUser => effectiveSenderType == 'USER';
+  bool get isAdmin => effectiveSenderType == 'ADMIN';
 
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) {
     return ChatMessageModel(
@@ -377,8 +418,99 @@ class ChatMessageModel {
               json['createdAt'] ??
               DateTime.now().toIso8601String())
           .toString(),
+      senderType: (json['senderType'] ?? '').toString(),
     );
   }
+}
+
+class ChatContextModel {
+  const ChatContextModel({
+    this.repositoryId,
+    this.repoName,
+    this.roadmapId,
+    this.analysisId,
+    this.snapshotId,
+    this.progressUpdatedAt,
+    this.analysisSource,
+    this.contextSelectionReason,
+    this.contextPinned = false,
+    this.intent,
+    this.intents = const [],
+    this.hasRoadmapContext = false,
+    this.hasComparisonContext = false,
+    this.comparedRepoCount = 0,
+  });
+
+  final String? repositoryId;
+  final String? repoName;
+  final String? roadmapId;
+  final String? analysisId;
+  final String? snapshotId;
+  final String? progressUpdatedAt;
+  final String? analysisSource;
+  final String? contextSelectionReason;
+  final bool contextPinned;
+  final String? intent;
+  final List<String> intents;
+  final bool hasRoadmapContext;
+  final bool hasComparisonContext;
+  final int comparedRepoCount;
+
+  bool get hasContext =>
+      repositoryId?.isNotEmpty == true ||
+      repoName?.isNotEmpty == true ||
+      roadmapId?.isNotEmpty == true ||
+      analysisId?.isNotEmpty == true ||
+      snapshotId?.isNotEmpty == true ||
+      contextSelectionReason == 'latest_user_analysis' ||
+      hasComparisonContext;
+
+  factory ChatContextModel.fromJson(Map<String, dynamic> json) {
+    return ChatContextModel(
+      repositoryId: json['repositoryId']?.toString(),
+      repoName: json['repoName']?.toString(),
+      roadmapId: json['roadmapId']?.toString(),
+      analysisId: json['analysisId']?.toString(),
+      snapshotId: json['snapshotId']?.toString(),
+      progressUpdatedAt: json['progressUpdatedAt']?.toString(),
+      analysisSource: json['analysisSource']?.toString(),
+      contextSelectionReason: json['contextSelectionReason']?.toString(),
+      contextPinned: json['contextPinned'] == true,
+      intent: json['intent']?.toString(),
+      intents: (json['intents'] as List? ?? const [])
+          .map((item) => item.toString())
+          .where((item) => item.isNotEmpty)
+          .toList(),
+      hasRoadmapContext: json['hasRoadmapContext'] == true,
+      hasComparisonContext: json['hasComparisonContext'] == true,
+      comparedRepoCount:
+          int.tryParse(json['comparedRepoCount']?.toString() ?? '') ?? 0,
+    );
+  }
+}
+
+class ChatSessionCreatePayload {
+  const ChatSessionCreatePayload({
+    required this.title,
+    this.repositoryId,
+    this.roadmapId,
+    this.analysisId,
+    this.snapshotId,
+  });
+
+  final String title;
+  final String? repositoryId;
+  final String? roadmapId;
+  final String? analysisId;
+  final String? snapshotId;
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        if (repositoryId?.isNotEmpty == true) 'repositoryId': repositoryId,
+        if (roadmapId?.isNotEmpty == true) 'roadmapId': roadmapId,
+        if (analysisId?.isNotEmpty == true) 'analysisId': analysisId,
+        if (snapshotId?.isNotEmpty == true) 'snapshotId': snapshotId,
+      };
 }
 
 class ChatSessionModel {
@@ -388,6 +520,23 @@ class ChatSessionModel {
     required this.createdAt,
     required this.messages,
     this.repositoryContext,
+    this.status = 'active',
+    this.mode = 'AI_AUTO',
+    this.modeSource = 'GLOBAL',
+    this.effectiveMode = 'AI_AUTO',
+    this.unreadByUser = false,
+    this.unreadByAdmin = false,
+    this.updatedAt,
+    this.lastMessageAt,
+    this.lastMessage,
+    this.manualReason,
+    this.repositoryId,
+    this.roadmapId,
+    this.analysisId,
+    this.snapshotId,
+    this.contextSelectionReason,
+    this.contextPinnedAt,
+    this.context,
   });
 
   final String id;
@@ -395,18 +544,73 @@ class ChatSessionModel {
   final String createdAt;
   final List<ChatMessageModel> messages;
   final String? repositoryContext;
+  final String status;
+  final String mode;
+  final String modeSource;
+  final String effectiveMode;
+  final bool unreadByUser;
+  final bool unreadByAdmin;
+  final String? updatedAt;
+  final String? lastMessageAt;
+  final ChatMessageModel? lastMessage;
+  final String? manualReason;
+  final String? repositoryId;
+  final String? roadmapId;
+  final String? analysisId;
+  final String? snapshotId;
+  final String? contextSelectionReason;
+  final String? contextPinnedAt;
+  final ChatContextModel? context;
 
-  ChatSessionModel copyWith({List<ChatMessageModel>? messages}) {
+  ChatSessionModel copyWith({
+    List<ChatMessageModel>? messages,
+    String? status,
+    String? mode,
+    String? modeSource,
+    String? effectiveMode,
+    bool? unreadByUser,
+    bool? unreadByAdmin,
+    String? updatedAt,
+    String? lastMessageAt,
+    ChatMessageModel? lastMessage,
+    String? manualReason,
+    String? repositoryId,
+    String? roadmapId,
+    String? analysisId,
+    String? snapshotId,
+    String? contextSelectionReason,
+    String? contextPinnedAt,
+    ChatContextModel? context,
+  }) {
     return ChatSessionModel(
       id: id,
       title: title,
       createdAt: createdAt,
       messages: messages ?? this.messages,
       repositoryContext: repositoryContext,
+      status: status ?? this.status,
+      mode: mode ?? this.mode,
+      modeSource: modeSource ?? this.modeSource,
+      effectiveMode: effectiveMode ?? this.effectiveMode,
+      unreadByUser: unreadByUser ?? this.unreadByUser,
+      unreadByAdmin: unreadByAdmin ?? this.unreadByAdmin,
+      updatedAt: updatedAt ?? this.updatedAt,
+      lastMessageAt: lastMessageAt ?? this.lastMessageAt,
+      lastMessage: lastMessage ?? this.lastMessage,
+      manualReason: manualReason ?? this.manualReason,
+      repositoryId: repositoryId ?? this.repositoryId,
+      roadmapId: roadmapId ?? this.roadmapId,
+      analysisId: analysisId ?? this.analysisId,
+      snapshotId: snapshotId ?? this.snapshotId,
+      contextSelectionReason:
+          contextSelectionReason ?? this.contextSelectionReason,
+      contextPinnedAt: contextPinnedAt ?? this.contextPinnedAt,
+      context: context ?? this.context,
     );
   }
 
   factory ChatSessionModel.fromJson(Map<String, dynamic> json) {
+    final lastMessageJson = json['lastMessage'];
     return ChatSessionModel(
       id: (json['id'] ?? json['_id'] ?? '').toString(),
       title:
@@ -414,12 +618,66 @@ class ChatSessionModel {
       createdAt:
           (json['createdAt'] ?? DateTime.now().toIso8601String()).toString(),
       repositoryContext: json['repositoryContext']?.toString(),
+      status: (json['status'] ?? 'active').toString(),
+      mode: (json['mode'] ?? 'AI_AUTO').toString(),
+      modeSource: (json['modeSource'] ?? 'GLOBAL').toString(),
+      effectiveMode:
+          (json['effectiveMode'] ?? json['mode'] ?? 'AI_AUTO').toString(),
+      unreadByUser: json['unreadByUser'] == true,
+      unreadByAdmin: json['unreadByAdmin'] == true,
+      updatedAt: json['updatedAt']?.toString(),
+      lastMessageAt: json['lastMessageAt']?.toString(),
+      lastMessage: lastMessageJson is Map
+          ? ChatMessageModel.fromJson(
+              Map<String, dynamic>.from(lastMessageJson),
+            )
+          : null,
+      manualReason: json['manualReason']?.toString(),
+      repositoryId: json['repositoryId']?.toString(),
+      roadmapId: json['roadmapId']?.toString(),
+      analysisId: json['analysisId']?.toString(),
+      snapshotId: json['snapshotId']?.toString(),
+      contextSelectionReason: json['contextSelectionReason']?.toString(),
+      contextPinnedAt: json['contextPinnedAt']?.toString(),
+      context: json['context'] is Map
+          ? ChatContextModel.fromJson(
+              Map<String, dynamic>.from(json['context'] as Map),
+            )
+          : null,
       messages: (json['messages'] as List? ?? [])
           .whereType<Map>()
           .map((e) => ChatMessageModel.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
     );
   }
+}
+
+class ChatSendResult {
+  const ChatSendResult({
+    required this.effectiveMode,
+    required this.mode,
+    required this.modeSource,
+    required this.status,
+    this.userMessage,
+    this.aiMessage,
+    this.adminMessage,
+    this.context,
+  });
+
+  final String effectiveMode;
+  final String mode;
+  final String modeSource;
+  final String status;
+  final ChatMessageModel? userMessage;
+  final ChatMessageModel? aiMessage;
+  final ChatMessageModel? adminMessage;
+  final ChatContextModel? context;
+
+  List<ChatMessageModel> get messages => [
+        if (userMessage != null) userMessage!,
+        if (aiMessage != null) aiMessage!,
+        if (adminMessage != null) adminMessage!,
+      ];
 }
 
 class NotificationModel {
@@ -494,11 +752,12 @@ class AiFeedbackModel {
 
   factory AiFeedbackModel.fromJson(Map<String, dynamic> json) {
     List<String> listOf(dynamic value) {
-      if (value is List)
+      if (value is List) {
         return value
             .map((e) => e.toString())
             .where((e) => e.isNotEmpty)
             .toList();
+      }
       return [];
     }
 
@@ -1158,9 +1417,9 @@ class RepoAnalysisSnapshotModel {
   factory RepoAnalysisSnapshotModel.fromJson(Map<String, dynamic> json) {
     List<String> strList(dynamic v) {
       Iterable iterable = [];
-      if (v is List)
+      if (v is List) {
         iterable = v;
-      else if (v is Map) iterable = v.values;
+      } else if (v is Map) iterable = v.values;
 
       return iterable
           .map((e) {
@@ -1213,9 +1472,9 @@ class SnapshotCompareResultModel {
   factory SnapshotCompareResultModel.fromJson(Map<String, dynamic> json) {
     List<String> strList(dynamic v) {
       Iterable iterable = [];
-      if (v is List)
+      if (v is List) {
         iterable = v;
-      else if (v is Map) iterable = v.values;
+      } else if (v is Map) iterable = v.values;
 
       return iterable
           .map((e) {

@@ -5,13 +5,17 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/utils/format_utils.dart';
 import '../../../shared/widgets/app_widgets.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../../feature_providers.dart';
 
 class ChatSessionsPanel extends ConsumerWidget {
-  const ChatSessionsPanel({super.key, required this.scrollController});
+  const ChatSessionsPanel({
+    super.key,
+    required this.scrollController,
+    required this.onCreateSession,
+  });
 
   final ScrollController scrollController;
+  final Future<void> Function() onCreateSession;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -27,7 +31,10 @@ class ChatSessionsPanel extends ConsumerWidget {
         Container(
           width: 40,
           height: 4,
-          decoration: BoxDecoration(color: context.appBorderColor, borderRadius: BorderRadius.circular(99)),
+          decoration: BoxDecoration(
+            color: context.appBorderColor,
+            borderRadius: BorderRadius.circular(99),
+          ),
         ),
         Padding(
           padding: const EdgeInsets.all(16),
@@ -43,8 +50,8 @@ class ChatSessionsPanel extends ConsumerWidget {
             icon: Icons.add,
             expand: true,
             onPressed: () async {
-              await ref.read(chatProvider.notifier).createSession('Tư vấn GitHub của tôi');
-              if (context.mounted) Navigator.pop(context);
+              Navigator.pop(context);
+              await onCreateSession();
             },
           ),
         ),
@@ -53,9 +60,18 @@ class ChatSessionsPanel extends ConsumerWidget {
           child: AppCard(
             child: Column(
               children: [
-                _ContextRow(label: 'GitHub', value: githubConnected ? 'Đã kết nối' : 'Thiếu', success: githubConnected),
-                _ContextRow(label: 'Repos', value: '${repos.repositories.length}'),
-                _ContextRow(label: 'Phân tích', value: '${repos.analyses.length}', success: hasAnalyses),
+                _ContextRow(
+                  label: 'GitHub',
+                  value: githubConnected ? 'Đã kết nối' : 'Thiếu',
+                  success: githubConnected,
+                ),
+                _ContextRow(
+                    label: 'Repos', value: '${repos.repositories.length}'),
+                _ContextRow(
+                  label: 'Phân tích',
+                  value: '${repos.analyses.length}',
+                  success: hasAnalyses,
+                ),
                 if (!githubConnected) ...[
                   const SizedBox(height: 10),
                   PrimaryButton(
@@ -85,19 +101,63 @@ class ChatSessionsPanel extends ConsumerWidget {
         ),
         Expanded(
           child: chat.sessions.isEmpty
-              ? Center(child: Text('Chưa có cuộc trò chuyện.', style: context.appCaptionStyle))
+              ? Center(
+                  child: Text(
+                    'Chưa có cuộc trò chuyện.',
+                    style: context.appCaptionStyle,
+                  ),
+                )
               : ListView.builder(
                   controller: scrollController,
                   itemCount: chat.sessions.length,
                   itemBuilder: (context, index) {
-                    final s = chat.sessions[index];
+                    final session = chat.sessions[index];
+                    final timestamp = session.lastMessageAt ??
+                        session.updatedAt ??
+                        session.createdAt;
                     return ListTile(
-                      selected: chat.current?.id == s.id,
-                      selectedTileColor: AppColors.primary.withValues(alpha: context.isDarkMode ? 0.22 : 0.1),
-                      title: Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      subtitle: Text(formatRelativeTime(s.createdAt)),
+                      selected: chat.current?.id == session.id,
+                      selectedTileColor: AppColors.primary.withValues(
+                        alpha: context.isDarkMode ? 0.22 : 0.1,
+                      ),
+                      tileColor: session.unreadByUser
+                          ? AppColors.primary.withValues(alpha: 0.08)
+                          : null,
+                      title: Text(
+                        session.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        session.lastMessage?.content.isNotEmpty == true
+                            ? session.lastMessage!.content
+                            : formatRelativeTime(timestamp),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AppBadge(
+                            label: _statusLabel(
+                                session.status, session.effectiveMode),
+                            variant: session.status == 'waiting_admin' ||
+                                    session.status == 'closed'
+                                ? AppBadgeVariant.warning
+                                : AppBadgeVariant.info,
+                          ),
+                          IconButton(
+                            tooltip: 'Xóa cuộc trò chuyện',
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            onPressed: () =>
+                                _confirmDelete(context, ref, session.id),
+                          ),
+                        ],
+                      ),
                       onTap: () {
-                        ref.read(chatProvider.notifier).selectSession(s.id);
+                        ref
+                            .read(chatProvider.notifier)
+                            .selectSession(session.id);
                         Navigator.pop(context);
                       },
                     );
@@ -107,10 +167,63 @@ class ChatSessionsPanel extends ConsumerWidget {
       ],
     );
   }
+
+  String _statusLabel(String status, String effectiveMode) {
+    return switch (status) {
+      'closed' => 'Đã đóng',
+      'waiting_admin' => 'Chờ admin',
+      'answered' => 'Đã trả lời',
+      _ => effectiveMode == 'MANUAL' ? 'Manual' : 'AI Auto',
+    };
+  }
+
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    String sessionId,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xóa cuộc trò chuyện?'),
+        content: const Text(
+          'Cuộc trò chuyện sẽ biến mất khỏi danh sách của bạn.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(chatProvider.notifier).deleteSession(sessionId);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              ref.read(chatProvider).error ?? 'Không thể xóa cuộc trò chuyện.',
+            ),
+          ),
+        );
+      }
+    }
+  }
 }
 
 class _ContextRow extends StatelessWidget {
-  const _ContextRow({required this.label, required this.value, this.success = false});
+  const _ContextRow({
+    required this.label,
+    required this.value,
+    this.success = false,
+  });
 
   final String label;
   final String value;

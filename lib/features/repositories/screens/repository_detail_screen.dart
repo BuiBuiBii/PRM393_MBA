@@ -162,6 +162,30 @@ class _RepositoryDetailScreenState
                             ),
                             if (detail.analyzed) ...[
                               PrimaryButton(
+                                label: 'Hỏi AI về repo này',
+                                outlined: true,
+                                onPressed: () async {
+                                  try {
+                                    await ref
+                                        .read(chatProvider.notifier)
+                                        .createSession(
+                                          'Tư vấn ${detail.name}',
+                                          repositoryId: detail.id,
+                                        );
+                                    if (context.mounted) context.go('/chat');
+                                  } catch (_) {
+                                    if (context.mounted) {
+                                      AppSnackbar.show(
+                                        context,
+                                        message: ref.read(chatProvider).error ??
+                                            'Không thể tạo chat cho repository.',
+                                        variant: AppSnackVariant.error,
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
+                              PrimaryButton(
                                 label: 'Xem phân tích',
                                 outlined: true,
                                 onPressed: () => context.push(

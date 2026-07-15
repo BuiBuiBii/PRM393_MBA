@@ -20,6 +20,7 @@ class RepositoryState {
     this.isLoading = false,
     this.isSyncing = false,
     this.loadingDetailFor,
+    this.loadingAnalysisFor,
     this.analyzingRepoId,
     this.generatingFeedbackRepoId,
     this.loadingPackagesFor,
@@ -40,6 +41,7 @@ class RepositoryState {
   final bool isLoading;
   final bool isSyncing;
   final String? loadingDetailFor;
+  final String? loadingAnalysisFor;
   final String? analyzingRepoId;
   final String? generatingFeedbackRepoId;
   final String? loadingPackagesFor;
@@ -91,6 +93,8 @@ class RepositoryState {
     bool? isSyncing,
     String? loadingDetailFor,
     bool clearLoadingDetailFor = false,
+    String? loadingAnalysisFor,
+    bool clearLoadingAnalysisFor = false,
     String? analyzingRepoId,
     bool clearAnalyzingRepoId = false,
     String? generatingFeedbackRepoId,
@@ -119,6 +123,9 @@ class RepositoryState {
       loadingDetailFor: clearLoadingDetailFor
           ? null
           : (loadingDetailFor ?? this.loadingDetailFor),
+      loadingAnalysisFor: clearLoadingAnalysisFor
+          ? null
+          : (loadingAnalysisFor ?? this.loadingAnalysisFor),
       analyzingRepoId: clearAnalyzingRepoId
           ? null
           : (analyzingRepoId ?? this.analyzingRepoId),
@@ -372,11 +379,13 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
 
   String _roleMatchCacheKey(
       String sourceMode, String? repoId, List<String>? repoIds) {
-    if (sourceMode == 'single_repo' && repoId != null && repoId.isNotEmpty)
+    if (sourceMode == 'single_repo' && repoId != null && repoId.isNotEmpty) {
       return repoId;
+    }
     if (sourceMode == 'all_analyzed_repos') return '__all_analyzed__';
-    if (repoIds != null && repoIds.isNotEmpty)
+    if (repoIds != null && repoIds.isNotEmpty) {
       return '__selected__${repoIds.join('_')}';
+    }
     return sourceMode;
   }
 
@@ -387,20 +396,86 @@ class RepositoryNotifier extends Notifier<RepositoryState> {
   static const roleMatchAllKey = '__all_analyzed__';
 
   Future<AnalysisModel?> fetchAnalysis(String id) async {
+    if (state.loadingAnalysisFor == id) return getAnalysisById(id);
+    state = state.copyWith(loadingAnalysisFor: id, clearError: true);
     try {
-      final result = AppConfig.demoMode
-          ? await DemoService.instance.getAnalysis(id)
-          : await safeRequest(() => _repository.getAnalysis(id));
-      if (result == null) return null;
+      var cached = getAnalysisById(id);
+      if (cached == null) {
+        await fetchMyAnalyses();
+        cached = getAnalysisById(id);
+      }
+      final detailId = cached?.id.isNotEmpty == true ? cached!.id : id;
+      var result = AppConfig.demoMode
+          ? await DemoService.instance.getAnalysis(detailId)
+          : await safeRequest(() => _repository.getAnalysis(detailId));
+      if (result == null) {
+        state = state.copyWith(clearLoadingAnalysisFor: true);
+        return null;
+      }
+      var enrichedResult = result;
+
+      if (!enrichedResult.hasCompleteNarrative && !AppConfig.demoMode) {
+        RepoAnalysisSnapshotModel? snapshot;
+        final snapshotId = enrichedResult.snapshotId ?? cached?.snapshotId;
+        if (snapshotId?.isNotEmpty == true) {
+          try {
+            snapshot = await safeRequest(
+              () => _repository.getSnapshot(snapshotId!),
+            );
+          } catch (_) {}
+        }
+        if (snapshot == null) {
+          final repositoryId = enrichedResult.repositoryId.isNotEmpty
+              ? enrichedResult.repositoryId
+              : cached?.repositoryId ?? id;
+          if (repositoryId.isNotEmpty) {
+            try {
+              final snapshots = await safeRequest(
+                () => _repository.getSnapshots(repositoryId),
+              );
+              snapshot =
+                  snapshots.where((item) => item.id == snapshotId).firstOrNull;
+              final withNarrative = snapshots.where((item) {
+                return item.strengths.isNotEmpty ||
+                    item.weaknesses.isNotEmpty ||
+                    item.recommendations.isNotEmpty;
+              }).toList()
+                ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+              snapshot ??= withNarrative.firstOrNull;
+            } catch (_) {}
+          }
+        }
+        if (snapshot != null) {
+          enrichedResult = enrichedResult.withNarrative(
+            strengths: enrichedResult.strengths.isNotEmpty
+                ? enrichedResult.strengths
+                : snapshot.strengths,
+            weaknesses: enrichedResult.weaknesses.isNotEmpty
+                ? enrichedResult.weaknesses
+                : snapshot.weaknesses,
+            recommendations: enrichedResult.recommendations.isNotEmpty
+                ? enrichedResult.recommendations
+                : snapshot.recommendations,
+          );
+        }
+      }
       state = state.copyWith(
+        clearLoadingAnalysisFor: true,
         analyses: [
-          result,
-          ...state.analyses
-              .where((a) => a.repositoryId != id && a.id != result.id)
+          enrichedResult,
+          ...state.analyses.where(
+            (analysis) =>
+                analysis.repositoryId != enrichedResult.repositoryId &&
+                analysis.id != enrichedResult.id,
+          ),
         ],
       );
-      return result;
-    } catch (_) {
+      return enrichedResult;
+    } catch (e) {
+      state = state.copyWith(
+        clearLoadingAnalysisFor: true,
+        error: getApiErrorMessage(e),
+      );
       return null;
     }
   }

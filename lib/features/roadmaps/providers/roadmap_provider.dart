@@ -50,6 +50,7 @@ class RoadmapState {
     this.isLoading = false,
     this.isGenerating = false,
     this.isArchiving = false,
+    this.deletingRoadmapId,
     this.error,
     this.selectedTargetRole = '',
     this.learningByItemId = const {},
@@ -68,6 +69,7 @@ class RoadmapState {
   final bool isLoading;
   final bool isGenerating;
   final bool isArchiving;
+  final String? deletingRoadmapId;
   final String? error;
   final String selectedTargetRole;
   final Map<String, LearningContentModel> learningByItemId;
@@ -86,6 +88,8 @@ class RoadmapState {
     bool? isLoading,
     bool? isGenerating,
     bool? isArchiving,
+    String? deletingRoadmapId,
+    bool clearDeletingRoadmapId = false,
     String? error,
     bool clearError = false,
     String? selectedTargetRole,
@@ -108,6 +112,9 @@ class RoadmapState {
       isLoading: isLoading ?? this.isLoading,
       isGenerating: isGenerating ?? this.isGenerating,
       isArchiving: isArchiving ?? this.isArchiving,
+      deletingRoadmapId: clearDeletingRoadmapId
+          ? null
+          : (deletingRoadmapId ?? this.deletingRoadmapId),
       error: clearError ? null : (error ?? this.error),
       selectedTargetRole: selectedTargetRole ?? this.selectedTargetRole,
       learningByItemId: learningByItemId ?? this.learningByItemId,
@@ -316,6 +323,7 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
     final cached = getById(id);
     if (cached != null) return cached;
     if (AppConfig.demoMode) return null;
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
       final roadmap = await safeRequest(() => _repository.getRoadmap(id));
       final withProgress = roadmap;
@@ -323,8 +331,15 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
         withProgress,
         ...state.roadmaps.where((r) => r.id != withProgress.id),
       ]);
+      state = state.copyWith(isLoading: false);
       return withProgress;
-    } catch (_) {
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e is ApiException && e.statusCode == 404
+            ? 'Roadmap không tồn tại hoặc đã bị xóa.'
+            : getApiErrorMessage(e),
+      );
       return null;
     }
   }
@@ -375,6 +390,35 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
       state = state.copyWith(isArchiving: false, error: getApiErrorMessage(e));
       rethrow;
     }
+  }
+
+  Future<void> deleteRoadmap(String id) async {
+    state = state.copyWith(deletingRoadmapId: id, clearError: true);
+    try {
+      if (!AppConfig.demoMode) {
+        await safeRequest(() => _repository.deleteRoadmap(id));
+      }
+    } catch (e) {
+      if (e is! ApiException || e.statusCode != 404) {
+        state = state.copyWith(
+          clearDeletingRoadmapId: true,
+          error: getApiErrorMessage(e),
+        );
+        rethrow;
+      }
+    }
+
+    final remaining =
+        state.roadmaps.where((roadmap) => roadmap.id != id).toList();
+    state = state.copyWith(
+      roadmaps: remaining,
+      clearDeletingRoadmapId: true,
+      learningByItemId: const {},
+      clearOpeningLearningItemId: true,
+      clearGeneratingLearningItemId: true,
+      clearLearningError: true,
+    );
+    await _persistRoadmapsState(remaining);
   }
 
   void toggleBookmark(String nodeId) {
@@ -449,8 +493,9 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
     for (final item
         in (payload['items'] as List? ?? const []).whereType<Map>()) {
       final itemId = (item['itemId'] ?? '').toString();
-      if (itemId.isNotEmpty)
+      if (itemId.isNotEmpty) {
         statuses[itemId] = (item['status'] ?? 'not_started').toString();
+      }
     }
 
     final roadmaps = state.roadmaps.map((roadmap) {
@@ -480,8 +525,9 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
 
   Future<LearningContentModel> openLearning(
       String roadmapId, String itemId) async {
-    if (itemId.isEmpty)
+    if (itemId.isEmpty) {
       throw ApiException('Task không có itemId hợp lệ. Hãy tải lại roadmap.');
+    }
     final cached = state.learningByItemId[itemId];
     if (cached != null) return cached;
 

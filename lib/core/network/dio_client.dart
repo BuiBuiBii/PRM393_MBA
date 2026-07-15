@@ -22,8 +22,8 @@ final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
       baseUrl: AppConfig.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 20),
-      receiveTimeout: const Duration(seconds: 30),
+      connectTimeout: const Duration(seconds: 60),
+      receiveTimeout: const Duration(seconds: 60),
       headers: {'Content-Type': 'application/json'},
     ),
   );
@@ -54,6 +54,7 @@ Future<T> safeRequest<T>(Future<T> Function() request) async {
   try {
     return await request();
   } on DioException catch (error) {
-    throw ApiException(getApiErrorMessage(error), statusCode: error.response?.statusCode);
+    throw ApiException(getApiErrorMessage(error),
+        statusCode: error.response?.statusCode, code: getApiErrorCode(error));
   }
 }

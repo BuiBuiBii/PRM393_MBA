@@ -219,7 +219,7 @@ class RoadmapObjectivesTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionHeader(
+        const _SectionHeader(
             title: 'Mục tiêu học tập',
             icon: Icons.flag,
             color: AppColors.primary),
@@ -254,7 +254,7 @@ class RoadmapObjectivesTab extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 16),
-        _SectionHeader(
+        const _SectionHeader(
             title: 'Kỹ năng hiện có',
             icon: Icons.star_border,
             color: AppColors.emerald),
@@ -277,7 +277,7 @@ class RoadmapObjectivesTab extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 16),
-        _SectionHeader(
+        const _SectionHeader(
             title: 'Kỹ năng cần bổ sung',
             icon: Icons.warning_amber_rounded,
             color: AppColors.amber),
@@ -439,7 +439,7 @@ class RoadmapDev2VecMetaCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Cá nhân hóa theo Dev2Vec',
+          const Text('Cá nhân hóa ',
               style: TextStyle(
                   fontWeight: FontWeight.w600, color: AppColors.primary)),
           const SizedBox(height: 8),
@@ -447,17 +447,6 @@ class RoadmapDev2VecMetaCard extends StatelessWidget {
             '$roleName  •  ${matchScore?.toString() ?? '-'}%  •  $matchLevel',
             style: context.appBodyStyle,
           ),
-          if (scoringMethod != null && scoringMethod.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text('Phương pháp: $scoringMethod', style: context.appCaptionStyle),
-          ],
-          if (roadmapSource != null && roadmapSource!.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Nguồn roadmap: ${roadmapSource!['analysisId'] ?? roadmapSource!['analysisIds'] ?? 'analysis'}',
-              style: context.appCaptionStyle,
-            ),
-          ],
           if (skillGapSummary != null &&
               skillGapSummary!['totalGaps'] != null) ...[
             const SizedBox(height: 6),

@@ -124,7 +124,9 @@ class DashboardHeroCard extends StatelessWidget {
                   ),
                   _HeroPill(
                     icon: githubConnected ? Icons.link : Icons.link_off,
-                    label: githubConnected ? 'GitHub đã kết nối' : 'Chưa kết nối GitHub',
+                    label: githubConnected
+                        ? 'GitHub đã kết nối'
+                        : 'Chưa kết nối GitHub',
                     highlight: githubConnected,
                   ),
                 ],
@@ -220,7 +222,8 @@ class _HeroPill extends StatelessWidget {
           const SizedBox(width: 5),
           Text(
             label,
-            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+                color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -310,18 +313,22 @@ class DashboardCareerCard extends StatelessWidget {
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.work_outline, color: AppColors.primary, size: 22),
+                    child: const Icon(Icons.work_outline,
+                        color: AppColors.primary, size: 22),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Định hướng nghề nghiệp', style: context.appLabelStyle.copyWith(fontWeight: FontWeight.w600)),
+                        Text('Định hướng nghề nghiệp',
+                            style: context.appLabelStyle
+                                .copyWith(fontWeight: FontWeight.w600)),
                         const SizedBox(height: 6),
                         Text(
                           careerPath,
-                          style: context.appBodyStyle.copyWith(fontWeight: FontWeight.w600, height: 1.4),
+                          style: context.appBodyStyle.copyWith(
+                              fontWeight: FontWeight.w600, height: 1.4),
                         ),
                         const SizedBox(height: 8),
                         TextButton.icon(
@@ -377,16 +384,6 @@ class DashboardSkillsCard extends StatelessWidget {
               variant: AppBadgeVariant.success,
             ),
           ],
-          if (missingSkills.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            _SkillGroup(
-              icon: Icons.flag_outlined,
-              title: 'Cần bổ sung',
-              color: AppColors.amber,
-              skills: missingSkills,
-              variant: AppBadgeVariant.warning,
-            ),
-          ],
         ],
       ),
     );
@@ -425,14 +422,19 @@ class _SkillGroup extends StatelessWidget {
             children: [
               Icon(icon, size: 16, color: color),
               const SizedBox(width: 6),
-              Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color)),
+              Text(title,
+                  style: TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600, color: color)),
             ],
           ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 6,
             runSpacing: 6,
-            children: skills.take(8).map((s) => AppBadge(label: s, variant: variant)).toList(),
+            children: skills
+                .take(8)
+                .map((s) => AppBadge(label: s, variant: variant))
+                .toList(),
           ),
         ],
       ),
@@ -461,15 +463,16 @@ class DashboardRecentAnalysesCard extends StatelessWidget {
           if (analyses.isEmpty)
             const EmptyState(
               title: 'Chưa có phân tích',
-              subtitle: 'Đồng bộ repository từ GitHub và chạy phân tích để xem điểm số.',
+              subtitle:
+                  'Đồng bộ repository từ GitHub và chạy phân tích để xem điểm số.',
             )
           else
             ...analyses.take(4).map(
-              (a) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: DashboardAnalysisTile(analysis: a),
-              ),
-            ),
+                  (a) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: DashboardAnalysisTile(analysis: a),
+                  ),
+                ),
         ],
       ),
     );
@@ -491,7 +494,8 @@ class DashboardAnalysisTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.push('/repositories/${analysis.repositoryId}/analysis'),
+        onTap: () =>
+            context.push('/repositories/${analysis.repositoryId}/analysis'),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           child: Row(
@@ -503,7 +507,8 @@ class DashboardAnalysisTile extends StatelessWidget {
                   color: AppColors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.folder_outlined, color: AppColors.primary, size: 20),
+                child: const Icon(Icons.folder_outlined,
+                    color: AppColors.primary, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -514,15 +519,20 @@ class DashboardAnalysisTile extends StatelessWidget {
                       analysis.repositoryName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontWeight: FontWeight.w600, color: context.appTextPrimary, fontSize: 14),
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: context.appTextPrimary,
+                          fontSize: 14),
                     ),
                     const SizedBox(height: 2),
-                    Text(formatRelativeTime(analysis.createdAt), style: context.appCaptionStyle),
+                    Text(formatRelativeTime(analysis.createdAt),
+                        style: context.appCaptionStyle),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
@@ -530,7 +540,11 @@ class DashboardAnalysisTile extends StatelessWidget {
                 ),
                 child: Text(
                   '$score',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color, height: 1),
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: color,
+                      height: 1),
                 ),
               ),
             ],

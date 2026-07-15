@@ -1,3 +1,5 @@
+import '../../../shared/models/app_models.dart';
+
 class AdminPagination {
   const AdminPagination({
     required this.page,
@@ -21,6 +23,112 @@ class AdminPagination {
       limit: int.tryParse(map['limit']?.toString() ?? '') ?? 20,
       total: int.tryParse(map['total']?.toString() ?? '') ?? 0,
       totalPages: int.tryParse(map['totalPages']?.toString() ?? '') ?? 0,
+    );
+  }
+}
+
+class AdminChatSettings {
+  const AdminChatSettings({
+    required this.mode,
+    required this.aiEnabled,
+    required this.manualEnabled,
+    this.updatedAt,
+  });
+
+  final String mode;
+  final bool aiEnabled;
+  final bool manualEnabled;
+  final String? updatedAt;
+
+  factory AdminChatSettings.fromJson(Map<String, dynamic> json) {
+    final mode = (json['mode'] ?? 'AI_AUTO').toString();
+    return AdminChatSettings(
+      mode: mode,
+      aiEnabled: json['aiEnabled'] == true || mode == 'AI_AUTO',
+      manualEnabled: json['manualEnabled'] == true || mode == 'MANUAL',
+      updatedAt: json['updatedAt']?.toString(),
+    );
+  }
+}
+
+class AdminChatUser {
+  const AdminChatUser(
+      {required this.id, required this.name, required this.email});
+
+  final String id;
+  final String name;
+  final String email;
+
+  factory AdminChatUser.fromJson(Map<String, dynamic> json) => AdminChatUser(
+        id: (json['_id'] ?? json['id'] ?? '').toString(),
+        name: (json['fullName'] ?? json['name'] ?? 'Người dùng').toString(),
+        email: (json['email'] ?? '').toString(),
+      );
+}
+
+class AdminChatSession {
+  const AdminChatSession({
+    required this.id,
+    required this.title,
+    required this.status,
+    required this.mode,
+    required this.modeSource,
+    required this.effectiveMode,
+    required this.messages,
+    this.user,
+    this.assignedAdminId,
+    this.unreadByAdmin = false,
+    this.unreadByUser = false,
+    this.lastMessage,
+    this.lastMessageAt,
+    this.manualReason,
+  });
+
+  final String id;
+  final String title;
+  final String status;
+  final String mode;
+  final String modeSource;
+  final String effectiveMode;
+  final List<ChatMessageModel> messages;
+  final AdminChatUser? user;
+  final String? assignedAdminId;
+  final bool unreadByAdmin;
+  final bool unreadByUser;
+  final ChatMessageModel? lastMessage;
+  final String? lastMessageAt;
+  final String? manualReason;
+
+  factory AdminChatSession.fromJson(Map<String, dynamic> json) {
+    final userJson = json['user'] ?? json['userId'];
+    final lastMessageJson = json['lastMessage'];
+    return AdminChatSession(
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
+      title: (json['title'] ?? 'Cuộc trò chuyện').toString(),
+      status: (json['status'] ?? 'active').toString(),
+      mode: (json['mode'] ?? 'AI_AUTO').toString(),
+      modeSource: (json['modeSource'] ?? 'GLOBAL').toString(),
+      effectiveMode:
+          (json['effectiveMode'] ?? json['mode'] ?? 'AI_AUTO').toString(),
+      messages: (json['messages'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => ChatMessageModel.fromJson(
+                Map<String, dynamic>.from(item),
+              ))
+          .toList(),
+      user: userJson is Map
+          ? AdminChatUser.fromJson(Map<String, dynamic>.from(userJson))
+          : null,
+      assignedAdminId: json['assignedAdminId']?.toString(),
+      unreadByAdmin: json['unreadByAdmin'] == true,
+      unreadByUser: json['unreadByUser'] == true,
+      lastMessage: lastMessageJson is Map
+          ? ChatMessageModel.fromJson(
+              Map<String, dynamic>.from(lastMessageJson),
+            )
+          : null,
+      lastMessageAt: (json['lastMessageAt'] ?? json['updatedAt'])?.toString(),
+      manualReason: json['manualReason']?.toString(),
     );
   }
 }
@@ -54,12 +162,24 @@ class AdminDashboardStats {
   final int pendingReports;
 
   factory AdminDashboardStats.fromJson(Map<String, dynamic> json) {
-    final users = json['users'] is Map ? Map<String, dynamic>.from(json['users'] as Map) : <String, dynamic>{};
-    final github = json['github'] is Map ? Map<String, dynamic>.from(json['github'] as Map) : <String, dynamic>{};
-    final analysis = json['analysis'] is Map ? Map<String, dynamic>.from(json['analysis'] as Map) : <String, dynamic>{};
-    final feedback = json['aiFeedback'] is Map ? Map<String, dynamic>.from(json['aiFeedback'] as Map) : <String, dynamic>{};
-    final roadmaps = json['roadmaps'] is Map ? Map<String, dynamic>.from(json['roadmaps'] as Map) : <String, dynamic>{};
-    final reports = json['reports'] is Map ? Map<String, dynamic>.from(json['reports'] as Map) : <String, dynamic>{};
+    final users = json['users'] is Map
+        ? Map<String, dynamic>.from(json['users'] as Map)
+        : <String, dynamic>{};
+    final github = json['github'] is Map
+        ? Map<String, dynamic>.from(json['github'] as Map)
+        : <String, dynamic>{};
+    final analysis = json['analysis'] is Map
+        ? Map<String, dynamic>.from(json['analysis'] as Map)
+        : <String, dynamic>{};
+    final feedback = json['aiFeedback'] is Map
+        ? Map<String, dynamic>.from(json['aiFeedback'] as Map)
+        : <String, dynamic>{};
+    final roadmaps = json['roadmaps'] is Map
+        ? Map<String, dynamic>.from(json['roadmaps'] as Map)
+        : <String, dynamic>{};
+    final reports = json['reports'] is Map
+        ? Map<String, dynamic>.from(json['reports'] as Map)
+        : <String, dynamic>{};
 
     int n(dynamic v) => int.tryParse(v?.toString() ?? '') ?? 0;
 
@@ -143,7 +263,8 @@ class AdminReportRecord {
 
   factory AdminReportRecord.fromJson(Map<String, dynamic> json) {
     final reporter = json['reporterId'];
-    final reporterMap = reporter is Map ? Map<String, dynamic>.from(reporter) : null;
+    final reporterMap =
+        reporter is Map ? Map<String, dynamic>.from(reporter) : null;
 
     return AdminReportRecord(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
@@ -153,7 +274,8 @@ class AdminReportRecord {
       description: json['description']?.toString(),
       status: (json['status'] ?? 'pending').toString(),
       adminNote: json['adminNote']?.toString(),
-      reporterName: reporterMap?['name']?.toString() ?? reporterMap?['fullName']?.toString(),
+      reporterName: reporterMap?['name']?.toString() ??
+          reporterMap?['fullName']?.toString(),
       reporterEmail: reporterMap?['email']?.toString(),
       createdAt: json['createdAt']?.toString(),
       resolvedAt: json['resolvedAt']?.toString(),
@@ -222,7 +344,9 @@ class AdminRepoRecord {
   factory AdminRepoRecord.fromJson(Map<String, dynamic> json) {
     final user = json['userId'];
     final userMap = user is Map ? Map<String, dynamic>.from(user) : null;
-    final raw = json['rawData'] is Map ? Map<String, dynamic>.from(json['rawData'] as Map) : <String, dynamic>{};
+    final raw = json['rawData'] is Map
+        ? Map<String, dynamic>.from(json['rawData'] as Map)
+        : <String, dynamic>{};
 
     List<String> topics(dynamic value) {
       if (value is! List) return const [];
@@ -234,13 +358,16 @@ class AdminRepoRecord {
       name: (json['name'] ?? '').toString(),
       fullName: (json['fullName'] ?? json['name'] ?? '').toString(),
       language: (json['language'] ?? '-').toString(),
-      ownerName: userMap?['name']?.toString() ?? userMap?['fullName']?.toString() ?? '—',
+      ownerName: userMap?['name']?.toString() ??
+          userMap?['fullName']?.toString() ??
+          '—',
       ownerEmail: userMap?['email']?.toString(),
       stars: int.tryParse(json['stargazersCount']?.toString() ?? ''),
       forks: int.tryParse(json['forksCount']?.toString() ?? ''),
       openIssues: int.tryParse(json['openIssuesCount']?.toString() ?? ''),
       sizeKb: int.tryParse(json['size']?.toString() ?? ''),
-      updatedAt: json['updatedAtGithub']?.toString() ?? json['updatedAt']?.toString(),
+      updatedAt:
+          json['updatedAtGithub']?.toString() ?? json['updatedAt']?.toString(),
       description: json['description']?.toString(),
       defaultBranch: json['defaultBranch']?.toString(),
       githubRepoId: int.tryParse(json['githubRepoId']?.toString() ?? ''),
@@ -304,9 +431,15 @@ class AdminAnalysisRecord {
   factory AdminAnalysisRecord.fromJson(Map<String, dynamic> json) {
     final user = json['userId'];
     final userMap = user is Map ? Map<String, dynamic>.from(user) : null;
-    final scoresMap = json['scores'] is Map ? Map<String, dynamic>.from(json['scores'] as Map) : null;
-    final checklistMap = json['checklist'] is Map ? Map<String, dynamic>.from(json['checklist'] as Map) : null;
-    final commitMap = json['commitSummary'] is Map ? Map<String, dynamic>.from(json['commitSummary'] as Map) : null;
+    final scoresMap = json['scores'] is Map
+        ? Map<String, dynamic>.from(json['scores'] as Map)
+        : null;
+    final checklistMap = json['checklist'] is Map
+        ? Map<String, dynamic>.from(json['checklist'] as Map)
+        : null;
+    final commitMap = json['commitSummary'] is Map
+        ? Map<String, dynamic>.from(json['commitSummary'] as Map)
+        : null;
 
     List<String> listOf(dynamic value) {
       if (value is! List) return const [];
@@ -329,10 +462,14 @@ class AdminAnalysisRecord {
       repoName: (json['repoName'] ?? json['fullName'] ?? 'Repo').toString(),
       projectType: (json['projectType'] ?? '-').toString(),
       careerDirection: (json['careerDirection'] ?? '-').toString(),
-      ownerName: userMap?['name']?.toString() ?? userMap?['fullName']?.toString() ?? '—',
+      ownerName: userMap?['name']?.toString() ??
+          userMap?['fullName']?.toString() ??
+          '—',
       ownerEmail: userMap?['email']?.toString(),
-      overallScore: scores['overallScore'] ?? int.tryParse(scoresMap?['overall']?.toString() ?? ''),
-      analyzedAt: json['analyzedAt']?.toString() ?? json['createdAt']?.toString(),
+      overallScore: scores['overallScore'] ??
+          int.tryParse(scoresMap?['overall']?.toString() ?? ''),
+      analyzedAt:
+          json['analyzedAt']?.toString() ?? json['createdAt']?.toString(),
       languages: listOf(json['languages']),
       frameworks: listOf(json['frameworks']),
       packages: listOf(json['packages']),
@@ -401,7 +538,9 @@ class AdminFeedbackRecord {
       repoName: (json['repoName'] ?? json['fullName'] ?? 'Repo').toString(),
       summary: (json['summary'] ?? '').toString(),
       careerDirection: (json['careerDirection'] ?? '-').toString(),
-      ownerName: userMap?['name']?.toString() ?? userMap?['fullName']?.toString() ?? '—',
+      ownerName: userMap?['name']?.toString() ??
+          userMap?['fullName']?.toString() ??
+          '—',
       ownerEmail: userMap?['email']?.toString(),
       generatedAt: json['generatedAt']?.toString(),
       projectType: json['projectType']?.toString(),
@@ -447,13 +586,16 @@ class AdminRoadmapRecord {
   final String? createdAt;
   final String? updatedAt;
 
-  String get title => mainPath?.title?.isNotEmpty == true ? mainPath!.title! : targetRole;
+  String get title =>
+      mainPath?.title?.isNotEmpty == true ? mainPath!.title! : targetRole;
 
   int get phaseCount => mainPath?.phases.length ?? 0;
 
-  int get taskCount => mainPath?.phases.fold<int>(0, (sum, p) => sum + p.tasks.length) ?? 0;
+  int get taskCount =>
+      mainPath?.phases.fold<int>(0, (sum, p) => sum + p.tasks.length) ?? 0;
 
-  int get hourCount => mainPath?.phases.fold<int>(0, (sum, p) => sum + p.estimatedHours) ?? 0;
+  int get hourCount =>
+      mainPath?.phases.fold<int>(0, (sum, p) => sum + p.estimatedHours) ?? 0;
 
   int get repositoriesCount => sourceContextSummary?.repositoriesCount ?? 0;
 
@@ -468,16 +610,25 @@ class AdminRoadmapRecord {
       id: (json['_id'] ?? json['id'] ?? '').toString(),
       targetRole: (json['targetRole'] ?? '-').toString(),
       status: (json['status'] ?? 'active').toString(),
-      ownerName: userMap?['name']?.toString() ?? userMap?['fullName']?.toString() ?? '—',
+      ownerName: userMap?['name']?.toString() ??
+          userMap?['fullName']?.toString() ??
+          '—',
       ownerEmail: userMap?['email']?.toString(),
       summary: json['summary']?.toString(),
       currentGithubDirection: json['currentGithubDirection']?.toString(),
-      mainPath: mainPathRaw is Map ? AdminRoadmapPath.fromJson(Map<String, dynamic>.from(mainPathRaw)) : null,
+      mainPath: mainPathRaw is Map
+          ? AdminRoadmapPath.fromJson(Map<String, dynamic>.from(mainPathRaw))
+          : null,
       supportingPaths: supportingRaw is List
-          ? supportingRaw.whereType<Map>().map((e) => AdminRoadmapPath.fromJson(Map<String, dynamic>.from(e))).toList()
+          ? supportingRaw
+              .whereType<Map>()
+              .map((e) =>
+                  AdminRoadmapPath.fromJson(Map<String, dynamic>.from(e)))
+              .toList()
           : const [],
       sourceContextSummary: contextRaw is Map
-          ? AdminRoadmapSourceContext.fromJson(Map<String, dynamic>.from(contextRaw))
+          ? AdminRoadmapSourceContext.fromJson(
+              Map<String, dynamic>.from(contextRaw))
           : null,
       createdAt: json['createdAt']?.toString(),
       updatedAt: json['updatedAt']?.toString(),
@@ -503,7 +654,9 @@ class AdminRoadmapSourceContext {
     }
 
     return AdminRoadmapSourceContext(
-      repositoriesCount: json['repositoriesCount'] is num ? (json['repositoriesCount'] as num).toInt() : 0,
+      repositoriesCount: json['repositoriesCount'] is num
+          ? (json['repositoriesCount'] as num).toInt()
+          : 0,
       detectedSkills: skills(json['detectedSkills']),
       missingSkills: skills(json['missingSkills']),
     );
@@ -527,7 +680,11 @@ class AdminRoadmapPath {
       title: json['title']?.toString(),
       reason: json['reason']?.toString(),
       phases: phasesRaw is List
-          ? phasesRaw.whereType<Map>().map((e) => AdminRoadmapPhase.fromJson(Map<String, dynamic>.from(e))).toList()
+          ? phasesRaw
+              .whereType<Map>()
+              .map((e) =>
+                  AdminRoadmapPhase.fromJson(Map<String, dynamic>.from(e)))
+              .toList()
           : const [],
     );
   }
@@ -548,7 +705,8 @@ class AdminRoadmapPhase {
   final List<AdminRoadmapTask> tasks;
   final String? status;
 
-  int get estimatedHours => tasks.fold<int>(0, (sum, t) => sum + t.estimatedHours);
+  int get estimatedHours =>
+      tasks.fold<int>(0, (sum, t) => sum + t.estimatedHours);
 
   factory AdminRoadmapPhase.fromJson(Map<String, dynamic> json) {
     List<String> skills(dynamic value) {
@@ -562,7 +720,11 @@ class AdminRoadmapPhase {
       goal: json['goal']?.toString(),
       skills: skills(json['skills']),
       tasks: tasksRaw is List
-          ? tasksRaw.whereType<Map>().map((e) => AdminRoadmapTask.fromJson(Map<String, dynamic>.from(e))).toList()
+          ? tasksRaw
+              .whereType<Map>()
+              .map((e) =>
+                  AdminRoadmapTask.fromJson(Map<String, dynamic>.from(e)))
+              .toList()
           : const [],
       status: json['status']?.toString(),
     );
@@ -586,7 +748,9 @@ class AdminRoadmapTask {
     return AdminRoadmapTask(
       title: json['title']?.toString(),
       description: json['description']?.toString(),
-      estimatedHours: json['estimatedHours'] is num ? (json['estimatedHours'] as num).toInt() : 0,
+      estimatedHours: json['estimatedHours'] is num
+          ? (json['estimatedHours'] as num).toInt()
+          : 0,
       status: json['status']?.toString(),
     );
   }

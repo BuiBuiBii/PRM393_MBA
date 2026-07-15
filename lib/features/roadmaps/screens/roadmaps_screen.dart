@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -31,7 +31,7 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      ref.read(roadmapProvider.notifier).loadRoadmaps();
+      ref.read(roadmapProvider.notifier).loadRoadmaps(status: 'active');
       final analyses = ref.read(repositoryProvider).analyses;
       if (analyses.isEmpty) {
         ref.read(repositoryProvider.notifier).fetchMyAnalyses();
@@ -73,6 +73,40 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
     );
   }
 
+  Future<void> _deleteRoadmap(String id, String title) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xóa roadmap?'),
+        content: Text('Roadmap "$title" sẽ bị xóa khỏi danh sách của bạn.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(roadmapProvider.notifier).deleteRoadmap(id);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              ref.read(roadmapProvider).error ?? 'Không thể xóa roadmap.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(roadmapProvider);
@@ -85,8 +119,8 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
       difficulty: state.filters.difficulty,
       duration: state.filters.duration,
     );
-    final inProgressCount = state.roadmaps.where((r) => r.progress > 0 && r.progress < 100).length;
-    final isArchivedTab = state.statusFilter == 'archived';
+    final inProgressCount =
+        state.roadmaps.where((r) => r.progress > 0 && r.progress < 100).length;
     final notifier = ref.read(roadmapProvider.notifier);
     final listResetKey = Object.hash(
       state.statusFilter,
@@ -105,7 +139,7 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
         ? _initialVisibleCount
         : filtered.length;
 
-    final showFab = filtered.isNotEmpty || isArchivedTab;
+    final showFab = filtered.isNotEmpty;
 
     return Scaffold(
       floatingActionButton: showFab
@@ -115,7 +149,8 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
                     )
                   : const Icon(Icons.auto_awesome),
               label: const Text('Tạo mới'),
@@ -127,11 +162,19 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              if (state.isLoading && state.roadmaps.isEmpty && state.statusFilter == 'active')
+              if (state.isLoading &&
+                  state.roadmaps.isEmpty &&
+                  state.statusFilter == 'active')
                 SliverFillRemaining(
                   child: ListView(
                     padding: appScreenPadding(context),
-                    children: const [SkeletonCard(), SizedBox(height: 12), SkeletonCard(), SizedBox(height: 12), SkeletonCard()],
+                    children: const [
+                      SkeletonCard(),
+                      SizedBox(height: 12),
+                      SkeletonCard(),
+                      SizedBox(height: 12),
+                      SkeletonCard()
+                    ],
                   ),
                 )
               else ...[
@@ -145,8 +188,8 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
                       filteredCount: filtered.length,
                       inProgressCount: inProgressCount,
                       insight: insight,
-                      onStatusFilterChanged: notifier.setStatusFilter,
-                      onSearchChanged: (v) => notifier.setFilters(state.filters.copyWith(search: v)),
+                      onSearchChanged: (v) => notifier
+                          .setFilters(state.filters.copyWith(search: v)),
                       onClearSearch: () {
                         _searchController.clear();
                         notifier.setFilters(state.filters.copyWith(search: ''));
@@ -155,7 +198,8 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
                         context,
                         state.filters,
                         notifier.setFilters,
-                        categories: deriveRoadmapCategoryFilters(state.roadmaps),
+                        categories:
+                            deriveRoadmapCategoryFilters(state.roadmaps),
                       ),
                     ),
                   ),
@@ -167,19 +211,19 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
                       padding: appScreenPadding(context),
                       child: EmptyState(
                         title: state.roadmaps.isEmpty
-                            ? (isArchivedTab ? 'Chưa có roadmap lưu trữ' : 'Chưa có roadmap')
+                            ? 'Chưa có roadmap'
                             : 'Không khớp bộ lọc',
                         subtitle: state.roadmaps.isEmpty
-                            ? (isArchivedTab
-                                ? 'Roadmap lưu trữ sẽ xuất hiện ở đây.'
-                                : 'Tạo roadmap đầu tiên từ đề xuất AI hoặc chọn vai trò mục tiêu.')
+                            ? 'Tạo roadmap đầu tiên từ đề xuất AI hoặc chọn vai trò mục tiêu.'
                             : 'Thử từ khóa hoặc bộ lọc khác.',
-                        action: state.roadmaps.isEmpty && !isArchivedTab
+                        action: state.roadmaps.isEmpty
                             ? PrimaryButton(
                                 label: 'Tạo roadmap',
                                 icon: Icons.auto_awesome,
                                 loading: state.isGenerating,
-                                onPressed: state.isGenerating ? null : _openCreateSheet,
+                                onPressed: state.isGenerating
+                                    ? null
+                                    : _openCreateSheet,
                               )
                             : null,
                       ),
@@ -191,14 +235,18 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
                       appScreenPadding(context).left,
                       0,
                       appScreenPadding(context).right,
-                      canCollapseRoadmaps && !_roadmapsExpanded ? 0 : 96 + MediaQuery.paddingOf(context).bottom,
+                      canCollapseRoadmaps && !_roadmapsExpanded
+                          ? 0
+                          : 96 + MediaQuery.paddingOf(context).bottom,
                     ),
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
                           final roadmap = filtered[index];
                           final taskCount = taskCountFor(roadmap);
-                          final id = roadmap.slug.isNotEmpty ? roadmap.slug : roadmap.id;
+                          final id = roadmap.slug.isNotEmpty
+                              ? roadmap.slug
+                              : roadmap.id;
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 12),
                             child: RoadmapCompactCard(
@@ -206,6 +254,12 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
                               taskCount: taskCount,
                               onTap: () => context.push('/roadmaps/$id'),
                               onContinue: () => context.push('/roadmaps/$id'),
+                              onDelete: state.deletingRoadmapId == null
+                                  ? () => _deleteRoadmap(
+                                        roadmap.id,
+                                        roadmap.title,
+                                      )
+                                  : null,
                             ),
                           );
                         },
@@ -225,7 +279,8 @@ class _RoadmapsScreenState extends ConsumerState<RoadmapsScreen> {
                         child: ShowMoreListToggle(
                           expanded: _roadmapsExpanded,
                           hiddenCount: filtered.length - _initialVisibleCount,
-                          onToggle: () => setState(() => _roadmapsExpanded = !_roadmapsExpanded),
+                          onToggle: () => setState(
+                              () => _roadmapsExpanded = !_roadmapsExpanded),
                         ),
                       ),
                     ),

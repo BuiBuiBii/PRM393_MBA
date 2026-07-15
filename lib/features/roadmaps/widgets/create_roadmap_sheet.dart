@@ -45,10 +45,12 @@ class _CreateRoadmapSheetHost extends ConsumerStatefulWidget {
   final CreateRoadmapSheetConfig config;
 
   @override
-  ConsumerState<_CreateRoadmapSheetHost> createState() => _CreateRoadmapSheetHostState();
+  ConsumerState<_CreateRoadmapSheetHost> createState() =>
+      _CreateRoadmapSheetHostState();
 }
 
-class _CreateRoadmapSheetHostState extends ConsumerState<_CreateRoadmapSheetHost> {
+class _CreateRoadmapSheetHostState
+    extends ConsumerState<_CreateRoadmapSheetHost> {
   int? _selectedIndex;
 
   @override
@@ -59,17 +61,22 @@ class _CreateRoadmapSheetHostState extends ConsumerState<_CreateRoadmapSheetHost
 
   String get _cacheKey {
     final cfg = widget.config;
-    if (cfg.sourceMode == 'single_repo' && cfg.repoId != null && cfg.repoId!.isNotEmpty) {
+    if (cfg.sourceMode == 'single_repo' &&
+        cfg.repoId != null &&
+        cfg.repoId!.isNotEmpty) {
       return cfg.repoId!;
     }
-    if (cfg.sourceMode == 'all_analyzed_repos') return RepositoryNotifier.roleMatchAllKey;
-    if (cfg.repoIds != null && cfg.repoIds!.isNotEmpty) return '__selected__${cfg.repoIds!.join('_')}';
+    if (cfg.sourceMode == 'all_analyzed_repos')
+      return RepositoryNotifier.roleMatchAllKey;
+    if (cfg.repoIds != null && cfg.repoIds!.isNotEmpty)
+      return '__selected__${cfg.repoIds!.join('_')}';
     return cfg.sourceMode;
   }
 
   Future<void> _ensureRoleMatches({bool forceRefresh = false}) async {
     final analyses = ref.read(repositoryProvider).analyses;
-    if (widget.config.sourceMode == 'all_analyzed_repos' && analyses.isEmpty) return;
+    if (widget.config.sourceMode == 'all_analyzed_repos' && analyses.isEmpty)
+      return;
 
     await ref.read(repositoryProvider.notifier).calculateRoleMatches(
           sourceMode: widget.config.sourceMode,
@@ -95,17 +102,20 @@ class _CreateRoadmapSheetHostState extends ConsumerState<_CreateRoadmapSheetHost
     final notifier = ref.read(repositoryProvider.notifier);
     final roleMatch = notifier.roleMatchForKey(_cacheKey);
     final isLoadingRoleMatch = repoState.isLoadingRoleMatch(_cacheKey);
-    final roleMatchError = isLoadingRoleMatch ? null : notifier.roleMatchErrorForKey(_cacheKey);
+    final roleMatchError =
+        isLoadingRoleMatch ? null : notifier.roleMatchErrorForKey(_cacheKey);
     final matches = roleMatch?.matches ?? const <RoleMatchItem>[];
     final visibleMatches = matches.take(3).toList();
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(20, 0, 20, MediaQuery.paddingOf(context).bottom + 20),
+      padding: EdgeInsets.fromLTRB(
+          20, 0, 20, MediaQuery.paddingOf(context).bottom + 20),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Tạo roadmap mới', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const Text('Tạo roadmap mới',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
             Text(
               'Chọn vai trò từ kết quả Dev2Vec (tối đa 3 gợi ý).',
@@ -136,7 +146,10 @@ class _CreateRoadmapSheetHostState extends ConsumerState<_CreateRoadmapSheetHost
             else ...[
               const Text(
                 'Gợi ý từ Role Match',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary),
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary),
               ),
               const SizedBox(height: 8),
               for (var i = 0; i < visibleMatches.length; i++) ...[
@@ -150,7 +163,9 @@ class _CreateRoadmapSheetHostState extends ConsumerState<_CreateRoadmapSheetHost
                       : () async {
                           setState(() => _selectedIndex = i);
                           final match = visibleMatches[i];
-                          final roleId = match.roleId.trim().isNotEmpty ? match.roleId.trim() : match.role.trim();
+                          final roleId = match.roleId.trim().isNotEmpty
+                              ? match.roleId.trim()
+                              : match.role.trim();
                           await _onGenerate(
                             RoadmapGenerateParams(
                               roleId: roleId,
@@ -215,7 +230,8 @@ class _EmptyRoleMatchState extends StatelessWidget {
     return AppCard(
       child: Column(
         children: [
-          const Icon(Icons.analytics_outlined, size: 40, color: AppColors.primary),
+          const Icon(Icons.analytics_outlined,
+              size: 40, color: AppColors.primary),
           const SizedBox(height: 12),
           const Text(
             'Chưa có gợi ý role',

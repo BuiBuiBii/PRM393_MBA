@@ -2,7 +2,8 @@ import '../../../shared/models/app_models.dart';
 
 /// Insight kỹ năng từ phân tích — không tự tính role (Dev2Vec qua API).
 class SkillInsightSummary {
-  const SkillInsightSummary({required this.strongSignals, required this.missingSkills});
+  const SkillInsightSummary(
+      {required this.strongSignals, required this.missingSkills});
 
   final List<String> strongSignals;
   final List<String> missingSkills;

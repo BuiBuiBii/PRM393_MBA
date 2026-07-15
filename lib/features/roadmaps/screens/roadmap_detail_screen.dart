@@ -9,6 +9,7 @@ import '../../../shared/widgets/roadmap_widgets.dart';
 import '../../../shared/widgets/scroll_list_hints.dart';
 import '../../../shared/models/app_models.dart';
 import '../../repositories/providers/repository_provider.dart';
+import '../../chat/providers/chat_provider.dart';
 import '../providers/roadmap_provider.dart';
 import '../widgets/roadmap_detail_sections.dart';
 
@@ -20,6 +21,43 @@ class RoadmapDetailScreen extends ConsumerStatefulWidget {
   @override
   ConsumerState<RoadmapDetailScreen> createState() =>
       _RoadmapDetailScreenState();
+}
+
+Future<void> _confirmDeleteRoadmap(
+  BuildContext context,
+  RoadmapNotifier notifier,
+  RoadmapModel roadmap,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Xóa roadmap?'),
+      content: Text(
+        'Roadmap "${roadmap.title}" sẽ bị xóa khỏi danh sách của bạn.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Hủy'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Xóa'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return;
+  try {
+    await notifier.deleteRoadmap(roadmap.id);
+    if (context.mounted) context.go('/roadmaps');
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể xóa roadmap.')),
+      );
+    }
+  }
 }
 
 class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
@@ -46,6 +84,7 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
     return AsyncPageBody(
       isLoading: roadmapState.isLoading && roadmap == null,
       hasData: roadmap != null,
+      error: roadmapState.error,
       onRetry: () => notifier.fetchRoadmap(widget.roadmapId),
       child: roadmap == null
           ? const SizedBox.shrink()
@@ -89,72 +128,44 @@ class _RoadmapDetailBody extends ConsumerWidget {
           PageHeader(
             title: roadmap.title,
             subtitle: roadmap.subtitle,
-            trailing: roadmap.isArchived
-                ? null
-                : PrimaryButton(
-                    label: 'Lưu trữ',
-                    outlined: true,
-                    loading: roadmapState.isArchiving,
-                    onPressed: roadmapState.isArchiving
-                        ? null
-                        : () async {
-                            try {
-                              await notifier.archiveRoadmap(roadmap.id);
-                              if (!context.mounted) return;
-                              context.go('/roadmaps');
-                            } catch (_) {}
-                          },
-                  ),
+            trailing: null,
           ),
-          if (roadmap.isArchived) ...[
-            const AppBadge(
-                label: 'Đã lưu trữ', variant: AppBadgeVariant.warning),
-            const SizedBox(height: 8),
-          ],
           RoadmapDetailInfoCard(
               roadmap: roadmap, progress: progress, percent: percent),
           const SizedBox(height: 8),
           PrimaryButton(
             label: 'Hỏi AI về roadmap này',
             outlined: true,
-            onPressed: () => context.push(
-                '/chat?roadmapId=${Uri.encodeQueryComponent(roadmap.id)}'),
-          ),
-          if ((roadmap.roadmapSource?['repositoryId'] ?? '')
-              .toString()
-              .isNotEmpty) ...[
-            const SizedBox(height: 8),
-            PrimaryButton(
-              label: 'Tạo feedback theo tiến độ roadmap',
-              outlined: true,
-              onPressed: () async {
-                final repositoryId =
-                    roadmap.roadmapSource!['repositoryId'].toString();
-                try {
-                  await ref
-                      .read(repositoryProvider.notifier)
-                      .generateAiFeedback(repositoryId, roadmapId: roadmap.id);
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content:
-                          Text('Đã cập nhật feedback theo roadmap hiện tại.'),
-                    ),
-                  );
-                } catch (_) {
-                  if (!context.mounted) return;
+            onPressed: () async {
+              try {
+                await ref.read(chatProvider.notifier).createSession(
+                      'Tư vấn roadmap ${roadmap.careerOutcome.isNotEmpty ? roadmap.careerOutcome : roadmap.title}',
+                      roadmapId: roadmap.id,
+                    );
+                if (context.mounted) context.go('/chat');
+              } catch (_) {
+                if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        ref.read(repositoryProvider).error ??
-                            'Không thể tạo feedback theo roadmap.',
+                        ref.read(chatProvider).error ??
+                            'Không thể tạo chat cho roadmap.',
                       ),
                     ),
                   );
                 }
-              },
-            ),
-          ],
+              }
+            },
+          ),
+          const SizedBox(height: 8),
+          PrimaryButton(
+            label: 'Xóa roadmap',
+            outlined: true,
+            loading: roadmapState.deletingRoadmapId == roadmap.id,
+            onPressed: roadmapState.deletingRoadmapId != null
+                ? null
+                : () => _confirmDeleteRoadmap(context, notifier, roadmap),
+          ),
           const SizedBox(height: 16),
           RoadmapDetailTabBar(
               selectedTab: selectedTab, onTabSelected: onTabSelected),

@@ -8,18 +8,25 @@ class AdminApi {
 
   final Dio _dio;
 
-  AdminPage<T> _parsePage<T>(dynamic payload, T Function(Map<String, dynamic>) fromJson) {
+  AdminPage<T> _parsePage<T>(
+      dynamic payload, T Function(Map<String, dynamic>) fromJson) {
     final data = unwrapResponse<dynamic>(payload);
     if (data is! Map) {
-      return AdminPage(items: const [], pagination: AdminPagination.fromJson(null));
+      return AdminPage(
+          items: const [], pagination: AdminPagination.fromJson(null));
     }
     final map = Map<String, dynamic>.from(data);
     final itemsRaw = map['items'];
     final items = itemsRaw is List
-        ? itemsRaw.whereType<Map>().map((e) => fromJson(Map<String, dynamic>.from(e))).toList()
+        ? itemsRaw
+            .whereType<Map>()
+            .map((e) => fromJson(Map<String, dynamic>.from(e)))
+            .toList()
         : <T>[];
     final pagination = AdminPagination.fromJson(
-      map['pagination'] is Map ? Map<String, dynamic>.from(map['pagination'] as Map) : null,
+      map['pagination'] is Map
+          ? Map<String, dynamic>.from(map['pagination'] as Map)
+          : null,
     );
     return AdminPage(items: items, pagination: pagination);
   }
@@ -59,13 +66,15 @@ class AdminApi {
   }
 
   Future<AdminUserRecord> updateUserStatus(String userId, String status) async {
-    final res = await _dio.patch('/admin/users/$userId/status', data: {'status': status});
+    final res = await _dio
+        .patch('/admin/users/$userId/status', data: {'status': status});
     final map = _unwrapMap(res.data);
     return AdminUserRecord.fromJson(toRecord(map['user'] ?? map));
   }
 
   Future<AdminUserRecord> updateUserRole(String userId, String role) async {
-    final res = await _dio.patch('/admin/users/$userId/role', data: {'role': role});
+    final res =
+        await _dio.patch('/admin/users/$userId/role', data: {'role': role});
     final map = _unwrapMap(res.data);
     return AdminUserRecord.fromJson(toRecord(map['user'] ?? map));
   }
@@ -161,11 +170,14 @@ class AdminApi {
   Future<AdminRoadmapRecord> getRoadmap(String roadmapId) async {
     final res = await _dio.get('/admin/roadmaps/$roadmapId');
     final map = _unwrapMap(res.data);
-    return AdminRoadmapRecord.fromJson(toRecord(map['roadmap'] ?? map['item'] ?? map['detail'] ?? map));
+    return AdminRoadmapRecord.fromJson(
+        toRecord(map['roadmap'] ?? map['item'] ?? map['detail'] ?? map));
   }
 
-  Future<AdminRoadmapRecord> updateRoadmapStatus(String roadmapId, String status) async {
-    final res = await _dio.patch('/admin/roadmaps/$roadmapId/status', data: {'status': status});
+  Future<AdminRoadmapRecord> updateRoadmapStatus(
+      String roadmapId, String status) async {
+    final res = await _dio
+        .patch('/admin/roadmaps/$roadmapId/status', data: {'status': status});
     final map = _unwrapMap(res.data);
     return AdminRoadmapRecord.fromJson(toRecord(map['roadmap'] ?? map));
   }
@@ -173,18 +185,114 @@ class AdminApi {
   Future<AdminAnalysisRecord> getAnalysis(String analysisId) async {
     final res = await _dio.get('/admin/analysis/$analysisId');
     final map = _unwrapMap(res.data);
-    return AdminAnalysisRecord.fromJson(toRecord(map['analysis'] ?? map['item'] ?? map['detail'] ?? map));
+    return AdminAnalysisRecord.fromJson(
+        toRecord(map['analysis'] ?? map['item'] ?? map['detail'] ?? map));
   }
 
   Future<AdminFeedbackRecord> getAiFeedbackDetail(String feedbackId) async {
     final res = await _dio.get('/admin/ai-feedback/$feedbackId');
     final map = _unwrapMap(res.data);
-    return AdminFeedbackRecord.fromJson(toRecord(map['aiFeedback'] ?? map['feedback'] ?? map['item'] ?? map['detail'] ?? map));
+    return AdminFeedbackRecord.fromJson(toRecord(map['aiFeedback'] ??
+        map['feedback'] ??
+        map['item'] ??
+        map['detail'] ??
+        map));
   }
 
   Future<AdminRepoRecord> getRepository(String repositoryId) async {
     final res = await _dio.get('/admin/github/repositories/$repositoryId');
     final map = _unwrapMap(res.data);
-    return AdminRepoRecord.fromJson(toRecord(map['repository'] ?? map['repo'] ?? map['item'] ?? map['detail'] ?? map));
+    return AdminRepoRecord.fromJson(toRecord(map['repository'] ??
+        map['repo'] ??
+        map['item'] ??
+        map['detail'] ??
+        map));
+  }
+
+  Future<AdminChatSettings> getChatSettings() async {
+    final res = await _dio.get('/admin/chat/settings');
+    return AdminChatSettings.fromJson(_unwrapMap(res.data));
+  }
+
+  Future<AdminChatSettings> updateChatSettings(String mode) async {
+    final res = await _dio.patch(
+      '/admin/chat/settings',
+      data: {'mode': mode},
+    );
+    return AdminChatSettings.fromJson(_unwrapMap(res.data));
+  }
+
+  Future<AdminPage<AdminChatSession>> getChatSessions({
+    int page = 1,
+    int limit = 20,
+    String? status,
+    String? mode,
+    String? modeSource,
+  }) async {
+    final res = await _dio.get('/admin/chat/sessions', queryParameters: {
+      'page': page,
+      'limit': limit,
+      if (status != null && status.isNotEmpty) 'status': status,
+      if (mode != null && mode.isNotEmpty) 'mode': mode,
+      if (modeSource != null && modeSource.isNotEmpty) 'modeSource': modeSource,
+    });
+    return _parsePage(res.data, AdminChatSession.fromJson);
+  }
+
+  Future<AdminChatSession> getChatSession(String sessionId) async {
+    final res = await _dio.get('/admin/chat/sessions/$sessionId');
+    final map = _unwrapMap(res.data);
+    final session = toRecord(map['session'] ?? map);
+    final messages = map['messages'];
+    if (messages is List) session['messages'] = messages;
+    return AdminChatSession.fromJson(session);
+  }
+
+  Future<AdminChatSession> updateChatSessionMode(
+    String sessionId,
+    String mode, {
+    String? reason,
+  }) async {
+    final res = await _dio.patch(
+      '/admin/chat/sessions/$sessionId/mode',
+      data: {
+        'mode': mode,
+        if (reason != null && reason.isNotEmpty) 'reason': reason,
+      },
+    );
+    final map = _unwrapMap(res.data);
+    return AdminChatSession.fromJson(toRecord(map['session'] ?? map));
+  }
+
+  Future<AdminChatSession> useGlobalChatMode(String sessionId) async {
+    final res =
+        await _dio.patch('/admin/chat/sessions/$sessionId/use-global-mode');
+    final map = _unwrapMap(res.data);
+    return AdminChatSession.fromJson(toRecord(map['session'] ?? map));
+  }
+
+  Future<Map<String, dynamic>> sendAdminChatMessage(
+    String sessionId,
+    String content,
+  ) async {
+    final res = await _dio.post(
+      '/admin/chat/sessions/$sessionId/messages',
+      data: {'content': content},
+    );
+    return _unwrapMap(res.data);
+  }
+
+  Future<AdminChatSession> closeChatSession(
+    String sessionId, {
+    String? reason,
+  }) async {
+    final res = await _dio.patch(
+      '/admin/chat/sessions/$sessionId/close',
+      data: {
+        if (reason != null && reason.isNotEmpty) 'reason': reason,
+      },
+    );
+    final map = _unwrapMap(res.data);
+    return AdminChatSession.fromJson(toRecord(map['session'] ?? map));
   }
 }

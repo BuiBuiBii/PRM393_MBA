@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitanalyzer_flutter/core/network/app_api.dart';
 import 'package:gitanalyzer_flutter/core/network/normalizers.dart';
+import 'package:gitanalyzer_flutter/shared/models/app_models.dart';
 
 void main() {
   test('analysis calls POST directly and keeps repository id from request path',
@@ -170,5 +171,88 @@ void main() {
     expect(analysis.strengths, ['Clear project evidence.']);
     expect(analysis.weaknesses, ['Tests need improvement.']);
     expect(analysis.recommendations, ['Add integration tests.']);
+  });
+
+  test('analysis detail merges metadata and narrative from sibling wrappers',
+      () {
+    final analysis = normalizeAnalysis({
+      'data': {
+        'analysis': {
+          '_id': 'analysis-history',
+          'repositoryId': 'repository-history',
+          'summary': {'overallScore': 67.6},
+        },
+        'result': {
+          'strengths': ['Strong commit evidence.'],
+          'weaknesses': ['Testing evidence is limited.'],
+          'recommendations': ['Add integration tests.'],
+        },
+      },
+    });
+
+    expect(analysis.id, 'analysis-history');
+    expect(analysis.repositoryId, 'repository-history');
+    expect(analysis.scores.overall, 68);
+    expect(analysis.strengths, ['Strong commit evidence.']);
+    expect(analysis.weaknesses, ['Testing evidence is limited.']);
+    expect(analysis.recommendations, ['Add integration tests.']);
+    expect(analysis.hasCompleteNarrative, isTrue);
+  });
+
+  test('analysis history list normalizes nested result content', () {
+    final analyses = normalizeAnalyses({
+      'data': {
+        'items': [
+          {
+            'analysis': {
+              'analysisId': 'analysis-list',
+              'repositoryId': 'repository-list',
+            },
+            'analysisResult': {
+              'strengths': ['Clear architecture.'],
+              'weaknesses': ['Missing documentation.'],
+              'recommendations': ['Document the API.'],
+            },
+          },
+        ],
+      },
+    });
+
+    expect(analyses, hasLength(1));
+    expect(analyses.single.id, 'analysis-list');
+    expect(analyses.single.strengths, ['Clear architecture.']);
+    expect(analyses.single.weaknesses, ['Missing documentation.']);
+    expect(analyses.single.recommendations, ['Document the API.']);
+  });
+
+  test('analysis can be enriched from its persisted snapshot narrative', () {
+    final analysis = normalizeAnalysis({
+      'data': {
+        'analysisId': 'analysis-old',
+        'snapshotId': 'snapshot-old',
+        'repositoryId': 'repository-old',
+        'summary': {'overallScore': 60},
+      },
+    });
+    final snapshot = RepoAnalysisSnapshotModel.fromJson({
+      '_id': 'snapshot-old',
+      'repositoryId': 'repository-old',
+      'strengths': ['Good API structure.'],
+      'weaknesses': ['Low test coverage.'],
+      'recommendations': ['Add API integration tests.'],
+    });
+
+    final enriched = analysis.withNarrative(
+      strengths: snapshot.strengths,
+      weaknesses: snapshot.weaknesses,
+      recommendations: snapshot.recommendations,
+    );
+
+    expect(enriched.id, analysis.id);
+    expect(enriched.snapshotId, 'snapshot-old');
+    expect(enriched.strengths, ['Good API structure.']);
+    expect(enriched.weaknesses, ['Low test coverage.']);
+    expect(enriched.recommendations, ['Add API integration tests.']);
+    expect(enriched.hasCompleteNarrative, isTrue);
   });
 }

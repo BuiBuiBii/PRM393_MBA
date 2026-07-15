@@ -25,7 +25,8 @@ Future<void> generateAndOpenRoadmap(
       message: 'Đã tạo roadmap cho ${params.targetRole}',
       variant: AppSnackVariant.success,
     );
-    context.push('/roadmaps/${roadmap.slug.isNotEmpty ? roadmap.slug : roadmap.id}');
+    context.push(
+        '/roadmaps/${roadmap.slug.isNotEmpty ? roadmap.slug : roadmap.id}');
   } catch (_) {
     if (context.mounted) {
       AppSnackbar.show(

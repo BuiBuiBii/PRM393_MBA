@@ -21,6 +21,8 @@ class RoadmapRepository {
 
   Future<RoadmapModel> archiveRoadmap(String id) => _api.archiveRoadmap(id);
 
+  Future<void> deleteRoadmap(String id) => _api.deleteRoadmap(id);
+
   Future<Map<String, String>> getLearningAvailability(String roadmapId) =>
       _api.getRoadmapLearningAvailability(roadmapId);
 

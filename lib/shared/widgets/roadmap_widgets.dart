@@ -495,7 +495,9 @@ class SkillRadarChartWidget extends StatelessWidget {
                 tickCount: 4,
                 ticksTextStyle: context.appLabelStyle.copyWith(fontSize: 10),
                 getTitle: (index, angle) {
-                  if (index >= entries.length) return RadarChartTitle(text: '');
+                  if (index >= entries.length) {
+                    return const RadarChartTitle(text: '');
+                  }
                   final label = entries[index].skill;
                   return RadarChartTitle(
                       text: label.length > 10

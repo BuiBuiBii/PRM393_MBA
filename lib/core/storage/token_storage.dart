@@ -17,8 +17,10 @@ class TokenStorage implements TokenStorageReader {
 
   final SharedPreferences _prefs;
 
+  @override
   Future<String?> getToken() async => _prefs.getString(AppConfig.tokenKey);
 
+  @override
   Future<void> saveToken(String token) async {
     await _prefs.setString(AppConfig.tokenKey, token);
   }
@@ -27,6 +29,7 @@ class TokenStorage implements TokenStorageReader {
     await _prefs.remove(AppConfig.tokenKey);
   }
 
+  @override
   Future<Map<String, dynamic>?> getUser() async {
     final raw = _prefs.getString(AppConfig.userKey);
     if (raw == null || raw.isEmpty) return null;
@@ -43,6 +46,7 @@ class TokenStorage implements TokenStorageReader {
     return null;
   }
 
+  @override
   Future<void> saveUser(Map<String, dynamic> user) async {
     await _prefs.setString(AppConfig.userKey, jsonEncode(user));
   }
@@ -51,6 +55,7 @@ class TokenStorage implements TokenStorageReader {
     await _prefs.remove(AppConfig.userKey);
   }
 
+  @override
   Future<void> clear() async {
     await clearToken();
     await clearUser();
