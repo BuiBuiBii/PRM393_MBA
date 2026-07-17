@@ -8,6 +8,10 @@ build/
 .pub/
 pubspec.lock
 
+# Release binaries (build locally, do not commit)
+*.apk
+*.aab
+
 # IDE
 .idea/
 *.iml

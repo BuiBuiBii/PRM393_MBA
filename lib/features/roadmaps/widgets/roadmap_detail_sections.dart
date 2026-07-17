@@ -426,7 +426,6 @@ class RoadmapDev2VecMetaCard extends StatelessWidget {
     final matchScore = roleMatchInfo['matchScore'];
     final matchLevel =
         roleMatchInfo['matchLevelLabel'] ?? roleMatchInfo['matchLevel'] ?? '';
-    final scoringMethod = roleMatchInfo['scoringMethod']?.toString();
 
     return Container(
       width: double.infinity,

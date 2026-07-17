@@ -39,8 +39,6 @@ class RoadmapRepository {
 
   Future<Map<String, dynamic>> getProgress(String roadmapId) =>
       _api.getRoadmapProgress(roadmapId);
-
-  Future<Map<String, dynamic>> getMyProgress() => _api.getMyProgress();
 }
 
 final roadmapRepositoryProvider = Provider<RoadmapRepository>(

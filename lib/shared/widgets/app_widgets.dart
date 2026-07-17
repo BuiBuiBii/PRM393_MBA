@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 
@@ -89,61 +89,6 @@ class AppCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class GithubMarkIcon extends StatelessWidget {
-  const GithubMarkIcon({super.key, this.size = 24, this.color = Colors.black});
-
-  final double size;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size(size, size),
-      painter: _GithubMarkPainter(color),
-    );
-  }
-}
-
-class _GithubMarkPainter extends CustomPainter {
-  _GithubMarkPainter(this.color);
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color;
-    final path = Path()
-      ..moveTo(size.width * 0.5, size.height * 0.04)
-      ..cubicTo(size.width * 0.28, size.height * 0.04, size.width * 0.04, size.height * 0.24, size.width * 0.04, size.height * 0.5)
-      ..cubicTo(size.width * 0.04, size.height * 0.7, size.width * 0.16, size.height * 0.87, size.width * 0.34, size.height * 0.94)
-      ..lineTo(size.width * 0.34, size.height * 0.82)
-      ..cubicTo(size.width * 0.3, size.height * 0.8, size.width * 0.28, size.height * 0.76, size.width * 0.28, size.height * 0.72)
-      ..cubicTo(size.width * 0.28, size.height * 0.7, size.width * 0.29, size.height * 0.68, size.width * 0.3, size.height * 0.66)
-      ..cubicTo(size.width * 0.22, size.height * 0.64, size.width * 0.16, size.height * 0.58, size.width * 0.16, size.height * 0.5)
-      ..cubicTo(size.width * 0.16, size.height * 0.44, size.width * 0.18, size.height * 0.4, size.width * 0.22, size.height * 0.36)
-      ..cubicTo(size.width * 0.2, size.height * 0.3, size.width * 0.2, size.height * 0.22, size.width * 0.22, size.height * 0.16)
-      ..cubicTo(size.width * 0.28, size.height * 0.18, size.width * 0.34, size.height * 0.2, size.width * 0.4, size.height * 0.2)
-      ..cubicTo(size.width * 0.44, size.height * 0.14, size.width * 0.52, size.height * 0.1, size.width * 0.6, size.height * 0.1)
-      ..cubicTo(size.width * 0.66, size.height * 0.1, size.width * 0.72, size.height * 0.12, size.width * 0.76, size.height * 0.16)
-      ..cubicTo(size.width * 0.82, size.height * 0.14, size.width * 0.88, size.height * 0.12, size.width * 0.94, size.height * 0.1)
-      ..cubicTo(size.width * 0.96, size.height * 0.16, size.width * 0.96, size.height * 0.22, size.width * 0.94, size.height * 0.28)
-      ..cubicTo(size.width * 0.98, size.height * 0.32, size.width, size.height * 0.38, size.width, size.height * 0.44)
-      ..cubicTo(size.width, size.height * 0.52, size.width * 0.96, size.height * 0.58, size.width * 0.9, size.height * 0.62)
-      ..cubicTo(size.width * 0.92, size.height * 0.66, size.width * 0.92, size.height * 0.7, size.width * 0.92, size.height * 0.72)
-      ..cubicTo(size.width * 0.92, size.height * 0.76, size.width * 0.9, size.height * 0.8, size.width * 0.86, size.height * 0.82)
-      ..lineTo(size.width * 0.86, size.height * 0.94)
-      ..cubicTo(size.width * 0.94, size.height * 0.91, size.width, size.height * 0.84, size.width, size.height * 0.76)
-      ..cubicTo(size.width, size.height * 0.7, size.width * 0.98, size.height * 0.64, size.width * 0.94, size.height * 0.6)
-      ..cubicTo(size.width * 0.98, size.height * 0.54, size.width, size.height * 0.48, size.width, size.height * 0.42)
-      ..cubicTo(size.width, size.height * 0.22, size.width * 0.78, size.height * 0.04, size.width * 0.5, size.height * 0.04)
-      ..close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 enum AppBadgeVariant { info, success, warning, neutral }

@@ -430,15 +430,6 @@ Map<String, dynamic> normalizeDashboard(dynamic payload) {
   };
 }
 
-Map<String, dynamic> normalizeApiHealth(dynamic payload) {
-  final map = toRecord(unwrapResponse<dynamic>(payload));
-  return {
-    ...map,
-    'status': map['status'] ?? 'unknown',
-    'environment': map['environment'],
-  };
-}
-
 String mapRoadmapTaskStatus(String? status) {
   switch (status) {
     case 'completed':

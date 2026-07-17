@@ -16,11 +16,6 @@ class AppApi {
     return normalizeDashboard(res.data);
   }
 
-  Future<Map<String, dynamic>> checkServerHealth() async {
-    final res = await _dio.get('/health');
-    return normalizeApiHealth(res.data);
-  }
-
   Future<List<RepositoryModel>> getCachedRepositories() async {
     final res = await _dio.get('/github/repositories/cached');
     return normalizeRepositories(res.data);
@@ -149,15 +144,6 @@ class AppApi {
     return normalizeSnapshot(res.data);
   }
 
-  Future<SnapshotCompareResultModel> compareSnapshots(
-      String fromId, String toId) async {
-    final res = await _dio.post('/snapshots/compare', data: {
-      'fromSnapshotId': fromId,
-      'toSnapshotId': toId,
-    });
-    return normalizeSnapshotCompare(res.data);
-  }
-
   Future<SnapshotCompareResultModel> getProgressComparison(
       String repoId) async {
     final res = await _dio.get('/repositories/$repoId/progress-comparison');
@@ -192,13 +178,6 @@ class AppApi {
   Future<List<AiFeedbackModel>> getMyAiFeedback() async {
     final res = await _dio.get('/ai-feedback/me');
     return normalizeAiFeedbacks(res.data);
-  }
-
-  Future<Map<String, dynamic>> getGitHubOAuthUrl(
-      {required String redirectUrl}) async {
-    final res = await _dio
-        .get('/github/oauth', queryParameters: {'redirectUrl': redirectUrl});
-    return Map<String, dynamic>.from(unwrapResponse(res.data) as Map? ?? {});
   }
 
   Future<Map<String, dynamic>> getGitHubAccount() async {
@@ -333,27 +312,6 @@ class AppApi {
     return normalizeRoadmap(res.data);
   }
 
-  /// @deprecated Dùng [generateRoadmap] với [RoadmapGenerateParams].
-  Future<RoadmapModel> generateRoadmapLegacy({
-    required String targetRole,
-    String? repoId,
-    String level = 'beginner',
-    int durationWeeks = 6,
-    String language = 'vi',
-    bool forceRegenerate = false,
-  }) =>
-      generateRoadmap(
-        RoadmapGenerateParams(
-          roleId: Dev2VecRole.findByName(targetRole)?.id ?? targetRole,
-          targetRole: targetRole,
-          repoId: repoId,
-          level: level,
-          durationWeeks: durationWeeks,
-          language: language,
-          forceRegenerate: forceRegenerate,
-        ),
-      );
-
   Future<RoadmapModel> getRoadmap(String id) async {
     final res = await _dio.get('/roadmaps/$id');
     return normalizeRoadmap(res.data);
@@ -416,30 +374,5 @@ class AppApi {
 
   Future<void> deleteRoadmap(String id) async {
     await _dio.delete('/roadmaps/$id');
-  }
-
-  Future<Map<String, dynamic>> getMyProgress() async {
-    final res = await _dio.get('/progress/me');
-    return Map<String, dynamic>.from(unwrapResponse(res.data) as Map? ?? {});
-  }
-
-  Future<Map<String, dynamic>> getAiHealth() async {
-    final res = await _dio.get('/ai/health');
-    return Map<String, dynamic>.from(unwrapResponse(res.data) as Map? ?? {});
-  }
-
-  Future<void> submitReport({
-    required String reason,
-    String? targetType,
-    String? targetId,
-    String? description,
-  }) async {
-    await _dio.post('/reports', data: {
-      'reason': reason,
-      if (targetType != null && targetType.isNotEmpty) 'targetType': targetType,
-      if (targetId != null && targetId.isNotEmpty) 'targetId': targetId,
-      if (description != null && description.isNotEmpty)
-        'description': description,
-    });
   }
 }

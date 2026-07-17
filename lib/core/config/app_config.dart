@@ -25,8 +25,8 @@ class AppConfig {
         : apiBaseUrl;
   }
 
-  /// BE chạy trên máy host, dùng khi develop với emulator.
-  static const String localAndroidApiBaseUrl = 'http://10.0.2.2:5000/api';
+  /// BE chạy trên máy host, dùng khi develop với emulator:
+  /// `--dart-define=API_BASE_URL=http://10.0.2.2:5000/api`
 
   static const String tokenKey = 'gitanalyzer.jwt';
   static const String userKey = 'gitanalyzer.user';
