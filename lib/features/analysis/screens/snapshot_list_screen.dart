@@ -163,7 +163,9 @@ class _SnapshotListScreenState extends ConsumerState<SnapshotListScreen> {
     Color color = AppColors.emerald;
     if (score < 50) {
       color = AppColors.rose;
-    } else if (score < 75) color = AppColors.amber;
+    } else if (score < 75) {
+      color = AppColors.amber;
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

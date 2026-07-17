@@ -69,9 +69,8 @@ class AuthApi {
 class AuthRepository {
   AuthRepository({
     required AuthApi api,
-    required TokenStorageReader storage,
-  })  : _api = api,
-        storage = storage;
+    required this.storage,
+  }) : _api = api;
 
   final AuthApi _api;
   final TokenStorageReader storage;

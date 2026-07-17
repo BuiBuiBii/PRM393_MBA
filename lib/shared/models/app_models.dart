@@ -1426,7 +1426,9 @@ class RepoAnalysisSnapshotModel {
       Iterable iterable = [];
       if (v is List) {
         iterable = v;
-      } else if (v is Map) iterable = v.values;
+      } else if (v is Map) {
+        iterable = v.values;
+      }
 
       return iterable
           .map((e) {
@@ -1481,7 +1483,9 @@ class SnapshotCompareResultModel {
       Iterable iterable = [];
       if (v is List) {
         iterable = v;
-      } else if (v is Map) iterable = v.values;
+      } else if (v is Map) {
+        iterable = v.values;
+      }
 
       return iterable
           .map((e) {
