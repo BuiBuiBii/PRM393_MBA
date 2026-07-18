@@ -89,25 +89,70 @@ class _SnapshotDetailScreenState extends ConsumerState<SnapshotDetailScreen> {
           ),
           const SizedBox(height: 20),
           
-          Text('Điểm số', style: context.appHeadingStyle.copyWith(fontSize: 18)),
+          Text('Kết quả phân tích', style: context.appHeadingStyle.copyWith(fontSize: 18)),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _buildScoreCard(context, 'Overall', snap.scores.overall, AppColors.primary)),
-              const SizedBox(width: 8),
-              Expanded(child: _buildScoreCard(context, 'Architecture', snap.scores.architecture, AppColors.emerald)),
-              const SizedBox(width: 8),
-              Expanded(child: _buildScoreCard(context, 'Completeness', snap.scores.completeness, AppColors.amber)),
+              Expanded(
+                child: _buildScoreCard(
+                  context,
+                  'Sẵn sàng',
+                  snap.readinessScore,
+                  AppColors.primary,
+                ),
+              ),
+              if (snap.userLevel != null && snap.userLevel!.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildScoreCard(
+                    context,
+                    'Level',
+                    snap.userLevel!,
+                    AppColors.emerald,
+                    isText: true,
+                  ),
+                ),
+              ],
             ],
           ),
+          if (snap.careerDirection != null &&
+              snap.careerDirection!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+              ),
+              child: Text(
+                'Hướng nghề: ${snap.careerDirection}',
+                style: context.appBodyStyle.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+          if (snap.analysisScope != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              '${snap.analysisScope!.userCommits}/${snap.analysisScope!.totalRepoCommits} commits • '
+              '${snap.analysisScope!.activeDays} ngày hoạt động',
+              style: context.appCaptionStyle,
+            ),
+          ],
           const SizedBox(height: 24),
-          
-          if (snap.strengths.isNotEmpty)
-            _buildListSection(context, 'Điểm mạnh', Icons.thumb_up, AppColors.emerald, snap.strengths),
-            
-          if (snap.weaknesses.isNotEmpty)
-            _buildListSection(context, 'Điểm yếu', Icons.thumb_down, AppColors.rose, snap.weaknesses),
-            
+
+          if (snap.topSkills.isNotEmpty)
+            _buildListSection(
+              context,
+              'Kỹ năng nổi bật',
+              Icons.star_outline,
+              AppColors.emerald,
+              snap.topSkills,
+            ),
           if (snap.missingSkills.isNotEmpty)
             _buildListSection(context, 'Skill còn thiếu', Icons.remove_circle_outline, AppColors.amber, snap.missingSkills),
             
@@ -118,7 +163,13 @@ class _SnapshotDetailScreenState extends ConsumerState<SnapshotDetailScreen> {
     );
   }
 
-  Widget _buildScoreCard(BuildContext context, String title, int score, Color color) {
+  Widget _buildScoreCard(
+    BuildContext context,
+    String title,
+    Object value,
+    Color color, {
+    bool isText = false,
+  }) {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -127,10 +178,18 @@ class _SnapshotDetailScreenState extends ConsumerState<SnapshotDetailScreen> {
       ),
       color: color.withValues(alpha: 0.05),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
         child: Column(
           children: [
-            Text(score.toString(), style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+            Text(
+              value.toString(),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: isText ? 16 : 24,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
             const SizedBox(height: 4),
             Text(title, style: context.appLabelStyle),
           ],

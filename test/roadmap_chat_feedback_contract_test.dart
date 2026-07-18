@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gitanalyzer_flutter/core/network/normalizers.dart';
+import 'package:gitanalyzer_flutter/features/roadmaps/utils/roadmap_progress_utils.dart';
 import 'package:gitanalyzer_flutter/shared/models/app_models.dart';
 
 void main() {
@@ -63,6 +64,50 @@ void main() {
       });
 
       expect(roadmap.modules.single.nodes.single.id, isEmpty);
+    });
+
+    test('merge progress payload restores completed nodes after reload', () {
+      final roadmap = normalizeRoadmap({
+        'data': {
+          'roadmapId': 'roadmap-1',
+          'targetRole': 'Data Scientist',
+          'mainRoadmap': {
+            'phases': [
+              {
+                'tasks': [
+                  {
+                    'itemId': 'main-1-1-sql',
+                    'title': 'SQL',
+                    'estimatedHours': 4,
+                  },
+                  {
+                    'itemId': 'main-1-2-python',
+                    'title': 'Python',
+                    'estimatedHours': 4,
+                  },
+                ],
+              },
+            ],
+          },
+          'progressSummary': {'overallProgress': 0},
+        },
+      });
+
+      final merged = mergeRoadmapProgressPayload(roadmap, {
+        'progressSummary': {
+          'overallProgress': 50,
+          'completedItems': 1,
+          'totalItems': 2,
+        },
+        'items': [
+          {'itemId': 'main-1-1-sql', 'status': 'completed'},
+          {'itemId': 'main-1-2-python', 'status': 'not_started'},
+        ],
+      });
+
+      expect(merged.modules.single.nodes.first.status, 'completed');
+      expect(merged.modules.single.nodes.last.status, isNot('completed'));
+      expect(roadmapProgressPercent(merged), 50);
     });
   });
 

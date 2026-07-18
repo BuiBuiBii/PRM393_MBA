@@ -255,4 +255,55 @@ void main() {
     expect(enriched.recommendations, ['Add API integration tests.']);
     expect(enriched.hasCompleteNarrative, isTrue);
   });
+
+  test('snapshot model parses new BE response shape', () {
+    final snapshot = RepoAnalysisSnapshotModel.fromJson({
+      'snapshotId': 'snap-1',
+      'repository': {'repositoryId': 'repo-1', 'fullName': 'user/repo'},
+      'summary': {
+        'userReadinessScore': 72,
+        'userLevel': 'Intermediate',
+        'careerDirection': 'Backend Developer',
+      },
+      'topSkills': [
+        {
+          'skillName': 'Node.js',
+          'canonicalSkillName': 'Node.js',
+          'score': 80,
+          'level': 'strong',
+        },
+      ],
+      'missingSkills': [
+        {'skillName': 'Docker', 'canonicalSkillName': 'Docker'},
+      ],
+      'createdAt': '2026-07-17T03:44:00.000Z',
+    });
+
+    expect(snapshot.id, 'snap-1');
+    expect(snapshot.repoId, 'repo-1');
+    expect(snapshot.readinessScore, 72);
+    expect(snapshot.userLevel, 'Intermediate');
+    expect(snapshot.topSkills, ['Node.js']);
+    expect(snapshot.missingSkills, ['Docker']);
+  });
+
+  test('snapshot compare model parses readiness delta from BE', () {
+    final comparison = SnapshotCompareResultModel.fromJson({
+      'fromSnapshot': {'userReadinessScore': 45},
+      'toSnapshot': {'userReadinessScore': 62},
+      'delta': {'userReadinessScore': 17},
+      'resolvedMissingSkills': [
+        {'skillName': 'Git'},
+      ],
+      'newMissingSkills': [
+        {'skillName': 'Docker'},
+      ],
+    });
+
+    expect(comparison.overallBefore, 45);
+    expect(comparison.overallAfter, 62);
+    expect(comparison.overallChange, 17);
+    expect(comparison.resolvedMissingSkills, ['Git']);
+    expect(comparison.newMissingSkills, ['Docker']);
+  });
 }

@@ -1,6 +1,7 @@
+import '../../../core/network/normalizers.dart';
 import '../../../shared/models/app_models.dart';
 
-/// Tính % hoàn thành từ trạng thái node thực tế.
+/// Tính % hoàn thành từ trạng thái node; fallback `progressSummary` từ BE.
 int roadmapProgressPercent(RoadmapModel roadmap) {
   var completed = 0;
   var total = 0;
@@ -10,8 +11,59 @@ int roadmapProgressPercent(RoadmapModel roadmap) {
       if (node.status == 'completed') completed++;
     }
   }
+  if (total > 0 && completed > 0) {
+    return ((completed / total) * 100).round();
+  }
+
+  final summaryProgress = int.tryParse(
+    roadmap.progressSummary?['overallProgress']?.toString() ?? '',
+  );
+  if (summaryProgress != null && summaryProgress > 0) {
+    return summaryProgress;
+  }
+  if (roadmap.progress > 0) return roadmap.progress;
   if (total == 0) return 0;
   return ((completed / total) * 100).round();
+}
+
+RoadmapModel mergeRoadmapProgressPayload(
+  RoadmapModel roadmap,
+  Map<String, dynamic> payload,
+) {
+  final summary = payload['progressSummary'] is Map
+      ? Map<String, dynamic>.from(payload['progressSummary'] as Map)
+      : roadmap.progressSummary;
+  final statuses = <String, String>{};
+  for (final item
+      in (payload['items'] as List? ?? const []).whereType<Map>()) {
+    final itemId = (item['itemId'] ?? '').toString();
+    if (itemId.isNotEmpty) {
+      statuses[itemId] = (item['status'] ?? 'not_started').toString();
+    }
+  }
+
+  if (statuses.isEmpty && summary == null) return roadmap;
+
+  final modules = roadmap.modules.map((module) {
+    final nodes = module.nodes.map((node) {
+      final nextStatus = statuses[node.id];
+      return nextStatus == null
+          ? node
+          : node.copyWith(status: mapRoadmapTaskStatus(nextStatus));
+    }).toList();
+    return RoadmapModuleModel(
+      id: module.id,
+      title: module.title,
+      description: module.description,
+      nodes: nodes,
+    );
+  }).toList();
+
+  final merged = roadmap.copyWith(
+    modules: modules,
+    progressSummary: summary ?? roadmap.progressSummary,
+  );
+  return merged.copyWith(progress: roadmapProgressPercent(merged));
 }
 
 ({int completed, int total}) roadmapNodeCounts(RoadmapModel roadmap) {

@@ -116,11 +116,17 @@ class _SnapshotListScreenState extends ConsumerState<SnapshotListScreen> {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      _buildStatBadge('Overall', snap.scores.overall),
-                      const SizedBox(width: 8),
-                      _buildStatBadge('Architecture', snap.scores.architecture),
-                      const SizedBox(width: 8),
-                      _buildStatBadge('Completeness', snap.scores.completeness),
+                      _buildStatBadge('Sẵn sàng', snap.readinessScore),
+                      if (snap.userLevel != null &&
+                          snap.userLevel!.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        _buildLevelBadge(snap.userLevel!),
+                      ],
+                      if (snap.topSkills.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        _buildStatBadge('Kỹ năng', snap.topSkills.length,
+                            isCount: true),
+                      ],
                     ],
                   ),
                   if (snap.missingSkills.isNotEmpty) ...[
@@ -159,12 +165,16 @@ class _SnapshotListScreenState extends ConsumerState<SnapshotListScreen> {
     );
   }
 
-  Widget _buildStatBadge(String label, int score) {
+  Widget _buildStatBadge(String label, int score, {bool isCount = false}) {
     Color color = AppColors.emerald;
-    if (score < 50) {
-      color = AppColors.rose;
-    } else if (score < 75) {
-      color = AppColors.amber;
+    if (!isCount) {
+      if (score < 50) {
+        color = AppColors.rose;
+      } else if (score < 75) {
+        color = AppColors.amber;
+      }
+    } else {
+      color = AppColors.primary;
     }
 
     return Container(
@@ -186,6 +196,24 @@ class _SnapshotListScreenState extends ConsumerState<SnapshotListScreen> {
                 fontSize: 12, fontWeight: FontWeight.bold, color: color),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLevelBadge(String level) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        level,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primary,
+        ),
       ),
     );
   }

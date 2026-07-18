@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Lưu tiến độ node roadmap cục bộ (BE chưa có API cập nhật task status).
+/// Lưu bookmark node roadmap cục bộ (tiến độ task lấy từ BE).
 class RoadmapProgressStorage {
   RoadmapProgressStorage._(this._prefs);
 

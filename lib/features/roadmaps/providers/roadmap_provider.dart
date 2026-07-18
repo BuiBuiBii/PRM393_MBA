@@ -230,14 +230,15 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
       }
       final roadmaps = await safeRequest(
           () => _repository.getMyRoadmaps(status: effectiveStatus));
+      final enriched = await Future.wait(roadmaps.map(_enrichWithProgress));
       final storage = await _storage();
       final scope = await _userScope();
       final bookmarks = await storage.loadBookmarks(scope);
-      final stats = computeLearningStats(roadmaps);
+      final stats = computeLearningStats(enriched);
       state = state.copyWith(
-        roadmaps: roadmaps,
+        roadmaps: enriched,
         learningStats: stats.copyWith(bookmarkedNodeIds: bookmarks.toList()),
-        skillProgress: computeSkillProgress(roadmaps),
+        skillProgress: computeSkillProgress(enriched),
         bookmarkedNodeIds: bookmarks,
         isLoading: false,
       );
@@ -326,7 +327,7 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final roadmap = await safeRequest(() => _repository.getRoadmap(id));
-      final withProgress = roadmap;
+      final withProgress = await _enrichWithProgress(roadmap);
       await _persistRoadmapsState([
         withProgress,
         ...state.roadmaps.where((r) => r.id != withProgress.id),
@@ -486,41 +487,22 @@ class RoadmapNotifier extends Notifier<RoadmapState> {
 
   void _applyAuthoritativeProgress(
       String roadmapId, Map<String, dynamic> payload) {
-    final summary = payload['progressSummary'] is Map
-        ? Map<String, dynamic>.from(payload['progressSummary'] as Map)
-        : <String, dynamic>{};
-    final statuses = <String, String>{};
-    for (final item
-        in (payload['items'] as List? ?? const []).whereType<Map>()) {
-      final itemId = (item['itemId'] ?? '').toString();
-      if (itemId.isNotEmpty) {
-        statuses[itemId] = (item['status'] ?? 'not_started').toString();
-      }
-    }
-
     final roadmaps = state.roadmaps.map((roadmap) {
       if (roadmap.id != roadmapId && roadmap.slug != roadmapId) return roadmap;
-      final modules = roadmap.modules.map((module) {
-        final nodes = module.nodes.map((node) {
-          final nextStatus = statuses[node.id];
-          return nextStatus == null
-              ? node
-              : node.copyWith(status: mapRoadmapTaskStatus(nextStatus));
-        }).toList();
-        return RoadmapModuleModel(
-          id: module.id,
-          title: module.title,
-          description: module.description,
-          nodes: nodes,
-        );
-      }).toList();
-      final overall =
-          int.tryParse(summary['overallProgress']?.toString() ?? '') ??
-              roadmapProgressPercent(roadmap.copyWith(modules: modules));
-      return roadmap.copyWith(
-          modules: modules, progress: overall, progressSummary: summary);
+      return mergeRoadmapProgressPayload(roadmap, payload);
     }).toList();
     _persistRoadmapsState(roadmaps);
+  }
+
+  Future<RoadmapModel> _enrichWithProgress(RoadmapModel roadmap) async {
+    if (AppConfig.demoMode || roadmap.id.isEmpty) return roadmap;
+    try {
+      final payload =
+          await safeRequest(() => _repository.getProgress(roadmap.id));
+      return mergeRoadmapProgressPayload(roadmap, payload);
+    } catch (_) {
+      return roadmap;
+    }
   }
 
   Future<LearningContentModel> openLearning(

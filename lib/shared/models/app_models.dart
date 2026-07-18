@@ -1409,6 +1409,13 @@ class RepoAnalysisSnapshotModel {
     required this.strengths,
     required this.weaknesses,
     required this.recommendations,
+    this.userReadinessScore,
+    this.userLevel,
+    this.careerDirection,
+    this.topSkills = const [],
+    this.topSkillDetails = const [],
+    this.scoreBreakdown = const {},
+    this.analysisScope,
   });
 
   final String id;
@@ -1420,8 +1427,33 @@ class RepoAnalysisSnapshotModel {
   final List<String> strengths;
   final List<String> weaknesses;
   final List<String> recommendations;
+  final int? userReadinessScore;
+  final String? userLevel;
+  final String? careerDirection;
+  final List<String> topSkills;
+  final List<AnalysisSkillModel> topSkillDetails;
+  final Map<String, int> scoreBreakdown;
+  final AnalysisScopeModel? analysisScope;
+
+  int get readinessScore => userReadinessScore ?? scores.overall;
 
   factory RepoAnalysisSnapshotModel.fromJson(Map<String, dynamic> json) {
+    final summary = json['summary'] is Map
+        ? Map<String, dynamic>.from(json['summary'] as Map)
+        : <String, dynamic>{};
+    final repository = json['repository'] is Map
+        ? Map<String, dynamic>.from(json['repository'] as Map)
+        : <String, dynamic>{};
+    final scopeJson = json['analysisScope'] is Map
+        ? Map<String, dynamic>.from(json['analysisScope'] as Map)
+        : null;
+    final topSkillDetails = (json['topSkills'] as List? ?? [])
+        .whereType<Map>()
+        .map((item) =>
+            AnalysisSkillModel.fromJson(Map<String, dynamic>.from(item)))
+        .where((item) => item.displayName.isNotEmpty)
+        .toList();
+
     List<String> strList(dynamic v) {
       Iterable iterable = [];
       if (v is List) {
@@ -1433,7 +1465,13 @@ class RepoAnalysisSnapshotModel {
       return iterable
           .map((e) {
             if (e is Map) {
-              return (e['title'] ?? e['description'] ?? e['name'] ?? '')
+              return (e['canonicalSkillName'] ??
+                      e['skillName'] ??
+                      e['skill'] ??
+                      e['title'] ??
+                      e['description'] ??
+                      e['name'] ??
+                      '')
                   .toString();
             }
             return e.toString();
@@ -1442,19 +1480,80 @@ class RepoAnalysisSnapshotModel {
           .toList();
     }
 
+    Map<String, int> breakdownMap(dynamic v) {
+      if (v is! Map) return {};
+      final parsedValues = <String, double>{};
+      v.forEach((key, value) {
+        final parsed = value is num
+            ? value.toDouble()
+            : double.tryParse(value?.toString() ?? '');
+        if (parsed != null) parsedValues[key.toString()] = parsed;
+      });
+      final usesRatioScale = parsedValues.isNotEmpty &&
+          parsedValues.values.any((value) => value > 0) &&
+          parsedValues.values.every((value) => value >= 0 && value <= 1);
+      return parsedValues.map(
+        (key, value) => MapEntry(
+          key,
+          ((usesRatioScale ? value * 100 : value).round()).clamp(0, 100),
+        ),
+      );
+    }
+
+    int? percent(dynamic value) {
+      final parsed = value is num
+          ? value.toDouble()
+          : double.tryParse(value?.toString() ?? '');
+      if (parsed == null) return null;
+      final normalized = parsed > 0 && parsed <= 1 ? parsed * 100 : parsed;
+      return normalized.round().clamp(0, 100);
+    }
+
+    final readiness =
+        summary['userReadinessScore'] ?? json['userReadinessScore'];
+    final scoresSource = json['scores'] ?? json['metrics'];
+    final scoresJson = scoresSource is Map
+        ? Map<String, dynamic>.from(scoresSource)
+        : <String, dynamic>{
+            'overallScore': summary['overallScore'] ??
+                summary['userReadinessScore'] ??
+                json['overallScore'],
+          };
+
     return RepoAnalysisSnapshotModel(
-      id: (json['id'] ?? json['_id'] ?? '').toString(),
-      repoId: (json['repositoryId'] ?? json['repoId'] ?? '').toString(),
-      createdAt:
-          (json['createdAt'] ?? DateTime.now().toIso8601String()).toString(),
-      scores: AnalysisScores.fromJson(json['scores'] is Map
-          ? Map<String, dynamic>.from(json['scores'] as Map)
-          : {}),
+      id: (json['id'] ??
+              json['_id'] ??
+              json['snapshotId'] ??
+              '')
+          .toString(),
+      repoId: (json['repositoryId'] ??
+              json['repoId'] ??
+              repository['repositoryId'] ??
+              repository['id'] ??
+              '')
+          .toString(),
+      createdAt: (json['createdAt'] ??
+              json['analyzedAt'] ??
+              DateTime.now().toIso8601String())
+          .toString(),
+      scores: AnalysisScores.fromJson(scoresJson),
       checklist: strList(json['checklist']),
       missingSkills: strList(json['missingSkills']),
       strengths: strList(json['strengths']),
       weaknesses: strList(json['weaknesses']),
-      recommendations: strList(json['recommendations']),
+      recommendations: strList(json['recommendationSummary'] ?? json['recommendations']),
+      userReadinessScore: percent(readiness),
+      userLevel: (summary['userLevel'] ?? json['userLevel'])?.toString(),
+      careerDirection:
+          (summary['careerDirection'] ?? json['careerDirection'])?.toString(),
+      topSkills: topSkillDetails.isNotEmpty
+          ? topSkillDetails.map((item) => item.displayName).toList()
+          : strList(json['topSkills']),
+      topSkillDetails: topSkillDetails,
+      scoreBreakdown: breakdownMap(json['scoreBreakdown']),
+      analysisScope: scopeJson == null
+          ? null
+          : AnalysisScopeModel.fromJson(scopeJson),
     );
   }
 }
@@ -1490,7 +1589,13 @@ class SnapshotCompareResultModel {
       return iterable
           .map((e) {
             if (e is Map) {
-              return (e['title'] ?? e['description'] ?? e['name'] ?? '')
+              return (e['canonicalSkillName'] ??
+                      e['skillName'] ??
+                      e['skill'] ??
+                      e['title'] ??
+                      e['description'] ??
+                      e['name'] ??
+                      '')
                   .toString();
             }
             return e.toString();
@@ -1499,17 +1604,46 @@ class SnapshotCompareResultModel {
           .toList();
     }
 
+    double pickScore(List<String> keys) {
+      for (final key in keys) {
+        final parsed = double.tryParse(json[key]?.toString() ?? '');
+        if (parsed != null) return parsed;
+      }
+      return 0;
+    }
+
+    final fromSnapshot = json['fromSnapshot'] is Map
+        ? Map<String, dynamic>.from(json['fromSnapshot'] as Map)
+        : <String, dynamic>{};
+    final toSnapshot = json['toSnapshot'] is Map
+        ? Map<String, dynamic>.from(json['toSnapshot'] as Map)
+        : <String, dynamic>{};
+    final delta = json['delta'] is Map
+        ? Map<String, dynamic>.from(json['delta'] as Map)
+        : <String, dynamic>{};
+
+    final overallBefore = pickScore(['overallBefore']) != 0
+        ? pickScore(['overallBefore'])
+        : double.tryParse(
+                fromSnapshot['userReadinessScore']?.toString() ?? '') ??
+            0;
+    final overallAfter = pickScore(['overallAfter']) != 0
+        ? pickScore(['overallAfter'])
+        : double.tryParse(toSnapshot['userReadinessScore']?.toString() ?? '') ??
+            0;
+    final overallChange = pickScore(['overallChange']) != 0
+        ? pickScore(['overallChange'])
+        : double.tryParse(delta['userReadinessScore']?.toString() ?? '') ??
+            (overallAfter - overallBefore);
+
     return SnapshotCompareResultModel(
-      overallBefore:
-          double.tryParse(json['overallBefore']?.toString() ?? '') ?? 0.0,
-      overallAfter:
-          double.tryParse(json['overallAfter']?.toString() ?? '') ?? 0.0,
-      overallChange:
-          double.tryParse(json['overallChange']?.toString() ?? '') ?? 0.0,
+      overallBefore: overallBefore,
+      overallAfter: overallAfter,
+      overallChange: overallChange,
       resolvedMissingSkills: strList(json['resolvedMissingSkills']),
       remainingMissingSkills: strList(json['remainingMissingSkills']),
       newMissingSkills: strList(json['newMissingSkills']),
-      summary: (json['summary'] ?? '').toString(),
+      summary: (json['summary'] ?? delta['toLevel'] ?? '').toString(),
     );
   }
 }
