@@ -490,8 +490,6 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
       : null;
 
   var totalHours = 0;
-  var completedTasks = 0;
-  var totalTasks = 0;
 
   final modules = <RoadmapModuleModel>[];
 
@@ -500,9 +498,7 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
       Map<String, dynamic> task, String phasePrefix, int taskIndex) {
     final hours = int.tryParse(task['estimatedHours']?.toString() ?? '') ?? 4;
     totalHours += hours;
-    totalTasks++;
     final status = task['status']?.toString() ?? 'not_started';
-    if (status == 'completed') completedTasks++;
 
     String difficulty = 'Intermediate';
     final rawDiff = (task['difficulty'] ?? '').toString().toLowerCase();
@@ -610,8 +606,7 @@ RoadmapModel normalizeRoadmap(dynamic payload) {
       ? Map<String, dynamic>.from(map['progressSummary'] as Map)
       : null;
   final progress =
-      int.tryParse(progressSummary?['overallProgress']?.toString() ?? '') ??
-          (totalTasks == 0 ? 0 : ((completedTasks / totalTasks) * 100).round());
+      int.tryParse(progressSummary?['overallProgress']?.toString() ?? '') ?? 0;
   final estimatedWeeks = (totalHours / 8).ceil().clamp(1, 52);
 
   final objectivesRaw = map['objectives'];

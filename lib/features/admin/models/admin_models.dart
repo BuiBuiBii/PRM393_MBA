@@ -456,6 +456,7 @@ class AdminAnalysisRecord {
     this.scores = const {},
     this.checklist = const {},
     this.commitSummary = const {},
+    this.analysisScope = const {},
   });
 
   final String id;
@@ -477,10 +478,14 @@ class AdminAnalysisRecord {
   final Map<String, int> scores;
   final Map<String, bool> checklist;
   final Map<String, dynamic> commitSummary;
+  final Map<String, dynamic> analysisScope;
 
   factory AdminAnalysisRecord.fromJson(Map<String, dynamic> json) {
     final user = json['userId'];
     final userMap = user is Map ? Map<String, dynamic>.from(user) : null;
+    final repository = json['repositoryId'];
+    final repositoryMap =
+        repository is Map ? Map<String, dynamic>.from(repository) : null;
     final scoresMap = json['scores'] is Map
         ? Map<String, dynamic>.from(json['scores'] as Map)
         : null;
@@ -490,15 +495,34 @@ class AdminAnalysisRecord {
     final commitMap = json['commitSummary'] is Map
         ? Map<String, dynamic>.from(json['commitSummary'] as Map)
         : null;
+    final analysisScopeMap = json['analysisScope'] is Map
+        ? Map<String, dynamic>.from(json['analysisScope'] as Map)
+        : null;
 
     List<String> listOf(dynamic value) {
       if (value is! List) return const [];
-      return value.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+      return value
+          .map((item) {
+            if (item is Map) {
+              final map = Map<String, dynamic>.from(item);
+              return (map['skill'] ??
+                      map['canonicalSkillName'] ??
+                      map['name'] ??
+                      map['title'] ??
+                      '')
+                  .toString();
+            }
+            return item.toString();
+          })
+          .where((item) => item.isNotEmpty)
+          .toList();
     }
 
     final scores = <String, int>{};
     scoresMap?.forEach((key, value) {
-      final parsed = int.tryParse(value?.toString() ?? '');
+      final parsed = value is num
+          ? value.round()
+          : num.tryParse(value?.toString() ?? '')?.round();
       if (parsed != null) scores[key] = parsed;
     });
 
@@ -509,7 +533,12 @@ class AdminAnalysisRecord {
 
     return AdminAnalysisRecord(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
-      repoName: (json['repoName'] ?? json['fullName'] ?? 'Repo').toString(),
+      repoName: (json['repoName'] ??
+              repositoryMap?['name'] ??
+              json['fullName'] ??
+              repositoryMap?['fullName'] ??
+              'Repo')
+          .toString(),
       projectType: (json['projectType'] ?? '-').toString(),
       careerDirection: (json['careerDirection'] ?? '-').toString(),
       ownerName: userMap?['name']?.toString() ??
@@ -525,12 +554,13 @@ class AdminAnalysisRecord {
       packages: listOf(json['packages']),
       strengths: listOf(json['strengths']),
       weaknesses: listOf(json['weaknesses']),
-      missingSkills: listOf(json['missingSkills']),
+      missingSkills: listOf(json['skillSignals']),
       recommendations: listOf(json['recommendations']),
       skillSignals: listOf(json['skillSignals']),
       scores: scores,
       checklist: checklist,
       commitSummary: commitMap ?? const {},
+      analysisScope: analysisScopeMap ?? const {},
     );
   }
 }

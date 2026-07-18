@@ -65,12 +65,9 @@ class _RoadmapDetailScreenState extends ConsumerState<RoadmapDetailScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() async {
-      if (ref.read(roadmapProvider.notifier).getById(widget.roadmapId) ==
-          null) {
-        await ref.read(roadmapProvider.notifier).fetchRoadmap(widget.roadmapId);
-      }
-    });
+    Future.microtask(
+      () => ref.read(roadmapProvider.notifier).fetchRoadmap(widget.roadmapId),
+    );
   }
 
   @override
@@ -116,9 +113,7 @@ class _RoadmapDetailBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final progress = notifier.progressFor(roadmap);
-    final percent = progress.total == 0
-        ? 0
-        : ((progress.completed / progress.total) * 100).round();
+    final percent = roadmap.progress;
 
     return ScrollListHints(
       child: ListView(

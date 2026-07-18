@@ -110,11 +110,13 @@ class AdminTextListCard extends StatelessWidget {
     required this.title,
     required this.items,
     this.variant = AppBadgeVariant.neutral,
+    this.emptyText = 'Chưa có nội dung.',
   });
 
   final String title;
   final List<String> items;
   final AppBadgeVariant variant;
+  final String emptyText;
 
   @override
   Widget build(BuildContext context) {
@@ -125,17 +127,19 @@ class AdminTextListCard extends StatelessWidget {
           Text(title, style: context.appSectionTitleStyle.copyWith(fontSize: 15)),
           const SizedBox(height: 10),
           if (items.isEmpty)
-            Text('Chưa có nội dung.', style: context.appCaptionStyle)
+            Text(emptyText, style: context.appCaptionStyle)
           else
-            ...items.map(
-              (item) => Padding(
+            ...items.asMap().entries.map(
+              (entry) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AppBadge(label: 'Mục', variant: variant),
+                    AppBadge(label: '${entry.key + 1}', variant: variant),
                     const SizedBox(width: 8),
-                    Expanded(child: Text(item, style: context.appBodyStyle)),
+                    Expanded(
+                      child: Text(entry.value, style: context.appBodyStyle),
+                    ),
                   ],
                 ),
               ),
@@ -147,33 +151,55 @@ class AdminTextListCard extends StatelessWidget {
 }
 
 class AdminDetailStatGrid extends StatelessWidget {
-  const AdminDetailStatGrid({super.key, required this.items});
+  const AdminDetailStatGrid({
+    super.key,
+    required this.items,
+    this.mainAxisExtent,
+  });
 
   final List<(String label, String value)> items;
+  final double? mainAxisExtent;
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.6,
-      children: [
-        for (final item in items)
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(item.$1, style: context.appLabelStyle),
-                const SizedBox(height: 6),
-                Text(item.$2, style: context.appHeadingStyle.copyWith(fontSize: 20)),
-              ],
-            ),
-          ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 12.0;
+        final itemWidth = (constraints.maxWidth - spacing) / 2;
+        final aspectRatio = mainAxisExtent == null
+            ? 1.6
+            : itemWidth / mainAxisExtent!;
+
+        return GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: spacing,
+          crossAxisSpacing: spacing,
+          childAspectRatio: aspectRatio,
+          children: [
+            for (final item in items)
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(item.$1, style: context.appLabelStyle),
+                    const SizedBox(height: 6),
+                    Flexible(
+                      child: Text(
+                        item.$2,
+                        softWrap: true,
+                        style:
+                            context.appHeadingStyle.copyWith(fontSize: 20),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
